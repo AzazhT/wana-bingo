@@ -3,19 +3,20 @@ const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const TelegramBot = require('node-telegram-bot-api');
+const path = require('path'); // 📌 1. የ path ሞጁል ተጨምሯል
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.json());
-app.use(express.static('public'));
+// 📌 2. Static ፎልደር ማስተካከያ
+app.use(express.static(path.join(__dirname, 'public')));
 
 // 📌 የአካባቢ ተለዋዋጮች
 const TOKEN = process.env.BOT_TOKEN || '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_ID = process.env.ADMIN_ID || '686733543';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/addis_bingo';
-// ⚠️ እዚህ ጋር የ Render አፕሊኬሽንህን ትክክለኛ URL ተካ!
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://wana-bingo.onrender.com';
 
 const bot = new TelegramBot(TOKEN, { polling: true });
@@ -25,7 +26,7 @@ bot.on('polling_error', (error) => {
     console.error('Telegram Polling Error:', error.message);
 });
 
-// 📌 1. የ /start ትዕዛዝ ሲላክ የሚሰራ ሎጂክ (ይህ ነው ጎድሎ የነበረው!)
+// 📌 የ /start ትዕዛዝ
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const firstName = msg.from.first_name || 'ተጫዋች';
@@ -52,7 +53,7 @@ bot.onText(/\/start/, async (msg) => {
     bot.sendMessage(chatId, welcomeMessage, options);
 });
 
-// 📌 2. የዳታቤዝ ስኬማዎች (Database Schemas)
+// 📌 የዳታቤዝ ስኬማዎች (Database Schemas)
 const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true },
     username: { type: String, default: '' },
@@ -78,7 +79,7 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB Connected!'))
     .catch(err => console.error('MongoDB Error:', err));
 
-// 📌 3. API ENDPOINTS
+// 📌 API ENDPOINTS
 app.post('/api/get-user', async (req, res) => {
     try {
         const { identifier, name, username, phone } = req.body;
@@ -161,7 +162,7 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
-// 📌 4. TELEGRAM CALLBACK QUERY (አድሚን አፕሩቭ ሲያደርግ እና የእገዛ በተን)
+// 📌 TELEGRAM CALLBACK QUERY
 bot.on('callback_query', async (query) => {
     const data = query.data;
     const chatId = query.message.chat.id;
@@ -221,7 +222,12 @@ bot.on('callback_query', async (query) => {
     }
 });
 
-// 📌 5. SOCKET.IO BINGO LOGIC
+// 📌 3. ለ Frontend ገጽ (index.html) የሚሰጥ Fallback Route (ይህ "Not Found" ኤረርን ያስቀራል)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 📌 SOCKET.IO BINGO LOGIC
 io.on('connection', (socket) => {
     let gameInterval = null;
 
