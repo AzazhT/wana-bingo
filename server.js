@@ -12,6 +12,7 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// የቴሌግራም ቦት ቶከን
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const bot = new TelegramBot(TOKEN, { polling: true });
 
@@ -43,6 +44,7 @@ bot.on('callback_query', (query) => {
   bot.answerCallbackQuery(query.id);
 });
 
+// MongoDB ዳታቤዝ ማገናኛ
 const dbURI = "mongodb+srv://robel:1252@cluster0.lkrow1p.mongodb.net/wana_bingo?retryWrites=true&w=majority";
 mongoose.connect(dbURI)
   .then(() => console.log('🟢 MongoDB ዳታቤዝ በተሳካ ሁኔታ ተገናኝቷል!'))
@@ -69,11 +71,13 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+// የጨዋታ ክፍሎች (በእርስዎ የተጠየቁት ትክክለኛ የብር መጠኖች: 20, 50, 100, 500, 1000)
 const gameRooms = {
+  20: { players: [], selectedNumbers: [], drawnNumbers: [], timer: 30, timerInterval: null, botInterval: null, isGameActive: true },
   50: { players: [], selectedNumbers: [], drawnNumbers: [], timer: 30, timerInterval: null, botInterval: null, isGameActive: true },
   100: { players: [], selectedNumbers: [], drawnNumbers: [], timer: 30, timerInterval: null, botInterval: null, isGameActive: true },
-  150: { players: [], selectedNumbers: [], drawnNumbers: [], timer: 30, timerInterval: null, botInterval: null, isGameActive: true },
-  200: { players: [], selectedNumbers: [], drawnNumbers: [], timer: 30, timerInterval: null, botInterval: null, isGameActive: true }
+  500: { players: [], selectedNumbers: [], drawnNumbers: [], timer: 30, timerInterval: null, botInterval: null, isGameActive: true },
+  1000: { players: [], selectedNumbers: [], drawnNumbers: [], timer: 30, timerInterval: null, botInterval: null, isGameActive: true }
 };
 
 io.on('connection', (socket) => {
