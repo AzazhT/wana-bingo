@@ -14,9 +14,8 @@
         input { background: #334155; color: #fff; text-align: center; }
         button { background: #0284c7; color: #fff; cursor: pointer; font-weight: bold; transition: 0.3s; }
         button:hover { background: #0369a1; }
-        .room-btn { background: #10b981; margin: 6px; width: 45%; display: inline-block; font-size: 16px; padding: 15px; }
+        .room-btn { background: #10b981; margin: 6px; width: 30%; display: inline-block; font-size: 15px; padding: 12px; }
         
-        /* የ वालेተና የሂሳብ መቆጣጠሪያ bar */
         .wallet-bar { display: flex; justify-content: space-between; background: #0f172a; padding: 12px; border-radius: 8px; margin-bottom: 15px; align-items: center; }
         .wallet-btn { width: auto; padding: 8px 12px; font-size: 14px; margin: 0 4px; }
         .deposit-btn { background: #10b981; }
@@ -46,9 +45,8 @@
             </div>
         </div>
 
-        <!-- 2. ዋናው ዳሽቦርድ (የሂሳብ መጠን እና ክፍሎች) -->
+        <!-- 2. ዋናው ዳሽቦርድ (የክፍያ አማራጮች: 20, 50, 100, 500, 1000) -->
         <div id="rooms-section" class="hidden">
-            <!-- የኪስ ቦርሳ እና የዲፖዚት/ዊዝድራው አማራጮች -->
             <div class="wallet-bar">
                 <div>ቀሪ ሂሳብ: <span id="user-balance" style="color: #22c55e; font-weight: bold;">0</span> ብር</div>
                 <div>
@@ -60,10 +58,11 @@
             <h1>የቢንጎ ክፍሎች (Rooms)</h1>
             <p>የሚፈልጉትን የዋጋ መጠን ይምረጡ፦</p>
             <div>
+                <button class="room-btn" onclick="joinRoom(20)">20 ብር</button>
                 <button class="room-btn" onclick="joinRoom(50)">50 ብር</button>
                 <button class="room-btn" onclick="joinRoom(100)">100 ብር</button>
-                <button class="room-btn" onclick="joinRoom(150)">150 ብር</button>
-                <button class="room-btn" onclick="joinRoom(200)">200 ብር</button>
+                <button class="room-btn" onclick="joinRoom(500)">500 ብር</button>
+                <button class="room-btn" onclick="joinRoom(1000)">1000 ብር</button>
             </div>
         </div>
 
