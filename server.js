@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const mongoose = require('mongoose');
+const { Pool } = require('pg');
 const TelegramBot = require('node-telegram-bot-api');
 const path = require('path');
 
@@ -15,8 +15,46 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 📌 Environment Variables
 const TOKEN = process.env.BOT_TOKEN || '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_ID = process.env.ADMIN_ID || '686733543';
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://robel:1252@cluster0.lkrow1p.mongodb.net/wana_bingo?retryWrites=true&w=majority&appName=Cluster0';
+const POSTGRES_URI = process.env.DATABASE_URL || 'postgresql://wana_bingo_user:IHX1VB02IXnf3T5WJolucG0DIQFJq4fx@dpg-da4da5gu01pc739kvhjg-a/wana_bingo';
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://wana-bingo.onrender.com';
+
+// 📌 PostgreSQL Connection Setup
+const pool = new Pool({
+    connectionString: POSTGRES_URI,
+    ssl: { rejectUnauthorized: false }
+});
+
+// 📌 Database Tables Initialization
+async function initDb() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                identifier VARCHAR(255) PRIMARY KEY,
+                username VARCHAR(255) DEFAULT '',
+                name VARCHAR(255) DEFAULT 'ተጫዋች',
+                phone VARCHAR(255) DEFAULT '',
+                balance NUMERIC(12, 2) DEFAULT 50.00,
+                registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS transactions (
+                id SERIAL PRIMARY KEY,
+                identifier VARCHAR(255) NOT NULL,
+                type VARCHAR(50) NOT NULL,
+                amount NUMERIC(12, 2) NOT NULL,
+                details TEXT NOT NULL,
+                status VARCHAR(50) DEFAULT 'PENDING',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('✅ PostgreSQL Database Connected & Tables Created!');
+    } catch (err) {
+        console.error('❌ PostgreSQL Initialization Error:', err.message);
+    }
+}
+initDb();
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
@@ -32,31 +70,6 @@ bot.on('polling_error', (error) => {
     console.error('Telegram Polling Error:', error.message);
 });
 
-// 📌 Database Schemas
-const userSchema = new mongoose.Schema({
-    identifier: { type: String, required: true, unique: true },
-    username: { type: String, default: '' },
-    name: { type: String, default: 'ተጫዋች' },
-    phone: { type: String, default: '' },
-    balance: { type: Number, default: 50 },
-    registeredAt: { type: Date, default: Date.now }
-});
-const User = mongoose.model('User', userSchema);
-
-const transactionSchema = new mongoose.Schema({
-    identifier: { type: String, required: true },
-    type: { type: String, enum: ['DEPOSIT', 'WITHDRAW'], required: true },
-    amount: { type: Number, required: true },
-    details: { type: String, required: true },
-    status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
-    createdAt: { type: Date, default: Date.now }
-});
-const Transaction = mongoose.model('Transaction', transactionSchema);
-
-mongoose.connect(MONGO_URI)
-    .then(() => console.log('✅ MongoDB Connected Successfully!'))
-    .catch(err => console.error('❌ MongoDB Connection Error:', err));
-
 // 📌 Telegram Auto-Register Log
 async function ensureUserRegistered(msg) {
     try {
@@ -64,18 +77,18 @@ async function ensureUserRegistered(msg) {
         const firstName = msg.from.first_name || 'ተጫዋች';
         const username = msg.from.username || '';
 
-        let user = await User.findOne({ identifier: chatId });
-        if (!user) {
-            user = new User({
-                identifier: chatId,
-                username: username,
-                name: firstName,
-                balance: 50
-            });
-            await user.save();
+        const res = await pool.query('SELECT * FROM users WHERE identifier = $1', [chatId]);
+        if (res.rows.length === 0) {
+            const insertRes = await pool.query(
+                `INSERT INTO users (identifier, username, name, balance) 
+                 VALUES ($1, $2, $3, 50) 
+                 RETURNING *`,
+                [chatId, username, firstName]
+            );
             console.log(`👤 አዲስ ተጠቃሚ በ Telegram ተመዝግቧል: ID ${chatId} (${firstName})`);
+            return insertRes.rows[0];
         }
-        return user;
+        return res.rows[0];
     } catch (err) {
         console.error('User registration error:', err);
     }
@@ -130,23 +143,30 @@ app.post('/api/get-user', async (req, res) => {
         if (!identifier) return res.status(400).json({ success: false, error: 'ID ያስፈልጋል' });
 
         const strId = String(identifier);
-        let user = await User.findOne({ identifier: strId });
+        const userQuery = await pool.query('SELECT * FROM users WHERE identifier = $1', [strId]);
 
-        if (!user) {
-            user = new User({
-                identifier: strId,
-                username: username || '',
-                name: name || 'ተጫዋች',
-                phone: phone || '',
-                balance: 50 
-            });
-            await user.save();
+        let user;
+        if (userQuery.rows.length === 0) {
+            const insertQuery = await pool.query(
+                `INSERT INTO users (identifier, username, name, phone, balance)
+                 VALUES ($1, $2, $3, $4, 50)
+                 RETURNING *`,
+                [strId, username || '', name || 'ተጫዋች', phone || '']
+            );
+            user = insertQuery.rows[0];
             console.log(`👤 አዲስ ተጠቃሚ በ API ተመዝግቧል: ID ${strId}`);
         } else {
-            let updated = false;
-            if (username && user.username !== username) { user.username = username; updated = true; }
-            if (name && user.name !== name) { user.name = name; updated = true; }
-            if (updated) await user.save();
+            user = userQuery.rows[0];
+            let newUsername = username && user.username !== username ? username : user.username;
+            let newName = name && user.name !== name ? name : user.name;
+
+            if (newUsername !== user.username || newName !== user.name) {
+                const updateQuery = await pool.query(
+                    `UPDATE users SET username = $1, name = $2 WHERE identifier = $3 RETURNING *`,
+                    [newUsername, newName, strId]
+                );
+                user = updateQuery.rows[0];
+            }
         }
 
         res.status(200).json({ success: true, user });
@@ -160,17 +180,19 @@ app.post('/api/place-bet', async (req, res) => {
         const { identifier, amount } = req.body;
         const betAmount = Number(amount);
 
-        const user = await User.findOneAndUpdate(
-            { identifier: String(identifier), balance: { $gte: betAmount } },
-            { $inc: { balance: -betAmount } },
-            { new: true }
+        const updateRes = await pool.query(
+            `UPDATE users 
+             SET balance = balance - $1 
+             WHERE identifier = $2 AND balance >= $1 
+             RETURNING balance`,
+            [betAmount, String(identifier)]
         );
 
-        if (!user) {
+        if (updateRes.rows.length === 0) {
             return res.status(400).json({ success: false, message: 'በቂ ባላንስ የለዎትም ወይም ተጠቃሚው አልተገኘም!' });
         }
 
-        res.status(200).json({ success: true, newBalance: user.balance });
+        res.status(200).json({ success: true, newBalance: parseFloat(updateRes.rows[0].balance) });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -186,22 +208,28 @@ app.post('/api/request-transaction', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ሁሉንም መረጃዎች ያሟሉ' });
         }
 
-        const user = await User.findOne({ identifier: strId });
-        if (!user) {
+        const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [strId]);
+        if (userRes.rows.length === 0) {
             return res.status(404).json({ success: false, message: 'ተጠቃሚው በዳታቤዝ ውስጥ አልተገኘም!' });
         }
 
-        if (type === 'WITHDRAW' && user.balance < numAmount) {
+        const user = userRes.rows[0];
+        if (type === 'WITHDRAW' && parseFloat(user.balance) < numAmount) {
             return res.status(400).json({ success: false, message: 'ያለዎት ባላንስ ለቀረበው የወጪ ጥያቄ በቂ አይደለም!' });
         }
 
-        const trans = new Transaction({ identifier: strId, type, amount: numAmount, details });
-        await trans.save();
+        const transRes = await pool.query(
+            `INSERT INTO transactions (identifier, type, amount, details)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id`,
+            [strId, type, numAmount, details]
+        );
+        const transId = transRes.rows[0].id;
 
         const inlineKeyboard = {
             inline_keyboard: [[
-                { text: "✅ አጽድቅ (Approve)", callback_data: `approve_${trans._id}` },
-                { text: "❌ ውድቅ አድርግ (Reject)", callback_data: `reject_${trans._id}` }
+                { text: "✅ አጽድቅ (Approve)", callback_data: `approve_${transId}` },
+                { text: "❌ ውድቅ አድርግ (Reject)", callback_data: `reject_${transId}` }
             ]]
         };
 
@@ -235,43 +263,53 @@ bot.on('callback_query', async (query) => {
 
     const [action, transId] = data.split('_');
     try {
-        const trans = await Transaction.findById(transId);
+        const transRes = await pool.query('SELECT * FROM transactions WHERE id = $1', [transId]);
+        const trans = transRes.rows[0];
+
         if (!trans || trans.status !== 'PENDING') {
             return bot.answerCallbackQuery(query.id, { text: "ጥያቄው አልተገኘም ወይም ቀድሞ ተስተናግዷል!" });
         }
 
         if (action === 'approve') {
             let updatedUser = null;
+
             if (trans.type === 'DEPOSIT') {
-                updatedUser = await User.findOneAndUpdate(
-                    { identifier: trans.identifier },
-                    { $inc: { balance: trans.amount } },
-                    { new: true }
+                const userRes = await pool.query(
+                    `UPDATE users 
+                     SET balance = balance + $1 
+                     WHERE identifier = $2 
+                     RETURNING balance`,
+                    [parseFloat(trans.amount), trans.identifier]
                 );
+                if (userRes.rows.length > 0) updatedUser = userRes.rows[0];
+
             } else if (trans.type === 'WITHDRAW') {
-                updatedUser = await User.findOneAndUpdate(
-                    { identifier: trans.identifier, balance: { $gte: trans.amount } },
-                    { $inc: { balance: -trans.amount } },
-                    { new: true }
+                const userRes = await pool.query(
+                    `UPDATE users 
+                     SET balance = balance - $1 
+                     WHERE identifier = $2 AND balance >= $1 
+                     RETURNING balance`,
+                    [parseFloat(trans.amount), trans.identifier]
                 );
+                if (userRes.rows.length > 0) updatedUser = userRes.rows[0];
             }
 
             if (!updatedUser && trans.type === 'WITHDRAW') {
                 return bot.sendMessage(ADMIN_ID, `❌ ተጠቃሚው በቂ ባላንስ ስለሌለው የወጪ ጥያቄውን ማጽደቅ አልተቻለም።`);
             }
 
-            trans.status = 'APPROVED';
-            await trans.save();
+            await pool.query('UPDATE transactions SET status = $1 WHERE id = $2', ['APPROVED', transId]);
 
-            bot.editMessageText(`✅ የ${trans.type} ጥያቄ ጸድቋል።\n👤 ተጠቃሚ ID: ${trans.identifier}\n💰 መጠን: ${trans.amount} ETB\n💵 አዲስ ባላንስ: ${updatedUser ? updatedUser.balance : 0} ETB`, {
+            const finalBalance = updatedUser ? parseFloat(updatedUser.balance) : 0;
+
+            bot.editMessageText(`✅ የ${trans.type} ጥያቄ ጸድቋል።\n👤 ተጠቃሚ ID: ${trans.identifier}\n💰 መጠን: ${trans.amount} ETB\n💵 አዲስ ባላንስ: ${finalBalance} ETB`, {
                 chat_id: chatId, message_id: query.message.message_id
             });
 
-            bot.sendMessage(trans.identifier, `🎉 የእርስዎ የ ${trans.amount} ETB ${trans.type} ጥያቄ ጸድቋል! አሁን ያሉት ባላንስ: ${updatedUser ? updatedUser.balance : 0} ETB`);
+            bot.sendMessage(trans.identifier, `🎉 የእርስዎ የ ${trans.amount} ETB ${trans.type} ጥያቄ ጸድቋል! አሁን ያሉት ባላንስ: ${finalBalance} ETB`);
 
         } else if (action === 'reject') {
-            trans.status = 'REJECTED';
-            await trans.save();
+            await pool.query('UPDATE transactions SET status = $1 WHERE id = $2', ['REJECTED', transId]);
 
             bot.editMessageText(`❌ የ${trans.type} ጥያቄ ውድቅ ተደርጓል።`, {
                 chat_id: chatId, message_id: query.message.message_id
@@ -288,17 +326,16 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 📌 7. GLOBAL SOCKET.IO BINGO STATE (ለሁሉም ተጫዋች የጋራ የሆነ)
+// 📌 GLOBAL SOCKET.IO BINGO STATE
 let gameInterval = null;
 let drawnNumbers = [];
 let isGameRunning = false;
 
 io.on('connection', (socket) => {
-    // አዲስ ተጫዋች ሲገባ እስካሁን የወጡትን ቁጥሮች መላክ
     socket.emit('gameInit', { drawnHistory: drawnNumbers, isGameRunning });
 
     socket.on('startGame', () => {
-        if (isGameRunning) return; // ጨዋታው ቀድሞ ከተጀመረ ሁለተኛ አይጀምርም
+        if (isGameRunning) return;
 
         isGameRunning = true;
         drawnNumbers = [];
@@ -329,12 +366,15 @@ io.on('connection', (socket) => {
 
         if (identifier && winAmount) {
             try {
-                const updatedUser = await User.findOneAndUpdate(
-                    { identifier: String(identifier) },
-                    { $inc: { balance: parseFloat(winAmount) } },
-                    { new: true }
+                const userRes = await pool.query(
+                    `UPDATE users 
+                     SET balance = balance + $1 
+                     WHERE identifier = $2 
+                     RETURNING balance`,
+                    [parseFloat(winAmount), String(identifier)]
                 );
-                console.log(`Bingo Winner: ${identifier}, New Balance: ${updatedUser ? updatedUser.balance : 0}`);
+                const newBalance = userRes.rows.length > 0 ? userRes.rows[0].balance : 0;
+                console.log(`Bingo Winner: ${identifier}, New Balance: ${newBalance}`);
             } catch (err) {
                 console.error("የማሸነፊያ ብር ማስገባት አልተቻለም:", err);
             }
