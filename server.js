@@ -10,13 +10,13 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
-// 1. የሞንጎዲቢ (MongoDB) ቻናል ግንኙነት
-mongoose.connect('mongodb://localhost:27017/addis_bingo', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => console.log('MongoDB ከሰርቨር ጋር ተገናኝቷል!')).catch(err => console.error(err));
+// የሞንጎዲቢ (MongoDB) ቻናል ግንኙነት (Render ላይ ለምትጠቀሙት Mongo URI መቀየር ትችላላችሁ)
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/addis_bingo';
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('MongoDB ከሰርቨር ጋር ተገናኝቷል!'))
+    .catch(err => console.error('MongoDB Connection Error:', err));
 
-// 2. የተጠቃሚ (User) ስኬማ - አንድ ቴሌግራም ID አንዴ ብቻ እንዲመዝገብ (Unique)
+// የተጠቃሚ (User) ስኬማ - አንድ ቴሌግራም ID አንዴ ብቻ ይመዝገባል
 const userSchema = new mongoose.Schema({
     telegramId: { type: String, required: true, unique: true },
     name: { type: String },
@@ -25,24 +25,25 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
-// 3. የዲፖዚት ጥያቄዎች ስኬማ (ለአድሚን ማረጋገጫ)
+// የዲፖዚት ጥያቄዎች ስኬማ
 const depositSchema = new mongoose.Schema({
     telegramId: String,
     amount: Number,
     smsText: String,
-    status: { type: String, default: 'pending' }, // pending, approved, rejected
+    status: { type: String, default: 'pending' }, 
     createdAt: { type: Date, default: Date.now }
 });
 const Deposit = mongoose.model('Deposit', depositSchema);
 
-// ሪጅስትሬሽን ኤፒአይ (አንድ ተጠቃሚ አንዴ ብቻ ይመዝገባል፣ ካለ ኦሬዲ ያለውን ይመልሳል)
+// ሪጅስትሬሽን ኤፒአይ (አንዴ ከተመዘገበ ሁለተኛ ዳታቤዝ ላይ አዲስ አይፈጥርም፣ ያለውን ይመልሳል)
 app.post('/api/register', async (req, res) => {
     try {
         const { telegramId, name } = req.body;
+        if (!telegramId) return res.status(400).json({ success: false, error: 'Telegram ID ያስፈልጋል' });
+
         let user = await User.findOne({ telegramId });
-        
         if (!user) {
-            user = new User({ telegramId, name, balance: 0 });
+            user = new User({ telegramId, name: name || 'Player', balance: 0 });
             await user.save();
         }
         res.status(200).json({ success: true, user });
@@ -51,7 +52,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// አድሚን የሚጠቀምበት የዲፖዚት ጥያቄዎችን ማሳያ ኤፒአይ
+// አድሚን የሚጠቀምበት የዲፖዚት ጥያቄዎች ማሳያ
 app.get('/api/admin/deposits', async (req, res) => {
     try {
         const pendingDeposits = await Deposit.find({ status: 'pending' });
@@ -61,17 +62,16 @@ app.get('/api/admin/deposits', async (req, res) => {
     }
 });
 
-// አድሚን ዲፖዚቱን አፕሩቭ (Approve) አድርጎ ብር ወደ ተጠቃሚው የሚጨምርበት ኤፒአይ
+// አድሚን ዲፖዚቱን አፕሩቭ ሲያደርግ
 app.post('/api/admin/approve-deposit', async (req, res) => {
     try {
         const { depositId } = req.body;
         const dep = await Deposit.findById(depositId);
-        if (!dep || dep.status !== 'pending') return res.status(400).json({ error: 'ጥያቄው አልተገኘም ወይም ቀደም ብሎ ተይዟል።' });
+        if (!dep || dep.status !== 'pending') return res.status(400).json({ error: 'ጥያቄው አልተገኘም ወይም ተይዟል።' });
 
         dep.status = 'approved';
         await dep.save();
 
-        // ተጠቃሚው ላይ ብሩን መጨመር
         let user = await User.findOne({ telegramId: dep.telegramId });
         if (user) {
             user.balance += dep.amount;
@@ -88,9 +88,9 @@ app.post('/api/admin/approve-deposit', async (req, res) => {
 io.on('connection', (socket) => {
     console.log('ተጠቃሚ ተገናኝቷል:', socket.id);
 
-    // ተጠቃሚ የዲፖዚት ጥያቄ ሲልክ
     socket.on('requestDeposit', async (data) => {
         try {
+            if (!data.telegramId) return;
             const newDep = new Deposit({
                 telegramId: data.telegramId,
                 amount: data.amount,
@@ -98,12 +98,12 @@ io.on('connection', (socket) => {
                 status: 'pending'
             });
             await newDep.save();
+            console.log('አዲስ የዲፖዚት ጥያቄ ደርሷል ከ:', data.telegramId);
         } catch (e) {
             console.error('Deposit Error:', e);
         }
     });
 
-    // ጨዋታ ሲጀመር ቁጥሮችን ማውጣት (Live Numbers Call)
     socket.on('startGame', () => {
         let numbers = Array.from({length: 75}, (_, i) => i + 1);
         numbers.sort(() => Math.random() - 0.5);
@@ -118,10 +118,12 @@ io.on('connection', (socket) => {
             let currentNum = numbers.pop();
             drawnHistory.push(currentNum);
             io.emit('numberDrawn', { number: currentNum, drawnHistory });
-        }, 3000); // በየ 3 ሰከንዱ አንድ ቁጥር ይጠራል።
+        }, 3000);
     });
 
     socket.on('disconnect', () => { console.log('ተጠቃሚ ወጥቷል:', socket.id); });
 });
 
-server.listen(3000, () => { console.log('ሰርቨሩ በፖርት 3000 እየሰራ ነው...'); });
+// Render ፖርቱን በራስ ሰር እንዲወስድ (PORT 3000 ሃርድኮድ ሳያደርግ)
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => { console.log(`ሰርቨሩ በፖርት ${PORT} እየሰራ ነው...`); });
