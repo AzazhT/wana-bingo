@@ -1,196 +1,96 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const TelegramBot = require('node-telegram-bot-api');
 
-// 📌 የቦት ቶከን እና የአድሚን አይዲ
+const app = express();
+app.use(express.json());
+
+// 📌 कॉन्ፊግሬሽን
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_ID = '686733543';
-const WEBAPP_URL = 'https://wana-bingo.onrender.com'; // የ Render ሊንክዎ
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/addis_bingo';
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-// ቋሚ የሜኑ ቁልፍ ከቻት ሳጥኑ ጎን እንዲኖር ማድረግ
-bot.setChatMenuButton({
-    menu_button: {
-        type: 'web_app',
-        text: '🎮 ፕሌይ ቢንጎ (Play Bingo)',
-        web_app: { url: WEBAPP_URL }
-    }
-}).then(() => {
-    console.log('የሜኑ ቁልፍ (Menu Button) በትክክል ተስተካክሏል!');
-}).catch(err => {
-    console.error('Menu button error:', err);
-});
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
-
-app.use(express.json());
-app.use(express.static('public'));
-
-// የሞንጎዲቢ ግንኙነት
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/addis_bingo';
-mongoose.connect(MONGO_URI)
-    .then(() => console.log('MongoDB ከሰርቨር ጋር በအောင်ኬት ተገናኝቷል!'))
-    .catch(err => console.error('MongoDB Connection Error:', err));
-
-// የተጠቃሚ ስኬማ
+// 📌 ዳታቤዝ ሞዴሎች
 const userSchema = new mongoose.Schema({
-    identifier: { type: String, required: true, unique: true },
-    name: { type: String },
-    balance: { type: Number, default: 50 },
-    createdAt: { type: Date, default: Date.now }
+    identifier: { type: String, required: true, unique: true }, // Telegram ID
+    balance: { type: Number, default: 50 }, // የዚህ ተጠቃሚ ብቻ ባላንስ
+    name: String
 });
 const User = mongoose.model('User', userSchema);
 
-// የዲፖዚት ስኬማ
-const depositSchema = new mongoose.Schema({
+const transactionSchema = new mongoose.Schema({
     identifier: String,
+    type: String, // 'DEPOSIT' or 'WITHDRAW'
     amount: Number,
-    smsText: String,
-    status: { type: String, default: 'pending' },
-    createdAt: { type: Date, default: Date.now }
+    details: String, // SMS ወይም የባንክ መረጃ
+    status: { type: String, default: 'PENDING' } // PENDING, APPROVED, REJECTED
 });
-const Deposit = mongoose.model('Deposit', depositSchema);
+const Transaction = mongoose.model('Transaction', transactionSchema);
 
-// ቴሌግራም /start ትዕዛዝ
-bot.onText(/\/start/, (msg) => {
-    const chatId = msg.chat.id;
-    bot.sendMessage(chatId, "እንኳን ወደ Wana Bingo መጡ! ጨዋታውን ለመጀመር እና አካውንትዎን ለማስተዳደር ከታች ያለውን ቁልፍ ይጫኑ፡", {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "🎮 ፕሌይ ቢንጎ (Play Bingo)", web_app: { url: WEBAPP_URL } }]
-            ]
-        }
-    });
+mongoose.connect(MONGO_URI).then(() => console.log('DB Connected'));
+
+// 1. ተጠቃሚ ሲገባ (የነበረውን ባላንስ ለማግኘት)
+app.post('/api/get-user', async (req, res) => {
+    const { identifier, name } = req.body;
+    let user = await User.findOne({ identifier });
+    
+    if (!user) {
+        user = await User.create({ identifier, name, balance: 50 });
+    }
+    res.json({ success: true, user });
 });
 
-// 1. የተጠቃሚ ምዝገባ (የነበረውን ትክክለኛ ባላንስ የሚይዝ - የጠፋ ብር ተመልሶ እንዳይመጣ)
-app.post('/api/register', async (req, res) => {
-    try {
-        const { identifier, name } = req.body;
-        if (!identifier) return res.status(400).json({ success: false, error: 'Telegram ID ያስፈልጋል' });
+// 2. ጨዋታ ሲጀመር ብር ለመቀነስ
+app.post('/api/place-bet', async (req, res) => {
+    const { identifier, amount } = req.body;
+    let user = await User.findOne({ identifier });
+    
+    if (user.balance < amount) return res.json({ success: false, message: 'በቂ ባላንስ የለዎትም' });
+    
+    user.balance -= amount;
+    await user.save();
+    res.json({ success: true, newBalance: user.balance });
+});
 
-        let user = await User.findOne({ identifier });
-        if (!user) {
-            // የመጀመሪያ ጊዜ ሲመዝገብ ብቻ 50 ብር ቦነስ ይሰጠዋል
-            user = new User({ identifier, name: name || 'ተጫዋች', balance: 50 });
+// 3. ዴፖዚት ወይም ወጪ ጥያቄ ሲላክ
+app.post('/api/request-transaction', async (req, res) => {
+    const { identifier, type, amount, details } = req.body;
+    const trans = await Transaction.create({ identifier, type, amount, details });
+    
+    // ለአድሚን በቴሌግራም መላክ
+    const keyboard = {
+        inline_keyboard: [[
+            { text: "✅ አጽድቅ (Approve)", callback_data: `approve_${trans._id}` },
+            { text: "❌ ውድቅ (Reject)", callback_data: `reject_${trans._id}` }
+        ]]
+    };
+    
+    bot.sendMessage(ADMIN_ID, `📥 **አዲስ ጥያቄ (${type})**\nተጠቃሚ: ${identifier}\nመጠን: ${amount} ብር\nመረጃ: ${details}`, { reply_markup: keyboard });
+    res.json({ success: true });
+});
+
+// 4. አድሚን ሲያጸድቅ (Callback)
+bot.on('callback_query', async (q) => {
+    const [action, id] = q.data.split('_');
+    const trans = await Transaction.findById(id);
+    if (!trans) return;
+
+    if (action === 'approve') {
+        if (trans.type === 'DEPOSIT') {
+            const user = await User.findOne({ identifier: trans.identifier });
+            user.balance += trans.amount;
             await user.save();
         }
-        // ተጠቃሚው ቀድሞውኑ ካለ የነበረበትን ትክክለኛ ቀሪ ሂሳብ እንጂ ሁልጊዜ 50 ብር አልሰጠውም
-        res.status(200).json({ success: true, user });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+        trans.status = 'APPROVED';
+        await trans.save();
+        bot.sendMessage(trans.identifier, `🎉 የእርስዎ የ ${trans.amount} ብር ${trans.type} ጥያቄ ጸድቋል!`);
+    } else {
+        trans.status = 'REJECTED';
+        await trans.save();
     }
+    bot.editMessageText(`ጥያቄው ${action === 'approve' ? 'ጸድቋል' : 'ውድቅ ሆኗል'}`, { chat_id: ADMIN_ID, message_id: q.message.message_id });
 });
 
-// 2. ጨዋታ ሲጀመር ከባላንስ ላይ ብር ቆርጦ በዳታቤዝ የሚያስቀምጥ ኤፒአይ
-app.post('/api/play-game', async (req, res) => {
-    try {
-        const { identifier, stakeAmount } = req.body;
-        if (!identifier || !stakeAmount) {
-            return res.status(400).json({ success: false, error: 'መረጃዎች ሙሉ አይደሉም' });
-        }
-
-        let user = await User.findOne({ identifier });
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም' });
-        }
-
-        if (user.balance < stakeAmount) {
-            return res.status(400).json({ success: false, error: 'በቂ ባላንስ የለዎትም!' });
-        }
-
-        // ከባላንሱ ላይ ስቴኩን መቀነስ እና ወዲያውኑ በዳታቤዝ ማስቀመጥ
-        user.balance -= stakeAmount;
-        await user.save();
-
-        res.status(200).json({ success: true, balance: user.balance });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-// 3. የዲፖዚት ጥያቄ መቀበያ ኤፒአይ (ለአድሚን አፕሩቭ ማድረጊያ ቁልፍ ጋር)
-app.post('/api/deposit', async (req, res) => {
-    try {
-        const { identifier, amount, smsText } = req.body;
-        if (!identifier || !amount || !smsText) {
-            return res.status(400).json({ success: false, error: 'መረጃዎች ሙሉ አይደሉም' });
-        }
-
-        const newDep = new Deposit({ identifier, amount, smsText, status: 'pending' });
-        await newDep.save();
-
-        const inlineKeyboard = {
-            inline_keyboard: [
-                [
-                    { text: "✅ አፕሩቭ አድርግ (Approve)", callback_data: `approve_${newDep._id}` },
-                    { text: "❌ ውድቅ አድርግ (Reject)", callback_data: `reject_${newDep._id}` }
-                ]
-            ]
-        };
-
-        bot.sendMessage(ADMIN_ID, `📥 **አዲስ የዲፖዚት ጥያቄ!**\n\nተጠቃሚ ID: ${identifier}\nመጠን: ${amount} ብር\nSMS: ${smsText}`, {
-            reply_markup: inlineKeyboard
-        });
-
-        res.status(200).json({ success: true, message: 'የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል!' });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-// 4. አድሚኑ ቁልፉን ሲጫን ብሩን ወደ ተጠቃሚው አካውንት የሚጨምርበት ሎጂክ
-bot.on('callback_query', async (query) => {
-    const data = query.data;
-    const chatId = query.message.chat.id;
-
-    if (chatId.toString() !== ADMIN_ID) {
-        return bot.answerCallbackQuery(query.id, { text: "ይህንን ትዕዛዝ ለመፈጸም ፈቃድ የለዎትም!" });
-    }
-
-    if (data.startsWith('approve_')) {
-        const depId = data.split('_')[1];
-        try {
-            const dep = await Deposit.findById(depId);
-            if (!dep || dep.status === 'approved') {
-                return bot.answerCallbackQuery(query.id, { text: "ጥያቄው አልተገኘም ወይም უკვე ተረጋግጧል!" });
-            }
-
-            dep.status = 'approved';
-            await dep.save();
-
-            let user = await User.findOne({ identifier: dep.identifier });
-            if (user) {
-                user.balance += dep.amount;
-                await user.save();
-            }
-
-            bot.editMessageText(`✅ **ዲፖዚቱ ተረጋግጧል!**\nለተጠቃሚ ID: ${dep.identifier} ${dep.amount} ብር ተጨምሯል።`, {
-                chat_id: chatId,
-                message_id: query.message.message_id
-            });
-
-            bot.sendMessage(dep.identifier, `🎉 የእርስዎ የ ${dep.amount} ብር የዲፖዚት ጥያቄ በአድሚን ጸድቋል! አሁን መጫወት ይችላሉ።`);
-
-        } catch (e) {
-            console.error(e);
-        }
-    } else if (data.startsWith('reject_')) {
-        const depId = data.split('_')[1];
-        await Deposit.findByIdAndUpdate(depId, { status: 'rejected' });
-        bot.editMessageText(`❌ **የዲፖዚት ጥያቄው ውድቅ ተደርጓል።**`, {
-            chat_id: chatId,
-            message_id: query.message.message_id
-        });
-    }
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`ሰርቨሩ በፖርት ${PORT} እየሰራ ነው...`);
-});
+app.listen(3000, () => console.log('Server running on 3000'));
