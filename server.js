@@ -16,7 +16,7 @@ const TOKEN = process.env.BOT_TOKEN || '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1
 const ADMIN_ID = process.env.ADMIN_ID || '686733543';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/addis_bingo';
 // ⚠️ እዚህ ጋር የ Render አፕሊኬሽንህን ትክክለኛ URL ተካ!
-const WEB_APP_URL = process.env.WEB_APP_URL || 'https://YOUR-APP-NAME.onrender.com';
+const WEB_APP_URL = process.env.WEB_APP_URL || 'https://wana-bingo.onrender.com';
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
