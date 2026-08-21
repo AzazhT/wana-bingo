@@ -8,85 +8,162 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #18222d; color: #ffffff; padding-bottom: 70px; }
-        .header { background: #242f3d; padding: 15px; text-align: center; border-bottom: 2px solid #0088cc; display: flex; justify-content: space-between; align-items: center; }
-        .balance-badge { background: #2b5278; padding: 6px 12px; border-radius: 20px; font-weight: bold; color: #40b3e0; }
-        .container { padding: 15px; }
+        body { background-color: #121921; color: #ffffff; padding-bottom: 75px; user-select: none; }
+        
+        /* Header */
+        .header { background: #1e2a38; padding: 12px 16px; border-bottom: 2px solid #0088cc; display: flex; justify-content: space-between; align-items: center; sticky; top: 0; z-index: 100; }
+        .logo { font-size: 18px; font-weight: bold; color: #40b3e0; display: flex; align-items: center; gap: 6px; }
+        .balance-badge { background: #2b3a4a; padding: 6px 14px; border-radius: 20px; font-weight: bold; color: #4caf50; font-size: 14px; border: 1px solid #3b4e62; }
+        
+        .container { padding: 12px; max-width: 500px; margin: 0 auto; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
         /* Navigation Bar */
-        .navbar { position: fixed; bottom: 0; width: 100%; background: #242f3d; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #10171e; }
-        .nav-item { color: #7f91a4; text-decoration: none; font-size: 12px; text-align: center; cursor: pointer; }
-        .nav-item.active { color: #64b5ef; font-weight: bold; }
+        .navbar { position: fixed; bottom: 0; left: 0; right: 0; background: #1e2a38; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #2b3a4a; z-index: 1000; }
+        .nav-item { color: #7f91a4; text-decoration: none; font-size: 11px; text-align: center; cursor: pointer; flex: 1; }
+        .nav-item.active { color: #40b3e0; font-weight: bold; }
+        .nav-icon { font-size: 20px; margin-bottom: 2px; }
+
+        /* Card Styles */
+        .card { background: #1e2a38; padding: 14px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #2b3a4a; }
+        .btn { background: #0088cc; color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 15px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn:active { opacity: 0.8; }
+        .btn-bingo { background: #e53935; font-size: 18px; padding: 14px; box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
         
-        /* Cards & Buttons */
-        .card { background: #242f3d; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
-        .btn { background: #0088cc; color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .btn:disabled { background: #555; }
-        input { width: 100%; padding: 12px; margin-top: 8px; background: #18222d; border: 1px solid #3b4e62; color: #fff; border-radius: 8px; }
+        input { width: 100%; padding: 12px; margin-top: 8px; background: #121921; border: 1px solid #3b4e62; color: #fff; border-radius: 8px; outline: none; }
         
-        /* Bingo Display */
-        .drawn-number { font-size: 48px; font-weight: bold; color: #ffca28; text-align: center; margin: 15px 0; }
-        .history-box { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
-        .num-ball { width: 32px; height: 32px; background: #3b4e62; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+        /* 🎮 BINGO GAME INTERFACE */
+        .game-status-bar { display: flex; justify-content: space-between; align-items: center; background: #121921; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; }
+        .drawn-display { text-align: center; }
+        .drawn-ball { width: 55px; height: 55px; background: gradient; background: radial-gradient(circle at 30% 30%, #ffca28, #f57f17); color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; margin: 0 auto; box-shadow: 0 4px 10px rgba(255, 202, 40, 0.3); }
+        
+        /* 5x5 Player Bingo Card Grid */
+        .bingo-card-title { text-align: center; font-weight: bold; color: #ffca28; margin-bottom: 8px; font-size: 14px; }
+        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: #121921; padding: 8px; border-radius: 10px; }
+        .bingo-header { background: #0088cc; color: #fff; font-weight: bold; text-align: center; padding: 6px; border-radius: 4px; font-size: 14px; }
+        .bingo-cell { background: #2b3a4a; height: 48px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 15px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .bingo-cell.marked { background: #4caf50; color: #fff; }
+        .bingo-cell.free { background: #ff9800; color: #000; font-size: 11px; }
+
+        /* 1-75 Board Grid */
+        .board-title { font-size: 12px; color: #7f91a4; margin-bottom: 6px; }
+        .full-board-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: #121921; padding: 6px; border-radius: 8px; }
+        .board-num { background: #1e2a38; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #556b82; border-radius: 3px; font-weight: bold; }
+        .board-num.active { background: #ffca28; color: #000; box-shadow: 0 0 6px #ffca28; }
+
+        /* Bet Controls */
+        .bet-selector { display: flex; gap: 8px; margin-bottom: 10px; }
+        .bet-btn { flex: 1; background: #121921; border: 1px solid #3b4e62; color: #fff; padding: 8px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .bet-btn.active { background: #0088cc; border-color: #0088cc; }
     </style>
 </head>
 <body>
 
+    <!-- Header -->
     <div class="header">
-        <div>🎰 <b>Wana Bingo</b></div>
+        <div class="logo">🎲 <span>Wana Bingo</span></div>
         <div class="balance-badge">💵 <span id="userBalance">0.00</span> ETB</div>
     </div>
 
     <div class="container">
-        <!-- 🎮 Game Tab -->
+        
+        <!-- 🎮 GAME TAB (የመጀመሪያው ሙሉ የቢንጎ ኢንተርፌዝ) -->
         <div id="gameTab" class="tab-content active">
-            <div class="card" style="text-align: center;">
-                <h3>የወጣው ቁጥር</h3>
-                <div class="drawn-number" id="currentNumber">--</div>
-                <button id="startBtn" class="btn" onclick="startGame()">🎲 ጨዋታ ጀምር</button>
+            
+            <!-- Game Top Controls -->
+            <div class="card">
+                <div class="bingo-card-title">💵 የውርርድ መጠን ይምረጡ</div>
+                <div class="bet-selector">
+                    <button class="bet-btn active" onclick="setBet(10, this)">10 ETB</button>
+                    <button class="bet-btn" onclick="setBet(20, this)">20 ETB</button>
+                    <button class="bet-btn" onclick="setBet(50, this)">50 ETB</button>
+                    <button class="bet-btn" onclick="setBet(100, this)">100 ETB</button>
+                </div>
+                <button id="startBtn" class="btn" onclick="startGame()">▶️ ጨዋታ ጀምር / ካርድ ግዛ</button>
             </div>
 
+            <!-- Drawn Ball Status Bar -->
+            <div class="game-status-bar">
+                <div>
+                    <div style="font-size: 11px; color: #7f91a4;">የአሁኑ ቁጥር</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #ffca28;" id="ballLetter">-</div>
+                </div>
+                <div class="drawn-display">
+                    <div class="drawn-ball" id="currentNumber">--</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 11px; color: #7f91a4;">የወጡ ብዛት</div>
+                    <div style="font-size: 18px; font-weight: bold;" id="drawnCount">0/75</div>
+                </div>
+            </div>
+
+            <!-- 5x5 Player Bingo Card -->
             <div class="card">
-                <h4>የወጡ ቁጥሮች ታሪክ</h4>
-                <div class="history-box" id="historyBox"></div>
+                <div class="bingo-card-title">🎯 የእርስዎ ቢንጎ ካርድ</div>
+                <div class="bingo-grid">
+                    <div class="bingo-header">B</div>
+                    <div class="bingo-header">I</div>
+                    <div class="bingo-header">N</div>
+                    <div class="bingo-header">G</div>
+                    <div class="bingo-header">O</div>
+                    <!-- 25 Cells will be generated dynamically -->
+                    <div id="cardCells" style="display: contents;"></div>
+                </div>
+                <button class="btn btn-bingo" style="margin-top: 12px;" onclick="claimBingo()">🎉 BINGO / ቢንጎ በል!</button>
+            </div>
+
+            <!-- 1-75 Full Board Display -->
+            <div class="card">
+                <div class="board-title">📊 የወጡ ቁጥሮች ሰሌዳ (1 - 75)</div>
+                <div class="full-board-grid" id="fullBoard">
+                    <!-- Numbers 1-75 populated via JS -->
+                </div>
             </div>
         </div>
 
-        <!-- 💳 Wallet Tab -->
+        <!-- 💳 WALLET TAB -->
         <div id="walletTab" class="tab-content">
             <div class="card">
                 <h3>💳 ብር ገቢ ማድረግ (Deposit)</h3>
-                <p style="font-size: 13px; color: #aaa; margin-top: 5px;">Telebirr Number: <b>0915503379</b></p>
+                <p style="font-size: 12px; color: #aaa; margin: 6px 0;">Telebirr Number: <b>0915503379</b></p>
                 <input type="number" id="depAmount" placeholder="የብር መጠን (ETB)">
                 <input type="text" id="depDetails" placeholder="የቴሌብር Transaction ID / SMS">
-                <button class="btn" onclick="submitTransaction('DEPOSIT')">ገቢ አድርግ</button>
+                <button class="btn" style="margin-top: 10px;" onclick="submitTransaction('DEPOSIT')">ገቢ አድርግ</button>
             </div>
 
             <div class="card">
                 <h3>💸 ብር ወጪ ማድረግ (Withdraw)</h3>
                 <input type="number" id="withAmount" placeholder="የብር መጠን (ETB)">
                 <input type="text" id="withDetails" placeholder="የቴሌብር ስልክ ቁጥርዎ">
-                <button class="btn" style="background: #e53935;" onclick="submitTransaction('WITHDRAW')">ወጪ አድርግ</button>
+                <button class="btn" style="background: #e53935; margin-top: 10px;" onclick="submitTransaction('WITHDRAW')">ወጪ አድርግ</button>
             </div>
         </div>
 
-        <!-- 👤 Profile Tab -->
+        <!-- 👤 PROFILE TAB -->
         <div id="profileTab" class="tab-content">
             <div class="card">
                 <h3>👤 የተጫዋች መረጃ</h3>
-                <p style="margin-top: 10px;">ስም: <b id="profName">--</b></p>
-                <p style="margin-top: 5px;">ID: <b id="profId">--</b></p>
+                <p style="margin-top: 12px;">ስም: <b id="profName">--</b></p>
+                <p style="margin-top: 6px;">ID: <b id="profId">--</b></p>
+                <p style="margin-top: 6px;">ስልክ: <b id="profPhone">--</b></p>
             </div>
         </div>
+
     </div>
 
     <!-- Navigation -->
     <div class="navbar">
-        <div class="nav-item active" onclick="switchTab('gameTab', this)">🎮<br>ጨዋታ</div>
-        <div class="nav-item" onclick="switchTab('walletTab', this)">💳<br>ዋሌት</div>
-        <div class="nav-item" onclick="switchTab('profileTab', this)">👤<br>ፕሮፋይል</div>
+        <div class="nav-item active" onclick="switchTab('gameTab', this)">
+            <div class="nav-icon">🎮</div>ጨዋታ
+        </div>
+        <div class="nav-item" onclick="switchTab('walletTab', this)">
+            <div class="nav-icon">💳</div>ዋሌት
+        </div>
+        <div class="nav-item" onclick="switchTab('profileTab', this)">
+            <div class="nav-icon">👤</div>ፕሮፋይል
+        </div>
     </div>
 
     <script>
@@ -95,9 +172,73 @@
 
         const socket = io();
         let currentUser = null;
+        let selectedBet = 10;
+        let myCardNumbers = [];
+        let drawnHistory = [];
 
-        // Telegram User Fetch
         const user = tg.initDataUnsafe?.user || { id: "686733543", first_name: "Test User", username: "test" };
+
+        // Generate 1-75 Full Board Layout
+        const boardEl = document.getElementById('fullBoard');
+        for (let i = 1; i <= 75; i++) {
+            const div = document.createElement('div');
+            div.className = 'board-num';
+            div.id = `board-${i}`;
+            div.innerText = i;
+            boardEl.appendChild(div);
+        }
+
+        // Generate Random 5x5 Bingo Card
+        function generateBingoCard() {
+            const cellsEl = document.getElementById('cardCells');
+            cellsEl.innerHTML = '';
+            myCardNumbers = [];
+
+            const cols = [
+                getRandomNums(1, 15, 5),   // B
+                getRandomNums(16, 30, 5),  // I
+                getRandomNums(31, 45, 5),  // N
+                getRandomNums(46, 60, 5),  // G
+                getRandomNums(61, 75, 5)   // O
+            ];
+
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    const cell = document.createElement('div');
+                    if (r === 2 && c === 2) {
+                        cell.className = 'bingo-cell free';
+                        cell.innerText = 'FREE';
+                    } else {
+                        const val = cols[c][r];
+                        cell.className = 'bingo-cell';
+                        cell.innerText = val;
+                        cell.dataset.num = val;
+                        cell.onclick = () => toggleCellMark(cell, val);
+                        myCardNumbers.push(val);
+                    }
+                    cellsEl.appendChild(cell);
+                }
+            }
+        }
+
+        function getRandomNums(min, max, count) {
+            let arr = [];
+            while(arr.length < count) {
+                let r = Math.floor(Math.random() * (max - min + 1)) + min;
+                if(!arr.includes(r)) arr.push(r);
+            }
+            return arr;
+        }
+
+        function toggleCellMark(cell, val) {
+            if (drawnHistory.includes(val)) {
+                cell.classList.toggle('marked');
+            } else {
+                alert('ይህ ቁጥር ገና አልወጣም!');
+            }
+        }
+
+        generateBingoCard();
 
         async function fetchUser() {
             try {
@@ -116,16 +257,77 @@
                     document.getElementById('userBalance').innerText = parseFloat(currentUser.balance).toFixed(2);
                     document.getElementById('profName').innerText = currentUser.name;
                     document.getElementById('profId').innerText = currentUser.identifier;
+                    document.getElementById('profPhone').innerText = currentUser.phone || 'ያልተረጋገጠ';
                 }
             } catch (e) { console.error(e); }
         }
         fetchUser();
+
+        function setBet(amount, el) {
+            selectedBet = amount;
+            document.querySelectorAll('.bet-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+        }
 
         function switchTab(tabId, el) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             el.classList.add('active');
+        }
+
+        async function startGame() {
+            if (!currentUser || parseFloat(currentUser.balance) < selectedBet) {
+                return alert('በቂ ባላንስ የለዎትም! እባክዎን አስቀድመው ዲፖዚት ያድርጉ።');
+            }
+
+            const res = await fetch('/api/place-bet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier: String(user.id), amount: selectedBet })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('userBalance').innerText = data.newBalance.toFixed(2);
+                generateBingoCard();
+                socket.emit('startGame');
+            } else {
+                alert(data.message);
+            }
+        }
+
+        function getLetter(num) {
+            if (num <= 15) return 'B';
+            if (num <= 30) return 'I';
+            if (num <= 45) return 'N';
+            if (num <= 60) return 'G';
+            return 'O';
+        }
+
+        // Socket Events
+        socket.on('numberDrawn', data => {
+            const num = data.number;
+            drawnHistory = data.drawnHistory;
+            
+            document.getElementById('currentNumber').innerText = num;
+            document.getElementById('ballLetter').innerText = getLetter(num);
+            document.getElementById('drawnCount').innerText = `${drawnHistory.length}/75`;
+
+            const bEl = document.getElementById(`board-${num}`);
+            if (bEl) bEl.classList.add('active');
+        });
+
+        socket.on('gameOver', data => {
+            alert(data.message);
+            fetchUser();
+        });
+
+        async function claimBingo() {
+            socket.emit('claimBingo', {
+                identifier: String(user.id),
+                winAmount: selectedBet * 3
+            });
         }
 
         async function submitTransaction(type) {
@@ -147,17 +349,6 @@
                 if (type === 'DEPOSIT') { document.getElementById('depAmount').value = ''; document.getElementById('depDetails').value = ''; }
                 else { document.getElementById('withAmount').value = ''; document.getElementById('withDetails').value = ''; }
             }
-        }
-
-        // Bingo Socket Events
-        socket.on('numberDrawn', data => {
-            document.getElementById('currentNumber').innerText = data.number;
-            const box = document.getElementById('historyBox');
-            box.innerHTML = data.drawnHistory.map(n => `<div class="num-ball">${n}</div>`).join('');
-        });
-
-        function startGame() {
-            socket.emit('startGame');
         }
     </script>
 </body>
