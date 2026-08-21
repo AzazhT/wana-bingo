@@ -1,312 +1,164 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const { Pool } = require('pg');
-const TelegramBot = require('node-telegram-bot-api');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Wana Bingo</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #18222d; color: #ffffff; padding-bottom: 70px; }
+        .header { background: #242f3d; padding: 15px; text-align: center; border-bottom: 2px solid #0088cc; display: flex; justify-content: space-between; align-items: center; }
+        .balance-badge { background: #2b5278; padding: 6px 12px; border-radius: 20px; font-weight: bold; color: #40b3e0; }
+        .container { padding: 15px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        /* Navigation Bar */
+        .navbar { position: fixed; bottom: 0; width: 100%; background: #242f3d; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #10171e; }
+        .nav-item { color: #7f91a4; text-decoration: none; font-size: 12px; text-align: center; cursor: pointer; }
+        .nav-item.active { color: #64b5ef; font-weight: bold; }
+        
+        /* Cards & Buttons */
+        .card { background: #242f3d; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        .btn { background: #0088cc; color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .btn:disabled { background: #555; }
+        input { width: 100%; padding: 12px; margin-top: 8px; background: #18222d; border: 1px solid #3b4e62; color: #fff; border-radius: 8px; }
+        
+        /* Bingo Display */
+        .drawn-number { font-size: 48px; font-weight: bold; color: #ffca28; text-align: center; margin: 15px 0; }
+        .history-box { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+        .num-ball { width: 32px; height: 32px; background: #3b4e62; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+    <div class="header">
+        <div>🎰 <b>Wana Bingo</b></div>
+        <div class="balance-badge">💵 <span id="userBalance">0.00</span> ETB</div>
+    </div>
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+    <div class="container">
+        <!-- 🎮 Game Tab -->
+        <div id="gameTab" class="tab-content active">
+            <div class="card" style="text-align: center;">
+                <h3>የወጣው ቁጥር</h3>
+                <div class="drawn-number" id="currentNumber">--</div>
+                <button id="startBtn" class="btn" onclick="startGame()">🎲 ጨዋታ ጀምር</button>
+            </div>
 
-// 📌 Environment Variables
-const TOKEN = process.env.BOT_TOKEN || '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
-const ADMIN_ID = process.env.ADMIN_ID || '686733543';
-const POSTGRES_URI = process.env.DATABASE_URL || 'postgresql://wana_bingo_user:IHX1VB02IXnf3T5WJolucG0DIQFJq4fx@dpg-da4da5gu01pc739kvhjg-a/wana_bingo';
-const WEB_APP_URL = process.env.WEB_APP_URL || 'https://wana-bingo.onrender.com';
+            <div class="card">
+                <h4>የወጡ ቁጥሮች ታሪክ</h4>
+                <div class="history-box" id="historyBox"></div>
+            </div>
+        </div>
 
-const pool = new Pool({
-    connectionString: POSTGRES_URI,
-    ssl: { rejectUnauthorized: false }
-});
+        <!-- 💳 Wallet Tab -->
+        <div id="walletTab" class="tab-content">
+            <div class="card">
+                <h3>💳 ብር ገቢ ማድረግ (Deposit)</h3>
+                <p style="font-size: 13px; color: #aaa; margin-top: 5px;">Telebirr Number: <b>0915503379</b></p>
+                <input type="number" id="depAmount" placeholder="የብር መጠን (ETB)">
+                <input type="text" id="depDetails" placeholder="የቴሌብር Transaction ID / SMS">
+                <button class="btn" onclick="submitTransaction('DEPOSIT')">ገቢ አድርግ</button>
+            </div>
 
-async function initDb() {
-    try {
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS users (
-                identifier VARCHAR(255) PRIMARY KEY,
-                username VARCHAR(255) DEFAULT '',
-                name VARCHAR(255) DEFAULT 'ተጫዋች',
-                phone VARCHAR(255) DEFAULT '',
-                is_verified BOOLEAN DEFAULT FALSE,
-                balance NUMERIC(12, 2) DEFAULT 50.00,
-                registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
+            <div class="card">
+                <h3>💸 ብር ወጪ ማድረግ (Withdraw)</h3>
+                <input type="number" id="withAmount" placeholder="የብር መጠን (ETB)">
+                <input type="text" id="withDetails" placeholder="የቴሌብር ስልክ ቁጥርዎ">
+                <button class="btn" style="background: #e53935;" onclick="submitTransaction('WITHDRAW')">ወጪ አድርግ</button>
+            </div>
+        </div>
 
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS transactions (
-                id SERIAL PRIMARY KEY,
-                identifier VARCHAR(255) NOT NULL,
-                type VARCHAR(50) NOT NULL,
-                amount NUMERIC(12, 2) NOT NULL,
-                details TEXT NOT NULL,
-                status VARCHAR(50) DEFAULT 'PENDING',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        console.log('✅ PostgreSQL Database Connected & Tables Created!');
-    } catch (err) {
-        console.error('❌ DB Error:', err.message);
-    }
-}
-initDb();
+        <!-- 👤 Profile Tab -->
+        <div id="profileTab" class="tab-content">
+            <div class="card">
+                <h3>👤 የተጫዋች መረጃ</h3>
+                <p style="margin-top: 10px;">ስም: <b id="profName">--</b></p>
+                <p style="margin-top: 5px;">ID: <b id="profId">--</b></p>
+            </div>
+        </div>
+    </div>
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+    <!-- Navigation -->
+    <div class="navbar">
+        <div class="nav-item active" onclick="switchTab('gameTab', this)">🎮<br>ጨዋታ</div>
+        <div class="nav-item" onclick="switchTab('walletTab', this)">💳<br>ዋሌት</div>
+        <div class="nav-item" onclick="switchTab('profileTab', this)">👤<br>ፕሮፋይል</div>
+    </div>
 
-bot.setMyCommands([
-    { command: 'start', description: '🤖 ቦቱን ለመጀመር / Start' },
-    { command: 'deposit', description: '💳 ብር ገቢ ለማድረግ / Deposit' },
-    { command: 'withdraw', description: '💸 ብር ወጪ ለማድረግ / Withdraw' }
-]);
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
 
-// 📌 Auto Register User
-async function ensureUserRegistered(msg) {
-    try {
-        const chatId = String(msg.chat.id);
-        const firstName = msg.from.first_name || 'ተጫዋች';
-        const username = msg.from.username || '';
+        const socket = io();
+        let currentUser = null;
 
-        const res = await pool.query('SELECT * FROM users WHERE identifier = $1', [chatId]);
-        if (res.rows.length === 0) {
-            const insertRes = await pool.query(
-                `INSERT INTO users (identifier, username, name, balance) 
-                 VALUES ($1, $2, $3, 50) RETURNING *`,
-                [chatId, username, firstName]
-            );
-            return insertRes.rows[0];
+        // Telegram User Fetch
+        const user = tg.initDataUnsafe?.user || { id: "686733543", first_name: "Test User", username: "test" };
+
+        async function fetchUser() {
+            try {
+                const res = await fetch('/api/get-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        identifier: String(user.id),
+                        name: user.first_name,
+                        username: user.username
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    currentUser = data.user;
+                    document.getElementById('userBalance').innerText = parseFloat(currentUser.balance).toFixed(2);
+                    document.getElementById('profName').innerText = currentUser.name;
+                    document.getElementById('profId').innerText = currentUser.identifier;
+                }
+            } catch (e) { console.error(e); }
         }
-        return res.rows[0];
-    } catch (err) {
-        console.error('User registration error:', err);
-    }
-}
+        fetchUser();
 
-// 📌 Bot Commands & Handlers
-bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
-    const firstName = msg.from.first_name || 'ተጫዋች';
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            el.classList.add('active');
+        }
 
-    const user = await ensureUserRegistered(msg);
+        async function submitTransaction(type) {
+            const amount = type === 'DEPOSIT' ? document.getElementById('depAmount').value : document.getElementById('withAmount').value;
+            const details = type === 'DEPOSIT' ? document.getElementById('depDetails').value : document.getElementById('withDetails').value;
 
-    let keyboard = [
-        [{ text: "🎮 ጨዋታውን ጀምር (Play Bingo)", web_app: { url: WEB_APP_URL } }]
-    ];
+            if (!amount || !details) return alert('እባክዎን መረጃዎቹን በትክክል ይሙሉ');
 
-    // ስልካቸውን ካላረጋገጡ የስልክ ቁጥር ማጋሪያ በተን እናሳያቸዋለን
-    if (!user || !user.is_verified) {
-        keyboard.unshift([{ text: "📱 ስልክ ቁጥር ያጋሩ (Share Phone)", request_contact: true }]);
-    }
+            const res = await fetch('/api/request-transaction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier: String(user.id), type, amount, details })
+            });
 
-    bot.sendMessage(chatId, `👋 ሰላም **${firstName}**!\n\nእንኳን ወደ **Wana Bingo** በደህና መጡ! 🎲🎉\n\n📱 **Telebirr:** \`0915503379\`\n\nእባክዎን መጀመሪያ **"📱 ስልክ ቁጥር ያጋሩ"** የሚለውን በመጫን አካውንትዎን ያረጋግጡ!`, {
-        parse_mode: 'Markdown',
-        reply_markup: { keyboard, resize_keyboard: true }
-    });
-});
-
-// 📌 Contact Receive Handler (ስልክ ቁጥር ማረጋገጫ)
-bot.on('contact', async (msg) => {
-    const chatId = String(msg.chat.id);
-    const phoneNumber = msg.contact.phone_number;
-
-    try {
-        await pool.query(
-            `UPDATE users SET phone = $1, is_verified = TRUE WHERE identifier = $2`,
-            [phoneNumber, chatId]
-        );
-
-        bot.sendMessage(chatId, `✅ **ስልክ ቁጥርዎ በትክክል ተረጋግጧል!** (${phoneNumber})\n\nአሁን ከታች ያለውን በተን ተጭነው መጫወት ይችላሉ!`, {
-            parse_mode: 'Markdown',
-            reply_markup: {
-                keyboard: [[{ text: "🎮 ጨዋታውን ጀምር", web_app: { url: WEB_APP_URL } }]],
-                resize_keyboard: true
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) {
+                fetchUser();
+                if (type === 'DEPOSIT') { document.getElementById('depAmount').value = ''; document.getElementById('depDetails').value = ''; }
+                else { document.getElementById('withAmount').value = ''; document.getElementById('withDetails').value = ''; }
             }
+        }
+
+        // Bingo Socket Events
+        socket.on('numberDrawn', data => {
+            document.getElementById('currentNumber').innerText = data.number;
+            const box = document.getElementById('historyBox');
+            box.innerHTML = data.drawnHistory.map(n => `<div class="num-ball">${n}</div>`).join('');
         });
-    } catch (e) {
-        console.error('Contact Update Error:', e);
-    }
-});
 
-// 📌 API Endpoints
-app.post('/api/get-user', async (req, res) => {
-    try {
-        const { identifier, name, username } = req.body;
-        if (!identifier) return res.status(400).json({ success: false, error: 'ID ያስፈልጋል' });
-
-        const strId = String(identifier);
-        let userQuery = await pool.query('SELECT * FROM users WHERE identifier = $1', [strId]);
-
-        if (userQuery.rows.length === 0) {
-            userQuery = await pool.query(
-                `INSERT INTO users (identifier, username, name, balance)
-                 VALUES ($1, $2, $3, 50) RETURNING *`,
-                [strId, username || '', name || 'ተጫዋች']
-            );
+        function startGame() {
+            socket.emit('startGame');
         }
-
-        res.status(200).json({ success: true, user: userQuery.rows[0] });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-// 📌 Request Transaction (Deposit / Withdraw)
-app.post('/api/request-transaction', async (req, res) => {
-    try {
-        const { identifier, type, amount, details } = req.body;
-        const strId = String(identifier);
-        const numAmount = parseFloat(amount);
-
-        if (!identifier || !type || isNaN(numAmount) || numAmount <= 0 || !details) {
-            return res.status(400).json({ success: false, message: 'እባክዎን ትክክለኛ መረጃ ያስገቡ' });
-        }
-
-        const userRes = await pool.query('SELECT balance, is_verified FROM users WHERE identifier = $1', [strId]);
-        if (userRes.rows.length === 0) {
-            return res.status(404).json({ success: false, message: 'ተጠቃሚው አልተገኘም!' });
-        }
-
-        const user = userRes.rows[0];
-
-        // ⚠️ የወጪ (Withdraw) ጥያቄ ከሆነ ብሩን ወዲያውኑ ከባላንስ እንቀንሳለን (Hold)
-        if (type === 'WITHDRAW') {
-            if (parseFloat(user.balance) < numAmount) {
-                return res.status(400).json({ success: false, message: 'ያለዎት ባላንስ ለቀረበው የወጪ ጥያቄ በቂ አይደለም!' });
-            }
-
-            await pool.query(
-                `UPDATE users SET balance = balance - $1 WHERE identifier = $2`,
-                [numAmount, strId]
-            );
-        }
-
-        const transRes = await pool.query(
-            `INSERT INTO transactions (identifier, type, amount, details) VALUES ($1, $2, $3, $4) RETURNING id`,
-            [strId, type, numAmount, details]
-        );
-        const transId = transRes.rows[0].id;
-
-        const inlineKeyboard = {
-            inline_keyboard: [[
-                { text: "✅ አጽድቅ (Approve)", callback_data: `approve_${transId}` },
-                { text: "❌ ውድቅ አድርግ (Reject)", callback_data: `reject_${transId}` }
-            ]]
-        };
-
-        bot.sendMessage(
-            ADMIN_ID,
-            `📥 **አዲስ የ${type} ጥያቄ!**\n\n👤 ID: \`${strId}\`\n💰 መጠን: ${numAmount} ETB\n📝 መረጃ/SMS: ${details}`,
-            { parse_mode: 'Markdown', reply_markup: inlineKeyboard }
-        );
-
-        res.status(200).json({ success: true, message: 'ጥያቄዎ ለአድሚን ተልኳል!' });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-// 📌 Admin Callback Query Handler
-bot.on('callback_query', async (query) => {
-    const data = query.data;
-    const chatId = query.message.chat.id;
-
-    if (chatId.toString() !== ADMIN_ID.toString()) {
-        return bot.answerCallbackQuery(query.id, { text: "ፈቃድ የለዎትም!" });
-    }
-
-    const [action, transId] = data.split('_');
-
-    try {
-        const transRes = await pool.query('SELECT * FROM transactions WHERE id = $1', [transId]);
-        const trans = transRes.rows[0];
-
-        if (!trans || trans.status !== 'PENDING') {
-            return bot.answerCallbackQuery(query.id, { text: "ጥያቄው ቀድሞ ተስተናግዷል!" });
-        }
-
-        const transAmount = parseFloat(trans.amount);
-
-        if (action === 'approve') {
-            if (trans.type === 'DEPOSIT') {
-                await pool.query(`UPDATE users SET balance = balance + $1 WHERE identifier = $2`, [transAmount, trans.identifier]);
-            }
-
-            await pool.query('UPDATE transactions SET status = $1 WHERE id = $2', ['APPROVED', transId]);
-
-            const updatedUser = await pool.query('SELECT balance FROM users WHERE identifier = $1', [trans.identifier]);
-            const newBal = updatedUser.rows[0]?.balance || 0;
-
-            bot.editMessageText(`✅ የ${trans.type} ጥያቄ ጸድቋል።\n👤 ID: ${trans.identifier}\n💰 መጠን: ${transAmount} ETB`, {
-                chat_id: chatId, message_id: query.message.message_id
-            });
-
-            bot.sendMessage(trans.identifier, `🎉 የእርስዎ የ ${transAmount} ETB ${trans.type} ጥያቄ ጸድቋል! አሁን ያሉት ባላንስ: ${newBal} ETB`);
-
-        } else if (action === 'reject') {
-            // የወጪ ጥያቄ ውድቅ ከተደረገ የተቀነሰውን ብር ይመልስለታል (Refund)
-            if (trans.type === 'WITHDRAW') {
-                await pool.query(`UPDATE users SET balance = balance + $1 WHERE identifier = $2`, [transAmount, trans.identifier]);
-            }
-
-            await pool.query('UPDATE transactions SET status = $1 WHERE id = $2', ['REJECTED', transId]);
-
-            bot.editMessageText(`❌ የ${trans.type} ጥያቄ ውድቅ ተደርጓል።`, {
-                chat_id: chatId, message_id: query.message.message_id
-            });
-
-            bot.sendMessage(trans.identifier, `❌ የእርስዎ የ ${transAmount} ETB ${trans.type} ጥያቄ ውድቅ ተደርጓል። የተቀነሰው ብር ወደ ባላንስዎ ተመልሷል።`);
-        }
-    } catch (e) {
-        console.error('Callback Error:', e);
-    }
-});
-
-// Socket.io Bingo Game Logic
-let drawnNumbers = [];
-let isGameRunning = false;
-let gameInterval = null;
-
-io.on('connection', (socket) => {
-    socket.emit('gameInit', { drawnHistory: drawnNumbers, isGameRunning });
-
-    socket.on('startGame', () => {
-        if (isGameRunning) return;
-        isGameRunning = true;
-        drawnNumbers = [];
-        clearInterval(gameInterval);
-
-        gameInterval = setInterval(() => {
-            if (drawnNumbers.length >= 75) {
-                clearInterval(gameInterval);
-                isGameRunning = false;
-                io.emit('gameOver', { message: 'ጨዋታው ተጠናቋል!' });
-                return;
-            }
-            let rand;
-            do { rand = Math.floor(Math.random() * 75) + 1; } while (drawnNumbers.includes(rand));
-            drawnNumbers.push(rand);
-            io.emit('numberDrawn', { number: rand, drawnHistory: drawnNumbers });
-        }, 3000);
-    });
-
-    socket.on('claimBingo', async (data) => {
-        clearInterval(gameInterval);
-        isGameRunning = false;
-        const { identifier, winAmount } = data;
-
-        if (identifier && winAmount) {
-            await pool.query(`UPDATE users SET balance = balance + $1 WHERE identifier = $2`, [parseFloat(winAmount), String(identifier)]);
-        }
-        io.emit('gameOver', { message: `አሸናፊ ተገኝቷል!` });
-    });
-});
-
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log(`Server runs on port ${PORT}`));
+    </script>
+</body>
+</html>
