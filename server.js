@@ -33,12 +33,64 @@ bot.on('polling_error', (error) => {
     console.error('Telegram Polling Error:', error.message);
 });
 
-// 📌 2. የቴሌግራም COMMAND HANDLERS
+// 📌 2. የዳታቤዝ ስኬማዎች (Database Schemas)
+const userSchema = new mongoose.Schema({
+    identifier: { type: String, required: true, unique: true },
+    username: { type: String, default: '' },
+    name: { type: String, default: 'ተጫዋች' },
+    phone: { type: String, default: '' },
+    balance: { type: Number, default: 50 }, // ጀማሪ ባላንስ 50
+    registeredAt: { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', userSchema);
+
+const transactionSchema = new mongoose.Schema({
+    identifier: { type: String, required: true },
+    type: { type: String, enum: ['DEPOSIT', 'WITHDRAW'], required: true },
+    amount: { type: Number, required: true },
+    details: { type: String, required: true },
+    status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
+    createdAt: { type: Date, default: Date.now }
+});
+const Transaction = mongoose.model('Transaction', transactionSchema);
+
+// MongoDB Connection
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('MongoDB Connected Successfully!'))
+    .catch(err => console.error('MongoDB Connection Error:', err));
+
+// 📌 ተጠቃሚን በቴሌግራም ሲመጣ በራስ-ሰር ዳታቤዝ የመመዝገብ ተግባር
+async function ensureUserRegistered(msg) {
+    try {
+        const chatId = String(msg.chat.id);
+        const firstName = msg.from.first_name || 'ተጫዋች';
+        const username = msg.from.username || '';
+
+        let user = await User.findOne({ identifier: chatId });
+        if (!user) {
+            user = new User({
+                identifier: chatId,
+                username: username,
+                name: firstName,
+                balance: 50
+            });
+            await user.save();
+            console.log(`አዲስ ተጠቃሚ ተመዝግቧል: ${chatId}`);
+        }
+        return user;
+    } catch (err) {
+        console.error('User registration error:', err);
+    }
+}
+
+// 📌 3. የቴሌግራም COMMAND HANDLERS
 
 // /start ትዕዛዝ
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const firstName = msg.from.first_name || 'ተጫዋች';
+
+    await ensureUserRegistered(msg); // በዳታቤዝ መኖራቸውን ማረጋገጥ/መመዝገብ
 
     const welcomeMessage = `👋 ሰላም **${firstName}**!\n\nእንኳን ወደ **Wana Bingo** በደህና መጡ! 🎲🎉\n\n📱 **Telebirr:** \`0915503379\`\n\nከታች ያለውን **"🎮 ጨዋታውን ጀምር"** የሚለውን በተን በመጫን ቢንጎ መጫወት እና ማሸነፍ ይችላሉ!`;
 
@@ -54,7 +106,7 @@ bot.onText(/\/start/, async (msg) => {
                 ]
             ],
             resize_keyboard: true,
-            input_field_placeholder: "ቴሌብር፡ 0915503379" // 👈 በጽሁፍ መጻፊያ ሳጥን ላይ የሚታይ
+            input_field_placeholder: "ቴሌብር፡ 0915503379"
         }
     };
 
@@ -62,8 +114,9 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 // /register ትዕዛዝ
-bot.onText(/\/register/, (msg) => {
-    const regMsg = `📝 **ምዝገባ:**\n\nጨዋታውን ሲከፍቱ በራስ-ሰር ይመዘገባሉ። ከታች ያለውን በተን በመጫን መጫወት መጀመር ይችላሉ!`;
+bot.onText(/\/register/, async (msg) => {
+    await ensureUserRegistered(msg);
+    const regMsg = `📝 **ምዝገባዎ ተጠናቋል!**\n\nከታች ያለውን በተን በመጫን ጨዋታውን መጀመር ይችላሉ!`;
     bot.sendMessage(msg.chat.id, regMsg, {
         parse_mode: 'Markdown',
         reply_markup: {
@@ -90,43 +143,20 @@ bot.onText(/\/withdraw/, (msg) => {
     bot.sendMessage(msg.chat.id, withdrawMsg, { parse_mode: 'Markdown' });
 });
 
-// 📌 3. የዳታቤዝ ስኬማዎች (Database Schemas)
-const userSchema = new mongoose.Schema({
-    identifier: { type: String, required: true, unique: true },
-    username: { type: String, default: '' },
-    name: { type: String, default: 'ተጫዋች' },
-    phone: { type: String, default: '' },
-    balance: { type: Number, default: 50 },
-    registeredAt: { type: Date, default: Date.now }
-});
-const User = mongoose.model('User', userSchema);
-
-const transactionSchema = new mongoose.Schema({
-    identifier: { type: String, required: true },
-    type: { type: String, enum: ['DEPOSIT', 'WITHDRAW'], required: true },
-    amount: { type: Number, required: true },
-    details: { type: String, required: true },
-    status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
-    createdAt: { type: Date, default: Date.now }
-});
-const Transaction = mongoose.model('Transaction', transactionSchema);
-
-// MongoDB Connection
-mongoose.connect(MONGO_URI)
-    .then(() => console.log('MongoDB Connected!'))
-    .catch(err => console.error('MongoDB Error:', err));
-
 // 📌 4. API ENDPOINTS
+
+// ተጠቃሚን በ Mini App መፈለግ/መመዝገብ
 app.post('/api/get-user', async (req, res) => {
     try {
         const { identifier, name, username, phone } = req.body;
         if (!identifier) return res.status(400).json({ success: false, error: 'ID ያስፈልጋል' });
 
-        let user = await User.findOne({ identifier: String(identifier) });
+        const strId = String(identifier);
+        let user = await User.findOne({ identifier: strId });
 
         if (!user) {
             user = new User({
-                identifier: String(identifier),
+                identifier: strId,
                 username: username || '',
                 name: name || 'ተጫዋች',
                 phone: phone || '',
@@ -146,16 +176,22 @@ app.post('/api/get-user', async (req, res) => {
     }
 });
 
+// ውርርድ ማድረግ (Place Bet)
 app.post('/api/place-bet', async (req, res) => {
     try {
         const { identifier, amount } = req.body;
-        const user = await User.findOne({ identifier: String(identifier) });
+        const betAmount = Number(amount);
 
-        if (!user) return res.status(404).json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
-        if (user.balance < amount) return res.status(400).json({ success: false, message: 'በቂ ባላንስ የለዎትም!' });
+        // ባላንሱ በቂ ከሆነ ብቻ ከሂሳቡ ላይ ይቀንሳል
+        const user = await User.findOneAndUpdate(
+            { identifier: String(identifier), balance: { $gte: betAmount } },
+            { $inc: { balance: -betAmount } },
+            { new: true }
+        );
 
-        user.balance -= amount;
-        await user.save();
+        if (!user) {
+            return res.status(400).json({ success: false, message: 'በቂ ባላንስ የለዎትም ወይም ተጠቃሚው አልተገኘም!' });
+        }
 
         res.status(200).json({ success: true, newBalance: user.balance });
     } catch (e) {
@@ -163,17 +199,31 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
+// የ Deposit እና Withdraw ጥያቄዎችን መዝግቦ ለአድሚን መላክ
 app.post('/api/request-transaction', async (req, res) => {
     try {
         const { identifier, type, amount, details } = req.body;
+        const strId = String(identifier);
+        const numAmount = Number(amount);
+
         if (!identifier || !type || !amount || !details) {
             return res.status(400).json({ success: false, message: 'ሁሉንም መረጃዎች ያሟሉ' });
         }
 
+        const user = await User.findOne({ identifier: strId });
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'ተጠቃሚው በዳታቤዝ ውስጥ አልተገኘም!' });
+        }
+
+        // ለ Withdraw ጥያቄ በቂ ባላንስ እንዳለው ማረጋገጥ
+        if (type === 'WITHDRAW' && user.balance < numAmount) {
+            return res.status(400).json({ success: false, message: 'ያለዎት ባላንስ ለቀረበው የወጪ ጥያቄ በቂ አይደለም!' });
+        }
+
         const trans = new Transaction({
-            identifier: String(identifier),
+            identifier: strId,
             type,
-            amount: Number(amount),
+            amount: numAmount,
             details
         });
         await trans.save();
@@ -189,7 +239,7 @@ app.post('/api/request-transaction', async (req, res) => {
 
         bot.sendMessage(
             ADMIN_ID,
-            `📥 **አዲስ የ${type} ጥያቄ!**\n\n👤 ተጠቃሚ ID: \`${identifier}\`\n💰 መጠን: ${amount} ETB\n📝 ዝርዝር/SMS: ${details}`,
+            `📥 **አዲስ የ${type} ጥያቄ!**\n\n👤 ተጠቃሚ ID: \`${strId}\`\n💰 መጠን: ${numAmount} ETB\n📝 ዝርዝር/SMS: ${details}`,
             { parse_mode: 'Markdown', reply_markup: inlineKeyboard }
         );
 
@@ -199,7 +249,7 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
-// 📌 5. TELEGRAM CALLBACK QUERY
+// 📌 5. TELEGRAM CALLBACK QUERY (አድሚን ሲያጸድቅ ወይም ውድቅ ሲያደርግ)
 bot.on('callback_query', async (query) => {
     const data = query.data;
     const chatId = query.message.chat.id;
@@ -215,7 +265,7 @@ bot.on('callback_query', async (query) => {
         return bot.sendMessage(chatId, `💳 **Telebirr Number:** \`0915503379\`\n\nብር ከላኩ በኋላ Transaction Reference ቁጥሩን በ Mini App ያስገቡ።`, { parse_mode: 'Markdown' });
     }
 
-    if (chatId.toString() !== ADMIN_ID) {
+    if (chatId.toString() !== ADMIN_ID.toString()) {
         return bot.answerCallbackQuery(query.id, { text: "ፈቃድ የለዎትም!" });
     }
 
@@ -226,27 +276,37 @@ bot.on('callback_query', async (query) => {
             return bot.answerCallbackQuery(query.id, { text: "ጥያቄው አልተገኘም ወይም ቀድሞ ተስተናግዷል!" });
         }
 
-        const user = await User.findOne({ identifier: trans.identifier });
-
         if (action === 'approve') {
-            trans.status = 'APPROVED';
+            let updatedUser = null;
+
             if (trans.type === 'DEPOSIT') {
-                if (user) user.balance += trans.amount;
+                // Deposit ሲጸድቅ ባላንስ መጨመር ($inc)
+                updatedUser = await User.findOneAndUpdate(
+                    { identifier: trans.identifier },
+                    { $inc: { balance: trans.amount } },
+                    { new: true }
+                );
             } else if (trans.type === 'WITHDRAW') {
-                if (user && user.balance >= trans.amount) {
-                    user.balance -= trans.amount;
-                } else {
-                    return bot.sendMessage(ADMIN_ID, `❌ ተጠቃሚው በቂ ባላንስ የለውም።`);
-                }
+                // Withdraw ሲጸድቅ በቂ ባላንስ ካለ ብቻ መቀነስ ($inc)
+                updatedUser = await User.findOneAndUpdate(
+                    { identifier: trans.identifier, balance: { $gte: trans.amount } },
+                    { $inc: { balance: -trans.amount } },
+                    { new: true }
+                );
             }
-            if (user) await user.save();
+
+            if (!updatedUser && trans.type === 'WITHDRAW') {
+                return bot.sendMessage(ADMIN_ID, `❌ ተጠቃሚው በቂ ባላንስ ስለሌለው የወጪ ጥያቄውን ማጽደቅ አልተቻለም።`);
+            }
+
+            trans.status = 'APPROVED';
             await trans.save();
 
-            bot.editMessageText(`✅ የ${trans.type} ጥያቄ ጸድቋል።\nተጠቃሚ ID: ${trans.identifier}\nመጠን: ${trans.amount} ETB`, {
+            bot.editMessageText(`✅ የ${trans.type} ጥያቄ ጸድቋል።\n👤 ተጠቃሚ ID: ${trans.identifier}\n💰 መጠን: ${trans.amount} ETB\n💵 አዲስ ባላንስ: ${updatedUser ? updatedUser.balance : 0} ETB`, {
                 chat_id: chatId, message_id: query.message.message_id
             });
 
-            bot.sendMessage(trans.identifier, `🎉 የእርስዎ የ ${trans.amount} ETB ${trans.type} ጥያቄ ጸድቋል!`);
+            bot.sendMessage(trans.identifier, `🎉 የእርስዎ የ ${trans.amount} ETB ${trans.type} ጥያቄ ጸድቋል! አሁን ያሉት ባላንስ: ${updatedUser ? updatedUser.balance : 0} ETB`);
 
         } else if (action === 'reject') {
             trans.status = 'REJECTED';
@@ -263,12 +323,12 @@ bot.on('callback_query', async (query) => {
     }
 });
 
-// 📌 6. FRONTEND FALLBACK ROUTE (Not Found እንዳይል የሚከለክል)
+// 📌 6. FRONTEND FALLBACK ROUTE
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 📌 7. SOCKET.IO BINGO LOGIC
+// 📌 7. SOCKET.IO BINGO LOGIC (የማሸነፊያ ብር በዳታቤዝ መጨመር)
 io.on('connection', (socket) => {
     let gameInterval = null;
 
@@ -299,11 +359,13 @@ io.on('connection', (socket) => {
 
         if (identifier && winAmount) {
             try {
-                const user = await User.findOne({ identifier: String(identifier) });
-                if (user) {
-                    user.balance += parseFloat(winAmount);
-                    await user.save();
-                }
+                // ያሸነፈውን ብር በቀጥታ ዳታቤዝ ላይ መጨመር
+                const updatedUser = await User.findOneAndUpdate(
+                    { identifier: String(identifier) },
+                    { $inc: { balance: parseFloat(winAmount) } },
+                    { new: true }
+                );
+                console.log(`Bingo Winner: ${identifier}, New Balance: ${updatedUser ? updatedUser.balance : 0}`);
             } catch (err) {
                 console.error("የማሸነፊያ ብር ዳታቤዝ ማስገባት አልተቻለም:", err);
             }
