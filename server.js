@@ -42,7 +42,6 @@ bot.onText(/\/start/, async (msg) => {
 
     const welcomeMessage = `👋 ሰላም **${firstName}**!\n\nእንኳን ወደ **Wana Bingo** በደህና መጡ! 🎲🎉\n\n📱 **Telebirr:** \`0915503379\`\n\nከታች ያለውን **"🎮 ጨዋታውን ጀምር"** የሚለውን በተን በመጫን ቢንጎ መጫወት እና ማሸነፍ ይችላሉ!`;
 
-    // 📌 የሜሴጅ መጻፊያ ሳጥን ላይ "ቴሌብር፡ 0915503379" እንዲታይ የሚያደርግ ቅንብር
     const options = {
         parse_mode: 'Markdown',
         reply_markup: {
@@ -55,7 +54,7 @@ bot.onText(/\/start/, async (msg) => {
                 ]
             ],
             resize_keyboard: true,
-            input_field_placeholder: "ቴሌብር፡ 0915503379" // 👈 በሜሴጅ መጻፊያ ቦታ ላይ የሚታይ
+            input_field_placeholder: "ቴሌብር፡ 0915503379" // 👈 በጽሁፍ መጻፊያ ሳጥን ላይ የሚታይ
         }
     };
 
