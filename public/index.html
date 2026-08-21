@@ -14,7 +14,6 @@
         .page { display: none; width: 100%; }
         .page.active { display: block; }
 
-        /* PAGE 0: LANDING / WALLET & BET SELECTION */
         .header-box { text-align: center; padding: 15px 10px; color: #fff; margin-top: 10px; }
         .header-box h2 { font-size: 20px; margin-bottom: 5px; color: #ffb703; }
         .header-box p { font-size: 12px; color: #f0e6ff; line-height: 1.4; }
@@ -30,7 +29,6 @@
         .bet-btn { padding: 20px 10px; font-size: 18px; font-weight: bold; background: #ffb703; color: #4a2c73; border: none; border-radius: 12px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; }
         .bet-btn:active { transform: scale(0.95); background: #e6a602; }
 
-        /* Top Header Stats */
         .top-stats { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 10px; }
         .stat-card { background: white; color: #4a2c73; padding: 6px 4px; border-radius: 10px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .stat-card span { display: block; font-size: 12px; color: #7b2cbf; margin-top: 2px; }
@@ -39,7 +37,6 @@
         .btn-step { background: #7b2cbf; color: white; border: none; width: 18px; height: 18px; border-radius: 50%; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .bet-val { font-size: 12px; color: #7b2cbf; min-width: 20px; }
 
-        /* SCREEN 1 STYLES */
         .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: #c2a8dc; padding: 6px; border-radius: 10px; max-height: 320px; overflow-y: auto; }
         .card-btn { background: #e2d5f0; color: #222; border: none; padding: 6px 0; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; }
         .card-btn.active { background: #008000; color: white; }
@@ -50,7 +47,6 @@
         .preview-cell.free { background: #008000; color: white; }
         .controls { display: flex; flex-direction: column; gap: 8px; }
 
-        /* SCREEN 2 STYLES */
         .game-layout { display: flex; gap: 6px; justify-content: space-between; }
         .called-grid-container { background: #b392d0; padding: 5px; border-radius: 8px; width: 48%; }
         .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 4px; text-align: center; font-weight: bold; font-size: 11px; }
@@ -86,7 +82,6 @@
         .btn-start { background: #ff6f00; border: none; padding: 12px 22px; color: white; font-weight: bold; border-radius: 25px; font-size: 15px; cursor: pointer; }
         .btn-leave { background: #e63946; border: none; flex: 1; padding: 10px; color: white; font-weight: bold; border-radius: 20px; cursor: pointer; }
 
-        /* MODALS */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 99; }
         .modal-card { background: #a282c0; width: 85%; max-width: 320px; padding: 15px; border-radius: 15px; text-align: center; border: 2px solid white; color: white; }
         .winner-banner { background: #ff6f00; padding: 8px; border-radius: 8px; font-size: 18px; font-weight: bold; margin-bottom: 8px; }
@@ -99,8 +94,7 @@
 <body>
 
     <div class="main-container">
-
-        <!-- PAGE 0: LANDING / WALLET & BET SELECTION -->
+        <!-- PAGE 0 -->
         <div id="page0" class="page active">
             <div class="header-box">
                 <h2>እንኳን ወደ ቢንጎ ጨዋታ በደህና መጡ!</h2>
@@ -128,25 +122,18 @@
             </div>
         </div>
 
-        <!-- PAGE 1: CARD SELECTOR -->
+        <!-- PAGE 1 -->
         <div id="page1" class="page">
             <div class="top-stats">
-                <div class="stat-card">
-                    Wallet
-                    <span id="walletDisplay">50.00</span>
-                </div>
-                <div class="stat-card">
-                    Bet
+                <div class="stat-card">Wallet<span id="walletDisplay">50.00</span></div>
+                <div class="stat-card">Bet
                     <div class="bet-control">
                         <button class="btn-step" onclick="adjustBet(-5)">-</button>
                         <span class="bet-val" id="betDisplay">10</span>
                         <button class="btn-step" onclick="adjustBet(5)">+</button>
                     </div>
                 </div>
-                <div class="stat-card">
-                    Stake
-                    <span id="stakeDisplay">10.00</span>
-                </div>
+                <div class="stat-card">Stake<span id="stakeDisplay">10.00</span></div>
             </div>
 
             <div class="cards-grid" id="cardsGrid"></div>
@@ -160,7 +147,7 @@
             </div>
         </div>
 
-        <!-- PAGE 2: BINGO LIVE GAME -->
+        <!-- PAGE 2 -->
         <div id="page2" class="page">
             <div class="top-stats">
                 <div class="stat-card">Game<span id="gameIdDisplay">BQ0000</span></div>
@@ -252,14 +239,9 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // ቋሚ የቴሌግራም ሜኑ ቁልፍ (ከጽሁፍ መጻፊያው ጎን እንዲታይ)
-        if (tg.setHeaderColor) {
-            tg.setHeaderColor('#a282c0');
-        }
-
         const socket = io(); 
         let currentUser = tg.initDataUnsafe?.user || { id: "test_user_123", first_name: "Bingo Player" };
-        let userWallet = 50.00; // መጀመሪያ 50 ብር ቦነስ
+        let userWallet = 50.00;
         let currentBet = 10;
         let selectedCardsCount = 1;
         let activePlayersCount = 15;
@@ -270,6 +252,7 @@
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
         let countdownTimer = null;
 
+        // አውቶማቲክ ምዝገባ (Auto Registration)
         window.addEventListener('DOMContentLoaded', async () => {
             if (currentUser && currentUser.id) {
                 try {
@@ -329,6 +312,7 @@
             if(id === 'winnerModal') leaveGame();
         }
 
+        // የዲፖዚት ጥያቄ መላኪያ
         async function submitDeposit() {
             const amount = document.getElementById('depAmount').value;
             const smsText = document.getElementById('depSMS').value;
