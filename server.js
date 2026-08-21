@@ -5,8 +5,25 @@ const mongoose = require('mongoose');
 const TelegramBot = require('node-telegram-bot-api');
 
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
-const ADMIN_ID = '686733543'; // የተሰጠው የአድሚን ቴሌግራም ID
+const ADMIN_ID = '686733543';
+const WEBAPP_URL = 'https://wana-bingo.onrender.com'; // የ Render ሊንክዎ
+
 const bot = new TelegramBot(TOKEN, { polling: true });
+
+// 📌 ከቻት ሳጥኑ ግርጌ (Message Bar) አጠገብ ቋሚ የሜኑ ቁልፍ እንዲኖር ማድረግ
+bot.setChatMenuButton({
+    menu_button: {
+        type: 'web_app',
+        text: '🎮 ቢንጎ መጫወቻ',
+        web_app: {
+            url: WEBAPP_URL
+        }
+    }
+}).then(() => {
+    console.log('የሜኑ ቁልፍ (Menu Button) በትክክል ተስተካክሏል!');
+}).catch(err => {
+    console.error('Menu button error:', err);
+});
 
 const app = express();
 const server = http.createServer(app);
@@ -21,11 +38,11 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB ከሰርቨር ጋር በအောင်ኬት ተገናኝቷል!'))
     .catch(err => console.error('MongoDB Connection Error:', err));
 
-// 2. የተጠቃሚ ስኬማ (በስልክ ቁጥር ወይም ቴሌግራም ID አንዴ ብቻ ይመዘገባል፣ 50 ብር ቦነስ አለው)
+// 2. የተጠቃሚ ስኬማ
 const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true },
     name: { type: String },
-    balance: { type: Number, default: 50 },
+    balance: { type: Number, default: 50 }, // 50 ብር ቦነስ
     createdAt: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
@@ -40,7 +57,7 @@ const depositSchema = new mongoose.Schema({
 });
 const Deposit = mongoose.model('Deposit', depositSchema);
 
-// 4. የዊዝድሮ (Withdraw) ስኬማ
+// 4. የዊዝድሮ ስኬማ
 const withdrawSchema = new mongoose.Schema({
     identifier: String,
     amount: Number,
@@ -53,13 +70,13 @@ const Withdraw = mongoose.model('Withdraw', withdrawSchema);
 // --- 5. ቴሌግራም /start ትዕዛዝ ---
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    bot.sendMessage(chatId, "እንኳን ወደ Wana Bingo መጡ! ጨዋታውን ለመጀመር እና ለመጫወት ከታች ያለውን ቁልፍ ይጫኑ፡", {
+    bot.sendMessage(chatId, "እንኳን ወደ Wana Bingo መጡ! ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ፡", {
         reply_markup: {
             inline_keyboard: [
                 [
                     {
                         text: "🎮 ቢንጎ መጫወቻ ፔጅ",
-                        web_app: { url: "https://wana-bingo.onrender.com" }
+                        web_app: { url: WEBAPP_URL }
                     }
                 ]
             ]
@@ -69,7 +86,7 @@ bot.onText(/\/start/, (msg) => {
 
 // --- 6. ኤፒአይዎች (APIs) ---
 
-// ሪጅስትሬሽን እና 50 ብር ቦነስ
+// ምዝገባ እና 50 ብር ቦነስ
 app.post('/api/register', async (req, res) => {
     try {
         const { identifier, name } = req.body;
@@ -86,7 +103,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// የዲፖዚት ጥያቄ (ብር ማስገባት)
+// ዲፖዚት (ብር ማስገባት)
 app.post('/api/deposit', async (req, res) => {
     try {
         const { identifier, amount, smsText } = req.body;
@@ -97,8 +114,7 @@ app.post('/api/deposit', async (req, res) => {
         const newDep = new Deposit({ identifier, amount, smsText, status: 'pending' });
         await newDep.save();
 
-        // ለአድሚን በቀጥታ በቴሌግራም ማሳወቂያ መላክ
-        bot.sendMessage(ADMIN_ID, `📥 **አዲስ የዲፖዚት ጥያቄ መጥቷል!**\n\nተጠቃሚ: ${identifier}\nመጠን: ${amount} ብር\nመልእክት: ${smsText}\n\nአპሩቭ ለማድረግ ዳታቤዙን ይመልከቱ።`);
+        bot.sendMessage(ADMIN_ID, `📥 **አዲስ የዲፖዚት ጥያቄ!**\n\nተጠቃሚ: ${identifier}\nመጠን: ${amount} ብር\nመልእክት: ${smsText}`);
 
         res.status(200).json({ success: true, message: 'የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል!' });
     } catch (e) {
@@ -106,7 +122,7 @@ app.post('/api/deposit', async (req, res) => {
     }
 });
 
-// የዊዝድሮ ጥያቄ (ብር ማውጣት) - ከባላንሱ ላይ ተቀንሶ ጥያቄው ይቀመጣል
+// ዊዝድሮ (ብር ማውጣት)
 app.post('/api/withdraw', async (req, res) => {
     try {
         const { identifier, amount, phone } = req.body;
@@ -119,17 +135,15 @@ app.post('/api/withdraw', async (req, res) => {
             return res.status(400).json({ success: false, error: 'በቂ የሂሳብ መጠን (Balance) የለዎትም!' });
         }
 
-        // ከባላንሱ ላይ ወዲያውኑ እንቀንሰዋለን
         user.balance -= Number(amount);
         await user.save();
 
         const newWith = new Withdraw({ identifier, amount, phone, status: 'pending' });
         await newWith.save();
 
-        // ለአድሚን በቴሌግራም ማሳወቂያ መላክ
-        bot.sendMessage(ADMIN_ID, `📤 **አዲስ የዊዝድሮ (ብር ማውጣት) ጥያቄ!**\n\nተጠቃሚ: ${identifier}\nስልክ: ${phone}\nመጠን: ${amount} ብር`);
+        bot.sendMessage(ADMIN_ID, `📤 **አዲስ የዊዝድሮ ጥያቄ!**\n\nተጠቃሚ: ${identifier}\nስልክ: ${phone}\nመጠን: ${amount} ብር`);
 
-        res.status(200).json({ success: true, message: 'የዊዝድሮ ጥያቄዎ በተሳካ ሁኔታ ተልኳል!', balance: user.balance });
+        res.status(200).json({ success: true, message: 'የዊዝድሮ ጥያቄዎ ተልኳል!', balance: user.balance });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
