@@ -3,40 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wana Bingo - Card Generator</title>
+    <title>Wana Bingo</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #2e1065; color: #fff; margin: 0; padding: 15px; text-align: center; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #2e1065; color: #fff; margin: 0; padding: 10px; text-align: center; }
         .container { max-width: 450px; margin: 0 auto; }
         .hidden { display: none !important; }
 
         /* Wallet Bar */
-        .wallet-card { background: #3b0764; border: 1px solid #6b21a8; border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .wallet-title { font-size: 12px; color: #cbd5e1; text-align: left; }
-        .wallet-amount { font-size: 18px; font-weight: bold; color: #38bdf8; text-align: left; }
-        .wallet-btns button { padding: 6px 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; margin-left: 4px; }
+        .wallet-card { background: #3b0764; border: 1px solid #6b21a8; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .wallet-title { font-size: 11px; color: #cbd5e1; text-align: left; }
+        .wallet-amount { font-size: 16px; font-weight: bold; color: #38bdf8; text-align: left; }
+        .wallet-btns button { padding: 5px 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 11px; margin-left: 4px; }
         .deposit-btn { background: #10b981; color: #fff; }
         .withdraw-btn { background: #f97316; color: #fff; }
 
         /* Room Cards */
-        .room-card { background: #3b0764; border: 1px solid #6b21a8; border-radius: 12px; padding: 12px 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .room-name { font-size: 11px; color: #38bdf8; letter-spacing: 1px; margin-bottom: 2px; text-align: left; }
-        .room-price { font-size: 18px; font-weight: bold; color: #22d3ee; text-align: left; }
-        .join-btn { background: #ef4444; color: white; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .room-card { background: #3b0764; border: 1px solid #6b21a8; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .room-name { font-size: 10px; color: #38bdf8; letter-spacing: 1px; margin-bottom: 2px; text-align: left; }
+        .room-price { font-size: 16px; font-weight: bold; color: #22d3ee; text-align: left; }
+        .join-btn { background: #ef4444; color: white; border: none; padding: 6px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
 
-        /* Game Board Style */
-        .keno-board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; }
-        .keno-btn { background: #4c1d95; color: #fff; border: 1px solid #7c3aed; padding: 8px 0; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        /* Game Board Style - 1 እስከ 100 ሙሉ በሙሉ እንዲታይ የተደረገ */
+        .keno-board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin-bottom: 10px; }
+        .keno-btn { background: #4c1d95; color: #fff; border: 1px solid #7c3aed; padding: 5px 0; border-radius: 3px; font-size: 11px; font-weight: bold; cursor: pointer; }
         .keno-btn.selected { background: #22c55e !important; }
         .keno-btn:disabled { background: #475569 !important; color: #94a3b8; cursor: not-allowed; }
 
-        /* 5x5 Ticket Grid (እንደ 1162_2.jpg ያለው ንድፍ) */
-        .sub-board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: #3b0764; padding: 10px; border-radius: 8px; width: 220px; }
-        .sub-btn { background: #fff; color: #000; border: none; padding: 10px 0; font-size: 12px; font-weight: bold; border-radius: 4px; text-align: center; }
+        /* 5x5 Ticket Grid - ትንሽ ተደርጎ ወደ ታች እንዲወርድ የተደረገ */
+        .action-container { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+        .sub-board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #3b0764; padding: 6px; border-radius: 6px; width: 170px; }
+        .sub-btn { background: #fff; color: #000; border: none; padding: 6px 0; font-size: 10px; font-weight: bold; border-radius: 3px; text-align: center; }
         .sub-btn.star { background: #22c55e; color: #fff; }
         
-        .action-container { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
-        .action-btns button { padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin-bottom: 5px; width: 100px; display: block; }
+        .action-btns button { padding: 8px 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; margin-bottom: 4px; width: 90px; display: block; font-size: 11px; }
         .refresh-btn { background: #0284c7; color: white; }
         .start-game-btn { background: #f59e0b; color: black; }
     </style>
@@ -81,28 +81,28 @@
             </div>
         </div>
 
-        <!-- 2. የጨዋታ ቦርድ ገጽ (Dynamic Card View) -->
+        <!-- 2. የጨዋታ ቦርድ ገጽ -->
         <div id="game-section" class="hidden">
             <div class="wallet-card">
                 <div>Wallet <span id="game-wallet">0.00</span></div>
                 <div>Stake: <span id="room-stake">0</span> ETB</div>
             </div>
 
-            <!-- ከ 1 እስከ 100 ያሉት ቁጥሮች ቦርድ -->
+            <!-- ከ 1 እስከ 100 ያሉት ቁጥሮች ሙሉ በሙሉ በአንድ ላይ የሚታዩበት ቦርድ -->
             <div class="keno-board" id="mainKenoBoard"></div>
 
             <div class="action-container">
                 <!-- የ 5x5 ካርቴላ ከታች በግራ በኩል -->
                 <div class="sub-board" id="subTicketBoard"></div>
                 <!-- አዝራሮች በስተቀኝ -->
-                <div>
+                <div class="action-btns">
                     <button class="refresh-btn" onclick="resetSelection()">Refresh</button>
                     <button class="start-game-btn" onclick="alert('ጨዋታው ተጀምሯል!')">Start game</button>
                 </div>
             </div>
 
             <br>
-            <button style="background: #64748b; color: white; padding: 8px 15px; border:none; border-radius:6px; cursor:pointer; width:100%;" onclick="backToDashboard()">ወደ ዋናው ገጽ ተመለስ</button>
+            <button style="background: #64748b; color: white; padding: 6px 12px; border:none; border-radius:5px; cursor:pointer; width:100%; font-size:12px;" onclick="backToDashboard()">ወደ ዋናው ገጽ ተመለስ</button>
         </div>
     </div>
 
@@ -111,7 +111,7 @@
         const socket = io();
         let currentUserPhone = null;
         let currentAmount = 0;
-        let selectedNumber = null; // ተጠቃሚው የመረጠው አንድ ዋና ቁጥር
+        let selectedNumber = null;
         let takenNumbersGlobal = [];
 
         window.addEventListener('DOMContentLoaded', async () => {
@@ -164,9 +164,8 @@
             }
         });
 
-        // ተጠቃሚው ከ 1-100 ካሉት ቁጥሮች አንዱን ሲመርጥ
         function selectNumber(num) {
-            selectedNumber = num; // የተመረጠው ዋና ቁጥር
+            selectedNumber = num;
             socket.emit('selectNumber', { amount: currentAmount, number: num });
             buildGameBoards();
         }
@@ -176,13 +175,11 @@
             buildGameBoards();
         }
 
-        // ለተመረጠው ቁጥር ልዩ የሆኑ 24 ቁጥሮችን የሚያመነጭ ሎጂክ (Pseudo-random based on card number)
         function generateCardNumbers(seed) {
             let numbers = [];
             for (let i = 1; i <= 99; i++) {
                 if (i !== seed) numbers.push((i * seed * 7) % 90 + 1);
             }
-            // ልዩ ቁጥሮችን ብቻ መርጦ 24 ቁጥር መሙላት
             let uniqueNums = [...new Set(numbers)];
             return uniqueNums.slice(0, 24);
         }
@@ -212,7 +209,6 @@
             updateTicketDisplay();
         }
 
-        // የታችኛውን 5x5 ካርቴላ ማሳያ መገንባት
         function updateTicketDisplay() {
             const subBoard = document.getElementById('subTicketBoard');
             subBoard.innerHTML = '';
@@ -225,7 +221,6 @@
                 sBtn.className = 'sub-btn';
 
                 if (i === 12) {
-                    // መሃል ላይ ኮከብ (*) እናስቀምጣለን
                     sBtn.textContent = '*';
                     sBtn.classList.add('star');
                 } else {
