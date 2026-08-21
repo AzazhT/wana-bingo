@@ -10,20 +10,14 @@ const WEBAPP_URL = 'https://wana-bingo.onrender.com'; // የ Render ሊንክዎ
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-// 📌 ከቻት ሳጥኑ ግርጌ (Message Bar) አጠገብ ቋሚ የሜኑ ቁልፍ እንዲኖር ማድረግ
+// ከቻት ሳጥኑ ግርጌ ቋሚ የሜኑ ቁልፍ ማስተካከል
 bot.setChatMenuButton({
     menu_button: {
         type: 'web_app',
-        text: '🎮 ቢንጎ መጫወቻ',
-        web_app: {
-            url: WEBAPP_URL
-        }
+        text: '🎮 ፕሌይ ቢንጎ (Play Bingo)',
+        web_app: { url: WEBAPP_URL }
     }
-}).then(() => {
-    console.log('የሜኑ ቁልፍ (Menu Button) በትክክል ተስተካክሏል!');
-}).catch(err => {
-    console.error('Menu button error:', err);
-});
+}).catch(err => console.error('Menu button error:', err));
 
 const app = express();
 const server = http.createServer(app);
@@ -38,11 +32,11 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB ከሰርቨር ጋር በအောင်ኬት ተገናኝቷል!'))
     .catch(err => console.error('MongoDB Connection Error:', err));
 
-// 2. የተጠቃሚ ስኬማ
+// 2. የተጠቃሚ ስኬማ (50 ብር ቦነስ አለው)
 const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true },
     name: { type: String },
-    balance: { type: Number, default: 50 }, // 50 ብር ቦነስ
+    balance: { type: Number, default: 50 },
     createdAt: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
@@ -70,12 +64,12 @@ const Withdraw = mongoose.model('Withdraw', withdrawSchema);
 // --- 5. ቴሌግራም /start ትዕዛዝ ---
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    bot.sendMessage(chatId, "እንኳን ወደ Wana Bingo መጡ! ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ፡", {
+    bot.sendMessage(chatId, "እንኳን ወደ Wana Bingo መጡ! ጨዋታውን ለመጀመር እና አካውንትዎን ለማስተዳደር ከታች ያለውን ቁልፍ ይጫኑ፡", {
         reply_markup: {
             inline_keyboard: [
                 [
                     {
-                        text: "🎮 ቢንጎ መጫወቻ ፔጅ",
+                        text: "🎮 ፕሌይ ቢንጎ (Play Bingo)",
                         web_app: { url: WEBAPP_URL }
                     }
                 ]
@@ -103,7 +97,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// ዲፖዚት (ብር ማስገባት)
+// ዲፖዚት (ብር ማስገባት) - ለአድሚን ቴክስት ይልካል
 app.post('/api/deposit', async (req, res) => {
     try {
         const { identifier, amount, smsText } = req.body;
@@ -114,7 +108,8 @@ app.post('/api/deposit', async (req, res) => {
         const newDep = new Deposit({ identifier, amount, smsText, status: 'pending' });
         await newDep.save();
 
-        bot.sendMessage(ADMIN_ID, `📥 **አዲስ የዲፖዚት ጥያቄ!**\n\nተጠቃሚ: ${identifier}\nመጠን: ${amount} ብር\nመልእክት: ${smsText}`);
+        // ለአድሚን በቴሌግራም ማሳወቂያ መላክ
+        bot.sendMessage(ADMIN_ID, `📥 **አዲስ የዲፖዚት ጥያቄ!**\n\nተጠቃሚ: ${identifier}\nመጠን: ${amount} ብር\nመልእክት: ${smsText}\n\nአይዲ: ${newDep._id}`);
 
         res.status(200).json({ success: true, message: 'የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል!' });
     } catch (e) {
@@ -122,7 +117,7 @@ app.post('/api/deposit', async (req, res) => {
     }
 });
 
-// ዊዝድሮ (ብር ማውጣት)
+// ዊዝድሮ (ብር ማውጣት) - ከባላንስ ቀንሶ ለአድሚን ቴክስት ይልካል
 app.post('/api/withdraw', async (req, res) => {
     try {
         const { identifier, amount, phone } = req.body;
@@ -141,6 +136,7 @@ app.post('/api/withdraw', async (req, res) => {
         const newWith = new Withdraw({ identifier, amount, phone, status: 'pending' });
         await newWith.save();
 
+        // ለአድሚን በቴሌግራም ማሳወቂያ መላክ
         bot.sendMessage(ADMIN_ID, `📤 **አዲስ የዊዝድሮ ጥያቄ!**\n\nተጠቃሚ: ${identifier}\nስልክ: ${phone}\nመጠን: ${amount} ብር`);
 
         res.status(200).json({ success: true, message: 'የዊዝድሮ ጥያቄዎ ተልኳል!', balance: user.balance });
@@ -149,13 +145,13 @@ app.post('/api/withdraw', async (req, res) => {
     }
 });
 
-// አድሚን ዲፖዚት አፕሩቭ ሲያደርግ
+// አድሚን ዲፖዚት አፕሩቭ ሲያደርግ ብሩ ተጠቃሚው አካውንት ላይ ይገባል
 app.post('/api/admin/approve-deposit', async (req, res) => {
     try {
         const { depositId } = req.body;
         const dep = await Deposit.findById(depositId);
         if (!dep || dep.status !== 'pending') {
-            return res.status(400).json({ success: false, error: 'ጥያቄው አልተገኘም' });
+            return res.status(400).json({ success: false, error: 'ጥያቄው አልተገኘም ወይም ተይዟል' });
         }
 
         dep.status = 'approved';
@@ -167,7 +163,7 @@ app.post('/api/admin/approve-deposit', async (req, res) => {
             await user.save();
         }
 
-        res.json({ success: true, message: 'ብር ተጠቃሚው አካውንት ላይ ገብቷል!' });
+        res.json({ success: true, message: 'ብር ተጠቃሚው አካውንት ላይ በအောင်ኬት ገብቷል!' });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
