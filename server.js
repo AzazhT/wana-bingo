@@ -40,23 +40,22 @@ bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const firstName = msg.from.first_name || 'ተጫዋች';
 
-    const welcomeMessage = `👋 ሰላም **${firstName}**!\n\nእንኳን ወደ **Wana Bingo** በደህና መጡ! 🎲🎉\n\n📲 **Telebirr:** \`0946330954\`\n\nከታች ያለውን **"🎮 ጨዋታውን ጀምር"** የሚለውን በተን በመጫን ቢንጎ መጫወት እና ማሸነፍ ይችላሉ!`;
+    const welcomeMessage = `👋 ሰላም **${firstName}**!\n\nእንኳን ወደ **Wana Bingo** በደህና መጡ! 🎲🎉\n\n📱 **Telebirr:** \`0915503379\`\n\nከታች ያለውን **"🎮 ጨዋታውን ጀምር"** የሚለውን በተን በመጫን ቢንጎ መጫወት እና ማሸነፍ ይችላሉ!`;
 
+    // 📌 የሜሴጅ መጻፊያ ሳጥን ላይ "ቴሌብር፡ 0915503379" እንዲታይ የሚያደርግ ቅንብር
     const options = {
         parse_mode: 'Markdown',
         reply_markup: {
-            inline_keyboard: [
+            keyboard: [
                 [
                     { 
                         text: "🎮 ጨዋታውን ጀምር (Play Bingo)", 
                         web_app: { url: WEB_APP_URL } 
                     }
-                ],
-                [
-                    { text: "💳 Deposit Info", callback_data: "deposit_info" },
-                    { text: "📞 Support", callback_data: "help_info" }
                 ]
-            ]
+            ],
+            resize_keyboard: true,
+            input_field_placeholder: "ቴሌብር፡ 0915503379" // 👈 በሜሴጅ መጻፊያ ቦታ ላይ የሚታይ
         }
     };
 
@@ -69,7 +68,9 @@ bot.onText(/\/register/, (msg) => {
     bot.sendMessage(msg.chat.id, regMsg, {
         parse_mode: 'Markdown',
         reply_markup: {
-            inline_keyboard: [[{ text: "🎮 ጨዋታውን ጀምር", web_app: { url: WEB_APP_URL } }]]
+            keyboard: [[{ text: "🎮 ጨዋታውን ጀምር", web_app: { url: WEB_APP_URL } }]],
+            resize_keyboard: true,
+            input_field_placeholder: "ቴሌብር፡ 0915503379"
         }
     });
 });
@@ -78,7 +79,7 @@ bot.onText(/\/register/, (msg) => {
 bot.onText(/\/deposit/, (msg) => {
     const depositMsg = `💳 **ብር ገቢ ለማድረግ (Deposit):**\n\n` +
                        `1. በ Telebirr ወደዚህ ቁጥር ይላኩ፡\n` +
-                       `📱 **Telebirr:** \`0946330954\`\n\n` +
+                       `📱 **Telebirr:** \`0915503379\`\n\n` +
                        `2. ብር ከላኩ በኋላ የላኩበትን Transaction ID/SMS በ Mini App ውስጥ ባለው Deposit ገጽ ላይ ያስገቡ!`;
     bot.sendMessage(msg.chat.id, depositMsg, { parse_mode: 'Markdown' });
 });
@@ -212,7 +213,7 @@ bot.on('callback_query', async (query) => {
     }
 
     if (data === 'deposit_info') {
-        return bot.sendMessage(chatId, `💳 **Telebirr Number:** \`0946330954\`\n\nብር ከላኩ በኋላ Transaction Reference ቁጥሩን በ Mini App ያስገቡ።`, { parse_mode: 'Markdown' });
+        return bot.sendMessage(chatId, `💳 **Telebirr Number:** \`0915503379\`\n\nብር ከላኩ በኋላ Transaction Reference ቁጥሩን በ Mini App ያስገቡ።`, { parse_mode: 'Markdown' });
     }
 
     if (chatId.toString() !== ADMIN_ID) {
