@@ -12,7 +12,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 📌 የአካባቢ ተለዋዋጮች
+// 📌 Environment Variables
 const TOKEN = process.env.BOT_TOKEN || '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_ID = process.env.ADMIN_ID || '686733543';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://robel:1252@cluster0.lkrow1p.mongodb.net/wana_bingo?retryWrites=true&w=majority&appName=Cluster0';
@@ -20,7 +20,6 @@ const WEB_APP_URL = process.env.WEB_APP_URL || 'https://wana-bingo.onrender.com'
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-// 📌 1. የቴሌግራም MENU BUTTON ትዕዛዞች ማዘጋጀት
 bot.setMyCommands([
     { command: 'start', description: '🤖 ቦቱን ለመጀመር / Start' },
     { command: 'register', description: '📝 ለመመዝገብ / Register' },
@@ -33,13 +32,13 @@ bot.on('polling_error', (error) => {
     console.error('Telegram Polling Error:', error.message);
 });
 
-// 📌 2. የዳታቤዝ ስኬማዎች (Database Schemas)
+// 📌 Database Schemas
 const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true },
     username: { type: String, default: '' },
     name: { type: String, default: 'ተጫዋች' },
     phone: { type: String, default: '' },
-    balance: { type: Number, default: 50 }, // ጀማሪ ባላንስ 50
+    balance: { type: Number, default: 50 },
     registeredAt: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
@@ -54,12 +53,11 @@ const transactionSchema = new mongoose.Schema({
 });
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
-// MongoDB Connection
 mongoose.connect(MONGO_URI)
-    .then(() => console.log('MongoDB Connected Successfully!'))
-    .catch(err => console.error('MongoDB Connection Error:', err));
+    .then(() => console.log('✅ MongoDB Connected Successfully!'))
+    .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-// 📌 ተጠቃሚን በቴሌግራም ሲመጣ በራስ-ሰር ዳታቤዝ የመመዝገብ ተግባር
+// 📌 Telegram Auto-Register Log
 async function ensureUserRegistered(msg) {
     try {
         const chatId = String(msg.chat.id);
@@ -75,7 +73,7 @@ async function ensureUserRegistered(msg) {
                 balance: 50
             });
             await user.save();
-            console.log(`አዲስ ተጠቃሚ ተመዝግቧል: ${chatId}`);
+            console.log(`👤 አዲስ ተጠቃሚ በ Telegram ተመዝግቧል: ID ${chatId} (${firstName})`);
         }
         return user;
     } catch (err) {
@@ -83,14 +81,12 @@ async function ensureUserRegistered(msg) {
     }
 }
 
-// 📌 3. የቴሌግራም COMMAND HANDLERS
-
-// /start ትዕዛዝ
+// 📌 Bot Command Handlers
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const firstName = msg.from.first_name || 'ተጫዋች';
 
-    await ensureUserRegistered(msg); // በዳታቤዝ መኖራቸውን ማረጋገጥ/መመዝገብ
+    await ensureUserRegistered(msg);
 
     const welcomeMessage = `👋 ሰላም **${firstName}**!\n\nእንኳን ወደ **Wana Bingo** በደህና መጡ! 🎲🎉\n\n📱 **Telebirr:** \`0915503379\`\n\nከታች ያለውን **"🎮 ጨዋታውን ጀምር"** የሚለውን በተን በመጫን ቢንጎ መጫወት እና ማሸነፍ ይችላሉ!`;
 
@@ -98,12 +94,7 @@ bot.onText(/\/start/, async (msg) => {
         parse_mode: 'Markdown',
         reply_markup: {
             keyboard: [
-                [
-                    { 
-                        text: "🎮 ጨዋታውን ጀምር (Play Bingo)", 
-                        web_app: { url: WEB_APP_URL } 
-                    }
-                ]
+                [{ text: "🎮 ጨዋታውን ጀምር (Play Bingo)", web_app: { url: WEB_APP_URL } }]
             ],
             resize_keyboard: true,
             input_field_placeholder: "ቴሌብር፡ 0915503379"
@@ -113,39 +104,26 @@ bot.onText(/\/start/, async (msg) => {
     bot.sendMessage(chatId, welcomeMessage, options);
 });
 
-// /register ትዕዛዝ
 bot.onText(/\/register/, async (msg) => {
     await ensureUserRegistered(msg);
-    const regMsg = `📝 **ምዝገባዎ ተጠናቋል!**\n\nከታች ያለውን በተን በመጫን ጨዋታውን መጀመር ይችላሉ!`;
-    bot.sendMessage(msg.chat.id, regMsg, {
+    bot.sendMessage(msg.chat.id, `📝 **ምዝገባዎ ተጠናቋል!**\n\nከታች ያለውን በተን በመጫን ጨዋታውን መጀመር ይችላሉ!`, {
         parse_mode: 'Markdown',
         reply_markup: {
             keyboard: [[{ text: "🎮 ጨዋታውን ጀምር", web_app: { url: WEB_APP_URL } }]],
-            resize_keyboard: true,
-            input_field_placeholder: "ቴሌብር፡ 0915503379"
+            resize_keyboard: true
         }
     });
 });
 
-// /deposit ትዕዛዝ
 bot.onText(/\/deposit/, (msg) => {
-    const depositMsg = `💳 **ብር ገቢ ለማድረግ (Deposit):**\n\n` +
-                       `1. በ Telebirr ወደዚህ ቁጥር ይላኩ፡\n` +
-                       `📱 **Telebirr:** \`0915503379\`\n\n` +
-                       `2. ብር ከላኩ በኋላ የላኩበትን Transaction ID/SMS በ Mini App ውስጥ ባለው Deposit ገጽ ላይ ያስገቡ!`;
-    bot.sendMessage(msg.chat.id, depositMsg, { parse_mode: 'Markdown' });
+    bot.sendMessage(msg.chat.id, `💳 **ብር ገቢ ለማድረግ (Deposit):**\n\n1. በ Telebirr ወደዚህ ቁጥር ይላኩ፡\n📱 **Telebirr:** \`0915503379\`\n\n2. የላኩበትን Transaction ID በ Mini App Deposit ገጽ ላይ ያስገቡ!`, { parse_mode: 'Markdown' });
 });
 
-// /withdraw ትዕዛዝ
 bot.onText(/\/withdraw/, (msg) => {
-    const withdrawMsg = `💸 **ብር ወጪ ለማድረግ (Withdraw):**\n\n` +
-                        `በ Mini App ውስጥ ወደ Wallet/Profile ገጽ በመሄድ የትርፍዎን Withdraw ጥያቄ ማቅረብ ይችላሉ።`;
-    bot.sendMessage(msg.chat.id, withdrawMsg, { parse_mode: 'Markdown' });
+    bot.sendMessage(msg.chat.id, `💸 **ብር ወጪ ለማድረግ (Withdraw):**\n\nበ Mini App ውስጥ ወደ Wallet ገጽ በመሄድ የትርፍዎን Withdraw ጥያቄ ማቅረብ ይችላሉ።`, { parse_mode: 'Markdown' });
 });
 
-// 📌 4. API ENDPOINTS
-
-// ተጠቃሚን በ Mini App መፈለግ/መመዝገብ
+// 📌 API Endpoints
 app.post('/api/get-user', async (req, res) => {
     try {
         const { identifier, name, username, phone } = req.body;
@@ -163,6 +141,7 @@ app.post('/api/get-user', async (req, res) => {
                 balance: 50 
             });
             await user.save();
+            console.log(`👤 አዲስ ተጠቃሚ በ API ተመዝግቧል: ID ${strId}`);
         } else {
             let updated = false;
             if (username && user.username !== username) { user.username = username; updated = true; }
@@ -176,13 +155,11 @@ app.post('/api/get-user', async (req, res) => {
     }
 });
 
-// ውርርድ ማድረግ (Place Bet)
 app.post('/api/place-bet', async (req, res) => {
     try {
         const { identifier, amount } = req.body;
         const betAmount = Number(amount);
 
-        // ባላንሱ በቂ ከሆነ ብቻ ከሂሳቡ ላይ ይቀንሳል
         const user = await User.findOneAndUpdate(
             { identifier: String(identifier), balance: { $gte: betAmount } },
             { $inc: { balance: -betAmount } },
@@ -199,7 +176,6 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
-// የ Deposit እና Withdraw ጥያቄዎችን መዝግቦ ለአድሚን መላክ
 app.post('/api/request-transaction', async (req, res) => {
     try {
         const { identifier, type, amount, details } = req.body;
@@ -215,26 +191,18 @@ app.post('/api/request-transaction', async (req, res) => {
             return res.status(404).json({ success: false, message: 'ተጠቃሚው በዳታቤዝ ውስጥ አልተገኘም!' });
         }
 
-        // ለ Withdraw ጥያቄ በቂ ባላንስ እንዳለው ማረጋገጥ
         if (type === 'WITHDRAW' && user.balance < numAmount) {
             return res.status(400).json({ success: false, message: 'ያለዎት ባላንስ ለቀረበው የወጪ ጥያቄ በቂ አይደለም!' });
         }
 
-        const trans = new Transaction({
-            identifier: strId,
-            type,
-            amount: numAmount,
-            details
-        });
+        const trans = new Transaction({ identifier: strId, type, amount: numAmount, details });
         await trans.save();
 
         const inlineKeyboard = {
-            inline_keyboard: [
-                [
-                    { text: "✅ አጽድቅ (Approve)", callback_data: `approve_${trans._id}` },
-                    { text: "❌ ውድቅ አድርግ (Reject)", callback_data: `reject_${trans._id}` }
-                ]
-            ]
+            inline_keyboard: [[
+                { text: "✅ አጽድቅ (Approve)", callback_data: `approve_${trans._id}` },
+                { text: "❌ ውድቅ አድርግ (Reject)", callback_data: `reject_${trans._id}` }
+            ]]
         };
 
         bot.sendMessage(
@@ -249,16 +217,12 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
-// 📌 5. TELEGRAM CALLBACK QUERY (አድሚን ሲያጸድቅ ወይም ውድቅ ሲያደርግ)
 bot.on('callback_query', async (query) => {
     const data = query.data;
     const chatId = query.message.chat.id;
 
     if (data === 'help_info') {
-        return bot.answerCallbackQuery(query.id, { 
-            text: "ለማንኛውም ጥያቄ ወይም እገዛ በአድሚን አድራሻ ያግኙን!", 
-            show_alert: true 
-        });
+        return bot.answerCallbackQuery(query.id, { text: "ለማንኛውም ጥያቄ ወይም እገዛ በአድሚን አድራሻ ያግኙን!", show_alert: true });
     }
 
     if (data === 'deposit_info') {
@@ -278,16 +242,13 @@ bot.on('callback_query', async (query) => {
 
         if (action === 'approve') {
             let updatedUser = null;
-
             if (trans.type === 'DEPOSIT') {
-                // Deposit ሲጸድቅ ባላንስ መጨመር ($inc)
                 updatedUser = await User.findOneAndUpdate(
                     { identifier: trans.identifier },
                     { $inc: { balance: trans.amount } },
                     { new: true }
                 );
             } else if (trans.type === 'WITHDRAW') {
-                // Withdraw ሲጸድቅ በቂ ባላንስ ካለ ብቻ መቀነስ ($inc)
                 updatedUser = await User.findOneAndUpdate(
                     { identifier: trans.identifier, balance: { $gte: trans.amount } },
                     { $inc: { balance: -trans.amount } },
@@ -323,22 +284,30 @@ bot.on('callback_query', async (query) => {
     }
 });
 
-// 📌 6. FRONTEND FALLBACK ROUTE
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 📌 7. SOCKET.IO BINGO LOGIC (የማሸነፊያ ብር በዳታቤዝ መጨመር)
+// 📌 7. GLOBAL SOCKET.IO BINGO STATE (ለሁሉም ተጫዋች የጋራ የሆነ)
+let gameInterval = null;
+let drawnNumbers = [];
+let isGameRunning = false;
+
 io.on('connection', (socket) => {
-    let gameInterval = null;
+    // አዲስ ተጫዋች ሲገባ እስካሁን የወጡትን ቁጥሮች መላክ
+    socket.emit('gameInit', { drawnHistory: drawnNumbers, isGameRunning });
 
     socket.on('startGame', () => {
-        let drawnNumbers = [];
+        if (isGameRunning) return; // ጨዋታው ቀድሞ ከተጀመረ ሁለተኛ አይጀምርም
+
+        isGameRunning = true;
+        drawnNumbers = [];
         clearInterval(gameInterval);
 
         gameInterval = setInterval(() => {
             if (drawnNumbers.length >= 75) {
                 clearInterval(gameInterval);
+                isGameRunning = false;
                 io.emit('gameOver', { message: 'ጨዋታው ተጠናቋል!' });
                 return;
             }
@@ -355,11 +324,11 @@ io.on('connection', (socket) => {
 
     socket.on('claimBingo', async (data) => {
         clearInterval(gameInterval);
+        isGameRunning = false;
         const { identifier, winAmount } = data;
 
         if (identifier && winAmount) {
             try {
-                // ያሸነፈውን ብር በቀጥታ ዳታቤዝ ላይ መጨመር
                 const updatedUser = await User.findOneAndUpdate(
                     { identifier: String(identifier) },
                     { $inc: { balance: parseFloat(winAmount) } },
@@ -367,15 +336,11 @@ io.on('connection', (socket) => {
                 );
                 console.log(`Bingo Winner: ${identifier}, New Balance: ${updatedUser ? updatedUser.balance : 0}`);
             } catch (err) {
-                console.error("የማሸነፊያ ብር ዳታቤዝ ማስገባት አልተቻለም:", err);
+                console.error("የማሸነፊያ ብር ማስገባት አልተቻለም:", err);
             }
         }
 
         io.emit('gameOver', { message: `አሸናፊ ተገኝቷል!` });
-    });
-
-    socket.on('disconnect', () => {
-        clearInterval(gameInterval);
     });
 });
 
