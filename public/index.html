@@ -30,7 +30,7 @@
         .bet-btn { padding: 20px 10px; font-size: 18px; font-weight: bold; background: #ffb703; color: #4a2c73; border: none; border-radius: 12px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; }
         .bet-btn:active { transform: scale(0.95); background: #e6a602; }
 
-        /* Top Header Stats (ሁለተኛው ፔጅ ላይ ገቢ/ወጪ አልተካተተም) */
+        /* Top Header Stats */
         .top-stats { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 10px; }
         .stat-card { background: white; color: #4a2c73; padding: 6px 4px; border-radius: 10px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .stat-card span { display: block; font-size: 12px; color: #7b2cbf; margin-top: 2px; }
@@ -109,7 +109,7 @@
 
             <div class="main-wallet-card">
                 የእርስዎ ቀሪ ሂሳብ (Wallet)
-                <span id="mainWalletDisplay">0.00 ETB</span>
+                <span id="mainWalletDisplay">50.00 ETB</span>
                 <div class="main-wallet-actions">
                     <button class="btn-dep-main" onclick="openModal('depositModal')">📥 ገቢ (Deposit)</button>
                     <button class="btn-with-main" onclick="openModal('withdrawModal')">📤 ወጪ (Withdraw)</button>
@@ -128,12 +128,12 @@
             </div>
         </div>
 
-        <!-- PAGE 1: CARD SELECTOR (ገቢ እና ወጪ ከዚህ ጠፍቷል) -->
+        <!-- PAGE 1: CARD SELECTOR -->
         <div id="page1" class="page">
             <div class="top-stats">
                 <div class="stat-card">
                     Wallet
-                    <span id="walletDisplay">0.00</span>
+                    <span id="walletDisplay">50.00</span>
                 </div>
                 <div class="stat-card">
                     Bet
@@ -252,9 +252,14 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        // ቋሚ የቴሌግራም ሜኑ ቁልፍ (ከጽሁፍ መጻፊያው ጎን እንዲታይ)
+        if (tg.setHeaderColor) {
+            tg.setHeaderColor('#a282c0');
+        }
+
         const socket = io(); 
         let currentUser = tg.initDataUnsafe?.user || { id: "test_user_123", first_name: "Bingo Player" };
-        let userWallet = 0.00;
+        let userWallet = 50.00; // መጀመሪያ 50 ብር ቦነስ
         let currentBet = 10;
         let selectedCardsCount = 1;
         let activePlayersCount = 15;
@@ -271,15 +276,15 @@
                     const regRes = await fetch('/api/register', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ telegramId: String(currentUser.id), name: currentUser.first_name })
+                        body: JSON.stringify({ identifier: String(currentUser.id), name: currentUser.first_name })
                     });
                     const regData = await regRes.json();
-                    if(regRes.ok) {
-                        userWallet = regData.user.balance || 0;
+                    if(regRes.ok && regData.user) {
+                        userWallet = regData.user.balance;
                         updateHeaderStats();
                     }
                 } catch (e) {
-                    console.error('የሰርቨር ስህተት:', e);
+                    console.error('የሰርቨር ምዝገባ ስህተት:', e);
                 }
             }
         });
@@ -324,24 +329,52 @@
             if(id === 'winnerModal') leaveGame();
         }
 
-        function submitDeposit() {
+        async function submitDeposit() {
             const amount = document.getElementById('depAmount').value;
             const smsText = document.getElementById('depSMS').value;
             if (!amount || !smsText) return alert('እባክዎን ሁሉንም ያሟሉ!');
             
-            socket.emit('requestDeposit', { telegramId: String(currentUser.id), amount: parseFloat(amount), smsText: smsText });
-            alert('የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል! አድሚኑ ሲያረጋግጠው አካውንትዎ ላይ ይገባል።');
-            closeModal('depositModal');
+            try {
+                const res = await fetch('/api/deposit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: String(currentUser.id), amount: parseFloat(amount), smsText })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    alert('የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል!');
+                    closeModal('depositModal');
+                } else {
+                    alert(data.error || 'ስህተት ተፈጥሯል');
+                }
+            } catch(e) {
+                console.error(e);
+            }
         }
 
-        function submitWithdraw() {
+        async function submitWithdraw() {
             const amount = document.getElementById('withAmount').value;
-            const accountDetails = document.getElementById('withAccount').value;
-            if (!amount || !accountDetails) return alert('እባክዎን ሁሉንም ያሟሉ!');
+            const phone = document.getElementById('withAccount').value;
+            if (!amount || !phone) return alert('እባክዎን ሁሉንም ያሟሉ!');
             
-            socket.emit('requestWithdraw', { telegramId: String(currentUser.id), amount: parseFloat(amount), accountDetails: accountDetails });
-            alert('የወጪ ጥያቄዎ ተልኳል።');
-            closeModal('withdrawModal');
+            try {
+                const res = await fetch('/api/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: String(currentUser.id), amount: parseFloat(amount), phone })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    userWallet = data.balance;
+                    updateHeaderStats();
+                    alert('የወጪ ጥያቄዎ ለአድሚን ተልኳል!');
+                    closeModal('withdrawModal');
+                } else {
+                    alert(data.error || 'በቂ ባላንስ የለዎትም!');
+                }
+            } catch(e) {
+                console.error(e);
+            }
         }
 
         function selectBet(amount) {
