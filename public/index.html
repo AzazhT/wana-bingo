@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ዋና ቢንጎ (Wana Bingo)</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a; color: #fff; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 650px; margin: 0 auto; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1, h2 { color: #38bdf8; margin-bottom: 10px; }
+        .hidden { display: none !important; }
+        input, button { padding: 12px 15px; margin: 8px 0; border-radius: 6px; border: none; font-size: 16px; width: 100%; box-sizing: border-box; }
+        input { background: #334155; color: #fff; text-align: center; }
+        button { background: #0284c7; color: #fff; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #0369a1; }
+        .room-btn { background: #10b981; margin: 6px; width: 45%; display: inline-block; font-size: 16px; padding: 15px; }
+        
+        .keno-board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin-top: 15px; }
+        .keno-btn { background: #334155; color: #fff; border: none; padding: 10px 0; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .keno-btn.selected { background: #eab308 !important; color: #000; }
+        .keno-btn.taken { background: #475569 !important; color: #94a3b8; cursor: not-allowed; opacity: 0.6; }
+        .keno-btn.winning { background: #22c55e !important; color: #fff; }
+        
+        .timer-box { font-size: 20px; color: #facc15; margin: 15px 0; font-weight: bold; background: #0f172a; padding: 8px; border-radius: 6px; }
+        .bingo-btn { background: #ef4444; font-size: 18px; margin-top: 15px; font-weight: bold; }
+        .winner-banner { background: #22c55e; color: #000; padding: 15px; border-radius: 8px; font-size: 20px; font-weight: bold; margin: 15px 0; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 1. የምዝገባ ገጽ -->
+        <div id="register-section">
+            <h1>ዋና ቢንጎ መግቢያ</h1>
+            <p id="welcome-msg">እባክዎ ትንሽ ይጠብቁ፣ ከቴሌግራም ጋር እየተገናኘ ነው...</p>
+            
+            <div id="phone-input-box" class="hidden">
+                <input type="text" id="phone" placeholder="ስልክ ቁጥር ያስገቡ (ለምሳሌ፦ 0911223344)">
+                <button onclick="registerUserManual()">መዝገብና ግባ</button>
+            </div>
+        </div>
+
+        <!-- 2. የክፍሎች ምርጫ (50፣ 100፣ 150 እና 200 ብር) -->
+        <div id="rooms-section" class="hidden">
+            <h1>የቢንጎ ክፍሎች (Rooms)</h1>
+            <p>የሚፈልጉትን የዋጋ መጠን ይምረጡ፦</p>
+            <div>
+                <button class="room-btn" onclick="joinRoom(50)">50 ብር</button>
+                <button class="room-btn" onclick="joinRoom(100)">100 ብር</button>
+                <button class="room-btn" onclick="joinRoom(150)">150 ብር</button>
+                <button class="room-btn" onclick="joinRoom(200)">200 ብር</button>
+            </div>
+        </div>
+
+        <!-- 3. የጨዋታ ቦርድ -->
+        <div id="game-section" class="hidden">
+            <h2 id="room-title"></h2>
+            <div class="timer-box">ቀሪ ሰዓት: <span id="timer">30</span> ሰከንድ</div>
+            
+            <div id="winnerBanner" class="winner-banner"></div>
+
+            <p>ቁጥሮችን ይምረጡ እና ሲጨርሱ BINGO ይበሉ!</p>
+            <div class="keno-board" id="kenoBoard"></div>
+
+            <button class="bingo-btn" onclick="claimBingo()">BINGO! (ቢንጎ በል)</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentUser = null;
+        let currentAmount = 0;
+        let selectedByUser = [];
+        let drawnNumbers = [];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const tg = window.Telegram.WebApp;
+            tg.expand();
+
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const tgUser = tg.initDataUnsafe.user;
+                const username = tgUser.first_name || 'ተጫዋች';
+                const phone = tgUser.id.toString();
+
+                autoRegister(username, phone);
+            } else {
+                document.getElementById('welcome-msg').innerText = 'እባክዎ ስልክ ቁጥርዎን ያስገቡ፦';
+                document.getElementById('phone-input-box').classList.remove('hidden');
+            }
+        });
+
+        async function autoRegister(username, phone) {
+            const res = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, phone })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                currentUser = data.user;
+                document.getElementById('register-section').classList.add('hidden');
+                document.getElementById('rooms-section').classList.remove('hidden');
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function registerUserManual() {
+            const phone = document.getElementById('phone').value;
+            if (!phone) { alert('ስልክ ቁጥር ያስገቡ!'); return; }
+            autoRegister('ተጫዋች', phone);
+        }
+
+        function joinRoom(amount) {
+            currentAmount = amount;
+            document.getElementById('rooms-section').classList.add('hidden');
+            document.getElementById('game-section').classList.remove('hidden');
+            document.getElementById('room-title').innerText = `${amount} ብር የቢንጎ ክፍል`;
+            document.getElementById('winnerBanner').style.display = 'none';
+
+            buildBoard();
+            socket.emit('joinRoom', { phone: currentUser.phone, amount });
+        }
+
+        function buildBoard() {
+            const board = document.getElementById('kenoBoard');
+            board.innerHTML = '';
+            for (let i = 1; i <= 80; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'keno-btn';
+                btn.textContent = i;
+                btn.id = `num-${i}`;
+                btn.onclick = () => selectNumber(i, btn);
+                board.appendChild(btn);
+            }
+        }
+
+        function selectNumber(num, btn) {
+            if (btn.classList.contains('taken') || btn.classList.contains('winning')) return;
+
+            if (selectedByUser.includes(num)) {
+                selectedByUser = selectedByUser.filter(n => n !== num);
+                btn.classList.remove('selected');
+            } else {
+                selectedByUser.push(num);
+                btn.classList.add('selected');
+                socket.emit('selectNumber', { amount: currentAmount, number: num });
+            }
+        }
+
+        function claimBingo() {
+            if (selectedByUser.length === 0) {
+                alert('እባክዎ መጀመሪያ ቁጥሮችን ይምረጡ!');
+                return;
+            }
+            socket.emit('claimBingo', {
+                amount: currentAmount,
+                phone: currentUser.phone,
+                username: currentUser.username,
+                selectedNumbers: selectedByUser
+            });
+        }
+
+        socket.on('initRoomData', (data) => {
+            document.getElementById('timer').textContent = data.timer;
+        });
+
+        socket.on('timerUpdate', (timeLeft) => {
+            document.getElementById('timer').textContent = timeLeft;
+        });
+
+        socket.on('numberTaken', (num) => {
+            const btn = document.getElementById(`num-${num}`);
+            if (btn && !btn.classList.contains('selected')) {
+                btn.classList.add('taken');
+            }
+        });
+
+        socket.on('drawResult', (numbers) => {
+            drawnNumbers = numbers;
+            numbers.forEach(num => {
+                const btn = document.getElementById(`num-${num}`);
+                if (btn) btn.classList.add('winning');
+            });
+        });
+
+        socket.on('bingoWinner', (data) => {
+            const banner = document.getElementById('winnerBanner');
+            banner.style.display = 'block';
+            banner.innerHTML = `🏆 BINGO! ተጫዋች "${data.username}" አሸንፏል! ጨዋታው ቆሟል።`;
+        });
+
+        socket.on('resetBoard', () => {
+            selectedByUser = [];
+            document.getElementById('winnerBanner').style.display = 'none';
+            buildBoard();
+        });
+    </script>
+</body>
+</html>
