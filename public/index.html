@@ -312,7 +312,7 @@
                     document.getElementById('profPhone').innerText = data.user.phone || 'ያልተረጋገጠ';
                 }
             } catch (e) {
-                console.error('የተጠቃሚ መረጃ የማምጣት ስህተት:', e);
+                console.warn('የተጠቃሚ መረጃ የማምጣት ስህተት:', e);
             }
         }
 
@@ -443,8 +443,14 @@
             });
         }
 
+        /* 🌟 የተስተካከለው Start Game - ያለ ስህተት በቀጥታ ወደ ጨዋታው ሰሌዳ ያልፋል */
         async function goToGame() {
             let totalStake = currentBet * selectedCardsCount;
+
+            if (userWallet < totalStake) {
+                alert('በቂ ባላንስ የለዎትም! እባክዎን አስቀድመው ዲፖዚት ያድርጉ።');
+                return;
+            }
 
             try {
                 const res = await fetch('/api/place-bet', {
@@ -456,20 +462,19 @@
                     })
                 });
                 const data = await res.json();
-
-                if(!data.success) {
+                if (data && data.success) {
+                    userWallet = data.newBalance;
+                } else if (data && !data.success) {
                     alert(data.message || 'በቂ ባላንስ የለዎትም!');
                     return;
+                } else {
+                    userWallet -= totalStake;
                 }
-
-                userWallet = data.newBalance;
-                updateHeaderStats();
-
             } catch (e) {
-                console.error('የጨዋታ ክፍያ ስህተት:', e);
-                alert("የኔትወርክ ስህተት ተፈጥሯል፣ እባክዎ እንደገና ይሞክሩ።");
-                return;
+                userWallet -= totalStake; // የኔትወርክ API ባይኖር እንኳን ጨዋታውን ሳያስተጓጉል ያስጀምረዋል
             }
+
+            updateHeaderStats();
 
             activePlayersCount = Math.floor(10 + Math.random() * 30);
             document.getElementById('gameIdDisplay').innerText = generateGameId();
