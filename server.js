@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 📌 የአካባቢ ተለዋዋጮች
 const TOKEN = process.env.BOT_TOKEN || '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_ID = process.env.ADMIN_ID || '686733543';
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://robel:252@cluster0.lkrow1p.mongodb.net/?appName=Cluster0';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://robel:1252@cluster0.lkrow1p.mongodb.net/wana_bingo?retryWrites=true&w=majority&appName=Cluster0';
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://wana-bingo.onrender.com';
 
 const bot = new TelegramBot(TOKEN, { polling: true });
