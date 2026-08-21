@@ -2,41 +2,219 @@
 <html lang="am">
 <head>
     <meta charset="UTF-8">
-    <title>Wana Bingo Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wana Bingo</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background-color: #0f172a; color: white; text-align: center; font-family: sans-serif; padding: 20px; }
-        .room-btn { background: #10b981; border: none; padding: 15px; margin: 10px; width: 80%; color: white; font-size: 18px; border-radius: 8px; }
-        .keno-board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; margin-top: 20px; }
-        .num-btn { background: #334155; padding: 10px; border: none; color: white; cursor: pointer; }
-        .num-btn.selected { background: #eab308; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #2e1065; color: #fff; margin: 0; padding: 15px; text-align: center; }
+        .container { max-width: 450px; margin: 0 auto; }
+        .hidden { display: none !important; }
+
+        /* Wallet Bar */
+        .wallet-card { background: #3b0764; border: 1px solid #6b21a8; border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .wallet-title { font-size: 12px; color: #cbd5e1; text-align: left; }
+        .wallet-amount { font-size: 18px; font-weight: bold; color: #38bdf8; text-align: left; }
+        .wallet-btns button { padding: 6px 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; margin-left: 4px; }
+        .deposit-btn { background: #10b981; color: #fff; }
+        .withdraw-btn { background: #f97316; color: #fff; }
+
+        /* Room Cards */
+        .room-card { background: #3b0764; border: 1px solid #6b21a8; border-radius: 12px; padding: 12px 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .room-name { font-size: 11px; color: #38bdf8; letter-spacing: 1px; margin-bottom: 2px; text-align: left; }
+        .room-price { font-size: 18px; font-weight: bold; color: #22d3ee; text-align: left; }
+        .join-btn { background: #ef4444; color: white; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        /* Game Board Style */
+        .keno-board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-bottom: 15px; }
+        .keno-btn { background: #4c1d95; color: #fff; border: 1px solid #7c3aed; padding: 8px 0; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .keno-btn.selected { background: #22c55e !important; }
+        .keno-btn:disabled { background: #475569 !important; color: #94a3b8; cursor: not-allowed; }
+
+        .sub-board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: #3b0764; padding: 10px; border-radius: 8px; width: 50%; display: inline-block; }
+        .sub-btn { background: #fff; color: #000; border: none; padding: 6px; font-size: 11px; font-weight: bold; border-radius: 3px; text-align: center; }
+        
+        .action-btns { margin-top: 15px; }
+        .action-btns button { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin: 5px; }
+        .refresh-btn { background: #0284c7; color: white; }
+        .start-game-btn { background: #f59e0b; color: black; }
     </style>
 </head>
 <body>
-    <h1>ዋና ቢንጎ መጫወቻ</h1>
-    <div id="room-selection">
-        <p>እባክዎ መጫወት የሚፈልጉትን የክፍያ መጠን ይምረጡ፦</p>
-        <button class="room-btn" onclick="startGame(20)">20 ብር</button>
-        <button class="room-btn" onclick="startGame(50)">50 ብር</button>
-        <button class="room-btn" onclick="startGame(100)">100 ብር</button>
-        <button class="room-btn" onclick="startGame(500)">500 ብር</button>
-        <button class="room-btn" onclick="startGame(1000)">1000 ብር</button>
+
+    <div class="container">
+        <!-- 1. ዋናው የክፍሎች ገጽ (Dashboard) -->
+        <div id="dashboard-section">
+            <div class="wallet-card">
+                <div>
+                    <div class="wallet-title">Wallet Balance</div>
+                    <div class="wallet-amount" id="balance">0.00 ETB</div>
+                </div>
+                <div>
+                    <button class="deposit-btn" onclick="alert('ዲፖዚት ለማድረግ ቦቱ ላይ ያለውን አማራጭ ይጠቀሙ')">ገንዘብ አስገባ</button>
+                    <button class="withdraw-btn" onclick="alert('ዊዝድራው ለማድረግ ቦቱ ላይ ያለውን አማራጭ ይጠቀሙ')">አውጣ</button>
+                </div>
+            </div>
+
+            <div id="rooms-container">
+                <div class="room-card">
+                    <div><div class="room-name">WANA BINGO</div><div class="room-price">20 ETB</div></div>
+                    <button class="join-btn" onclick="openGameRoom(20)">Join</button>
+                </div>
+                <div class="room-card">
+                    <div><div class="room-name">WANA BINGO</div><div class="room-price">50 ETB</div></div>
+                    <button class="join-btn" onclick="openGameRoom(50)">Join</button>
+                </div>
+                <div class="room-card">
+                    <div><div class="room-name">WANA BINGO</div><div class="room-price">100 ETB</div></div>
+                    <button class="join-btn" onclick="openGameRoom(100)">Join</button>
+                </div>
+                <div class="room-card">
+                    <div><div class="room-name">WANA BINGO</div><div class="room-price">500 ETB</div></div>
+                    <button class="join-btn" onclick="openGameRoom(500)">Join</button>
+                </div>
+                <div class="room-card">
+                    <div><div class="room-name">WANA BINGO</div><div class="room-price">1000 ETB</div></div>
+                    <button class="join-btn" onclick="openGameRoom(1000)">Join</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. የጨዋታ ቦርድ ገጽ -->
+        <div id="game-section" class="hidden">
+            <div class="wallet-card">
+                <div>Wallet <span id="game-wallet">0.00</span></div>
+                <div>Stake: <span id="room-stake">0</span> ETB</div>
+            </div>
+
+            <!-- ከ 1 እስከ 100 ያሉት ቁጥሮች ቦርድ -->
+            <div class="keno-board" id="mainKenoBoard"></div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="sub-board" id="subTicketBoard"></div>
+                <div>
+                    <button class="refresh-btn" onclick="buildGameBoards()">Refresh</button><br>
+                    <button class="start-game-btn" onclick="alert('ጨዋታው ተጀምሯል!')">Start game</button>
+                </div>
+            </div>
+
+            <br>
+            <button style="background: #64748b; color: white; padding: 8px 15px; border:none; border-radius:6px; cursor:pointer;" onclick="backToDashboard()">ወደ ዋናው ገጽ ተመለስ</button>
+        </div>
     </div>
 
-    <div id="game-board" style="display:none;">
-        <div class="keno-board" id="board"></div>
-    </div>
-
+    <script src="/socket.io/socket.io.js"></script>
     <script>
-        function startGame(amount) {
-            document.getElementById('room-selection').style.display = 'none';
-            document.getElementById('game-board').style.display = 'block';
-            const board = document.getElementById('board');
-            for(let i=1; i<=80; i++) {
+        const socket = io();
+        let currentUserPhone = null;
+        let currentAmount = 0;
+        let userSelectedNumbers = [];
+        let takenNumbersGlobal = [];
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            const tg = window.Telegram.WebApp;
+            tg.expand();
+
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                currentUserPhone = tg.initDataUnsafe.user.id.toString();
+                try {
+                    const res = await fetch(`/api/user/${currentUserPhone}`);
+                    const data = await res.json();
+                    if (res.ok) {
+                        document.getElementById('balance').textContent = `${data.balance} ETB`;
+                        document.getElementById('game-wallet').textContent = data.balance;
+                    }
+                } catch (e) {
+                    console.error('መረጃ ማምጣት አልተቻለም');
+                }
+            }
+        });
+
+        function openGameRoom(amount) {
+            currentAmount = amount;
+            document.getElementById('dashboard-section').classList.add('hidden');
+            document.getElementById('game-section').classList.remove('hidden');
+            document.getElementById('room-stake').textContent = amount;
+            
+            userSelectedNumbers = [];
+            socket.emit('joinRoom', { amount });
+            buildGameBoards();
+        }
+
+        function backToDashboard() {
+            document.getElementById('game-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+        }
+
+        socket.on('syncTakenNumbers', (takenList) => {
+            takenNumbersGlobal = takenList;
+            buildGameBoards();
+        });
+
+        socket.on('numberTaken', (num) => {
+            if (!takenNumbersGlobal.includes(num)) {
+                takenNumbersGlobal.push(num);
+            }
+            const btn = document.getElementById(`kbtn-${num}`);
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.remove('selected');
+            }
+            // ከራሳችን ምርጫ ውጪ ከሆነ ከስክሪን እናወጣዋለን
+            if (!userSelectedNumbers.includes(num)) {
+                updateTicketDisplay();
+            }
+        });
+
+        function selectNumber(num) {
+            if (userSelectedNumbers.includes(num)) {
+                userSelectedNumbers = userSelectedNumbers.filter(n => n !== num);
+            } else {
+                userSelectedNumbers.push(num);
+                socket.emit('selectNumber', { amount: currentAmount, number: num });
+            }
+            buildGameBoards();
+        }
+
+        function buildGameBoards() {
+            const mainBoard = document.getElementById('mainKenoBoard');
+            mainBoard.innerHTML = '';
+            
+            for (let i = 1; i <= 100; i++) {
                 const btn = document.createElement('button');
-                btn.className = 'num-btn';
-                btn.innerText = i;
-                btn.onclick = () => btn.classList.toggle('selected');
-                board.appendChild(btn);
+                btn.className = 'keno-btn';
+                btn.id = `kbtn-${i}`;
+                btn.textContent = i;
+
+                if (takenNumbersGlobal.includes(i) && !userSelectedNumbers.includes(i)) {
+                    btn.disabled = true;
+                } else if (userSelectedNumbers.includes(i)) {
+                    btn.classList.add('selected');
+                }
+
+                btn.onclick = () => selectNumber(i);
+                mainBoard.appendChild(btn);
+            }
+
+            updateTicketDisplay();
+        }
+
+        function updateTicketDisplay() {
+            const subBoard = document.getElementById('subTicketBoard');
+            subBoard.innerHTML = '';
+
+            // የካርቴላ ሳምፕል ሕግ (25 ቦታዎች እንዲኖሩት ማድረግ)
+            for (let i = 0; i < 25; i++) {
+                const sBtn = document.createElement('div');
+                sBtn.className = 'sub-btn';
+                if (i === 12) {
+                    sBtn.textContent = '*'; // መሃል ላይ ኮከብ
+                } else if (userSelectedNumbers[i !== 12 && i < userSelectedNumbers.length ? (i > 12 ? i - 1 : i) : -1] !== undefined) {
+                    const idx = i > 12 ? i - 1 : i;
+                    sBtn.textContent = userSelectedNumbers[idx] || '';
+                } else {
+                    sBtn.textContent = '';
+                }
+                subBoard.appendChild(sBtn);
             }
         }
     </script>
