@@ -10,17 +10,17 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
-// የሞንጎዲቢ (MongoDB) ቻናል ግንኙነት (Render ላይ ለምትጠቀሙት Mongo URI መቀየር ትችላላችሁ)
+// የሞንጎዲቢ (MongoDB) ግንኙነት - Render ላይ ከ MongoDB Atlas ጋር እንዲገናኝ ይደረጋል
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/addis_bingo';
 mongoose.connect(MONGO_URI)
-    .then(() => console.log('MongoDB ከሰርቨር ጋር ተገናኝቷል!'))
+    .then(() => console.log('MongoDB ከሰርቨር ጋር በအောင်ኬት ተገናኝቷል!'))
     .catch(err => console.error('MongoDB Connection Error:', err));
 
-// የተጠቃሚ (User) ስኬማ - አንድ ቴሌግራም ID አንዴ ብቻ ይመዝገባል
+// የተጠቃሚ (User) ስኬማ - 50 ብር ቦነስ ጨምሮ
 const userSchema = new mongoose.Schema({
     telegramId: { type: String, required: true, unique: true },
     name: { type: String },
-    balance: { type: Number, default: 0 },
+    balance: { type: Number, default: 50 }, // አዲስ ሲመዘገብ 50 ብር ቦነስ ይሰጠዋል
     createdAt: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
@@ -35,7 +35,7 @@ const depositSchema = new mongoose.Schema({
 });
 const Deposit = mongoose.model('Deposit', depositSchema);
 
-// ሪጅስትሬሽን ኤፒአይ (አንዴ ከተመዘገበ ሁለተኛ ዳታቤዝ ላይ አዲስ አይፈጥርም፣ ያለውን ይመልሳል)
+// ሪጅስትሬሽን ኤፒአይ (አንዴ ከተመዘገበ ሁለተኛ ዳታቤዝ ላይ አዲስ አይፈጥርም፣ ካለ ያለውን ባላንስ ይዞ ይገባል)
 app.post('/api/register', async (req, res) => {
     try {
         const { telegramId, name } = req.body;
@@ -43,7 +43,8 @@ app.post('/api/register', async (req, res) => {
 
         let user = await User.findOne({ telegramId });
         if (!user) {
-            user = new User({ telegramId, name: name || 'Player', balance: 0 });
+            // አዲስ ሲመዘገብ 50 ብር ቦነስ ተሰጥቶት ይመዝገባል
+            user = new User({ telegramId, name: name || 'Player', balance: 50 });
             await user.save();
         }
         res.status(200).json({ success: true, user });
@@ -98,7 +99,6 @@ io.on('connection', (socket) => {
                 status: 'pending'
             });
             await newDep.save();
-            console.log('አዲስ የዲፖዚት ጥያቄ ደርሷል ከ:', data.telegramId);
         } catch (e) {
             console.error('Deposit Error:', e);
         }
@@ -124,6 +124,6 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => { console.log('ተጠቃሚ ወጥቷል:', socket.id); });
 });
 
-// Render ፖርቱን በራስ ሰር እንዲወስድ (PORT 3000 ሃርድኮድ ሳያደርግ)
+// Render ፖርቱን በራስ ሰር እንዲወስድ
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => { console.log(`ሰርቨሩ በፖርት ${PORT} እየሰራ ነው...`); });
