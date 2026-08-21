@@ -14,12 +14,20 @@
         .page { display: none; width: 100%; }
         .page.active { display: block; }
 
-        /* PAGE 0: LANDING / BET SELECTION */
-        .header-box { text-align: center; padding: 20px 10px; color: #fff; margin-top: 20px; }
-        .header-box h2 { font-size: 22px; margin-bottom: 10px; color: #ffb703; }
-        .header-box p { font-size: 13px; color: #f0e6ff; line-height: 1.4; }
-        .bet-selection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 15px; margin-top: 10px; }
-        .bet-btn { padding: 25px 10px; font-size: 20px; font-weight: bold; background: #ffb703; color: #4a2c73; border: none; border-radius: 15px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; }
+        /* PAGE 0: LANDING / BET SELECTION & WALLET */
+        .header-box { text-align: center; padding: 15px 10px; color: #fff; margin-top: 10px; }
+        .header-box h2 { font-size: 20px; margin-bottom: 5px; color: #ffb703; }
+        .header-box p { font-size: 12px; color: #f0e6ff; line-height: 1.4; }
+        
+        .main-wallet-card { background: white; color: #4a2c73; padding: 12px; border-radius: 12px; margin: 10px 15px; text-align: center; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .main-wallet-card span { display: block; font-size: 20px; color: #7b2cbf; margin-top: 4px; }
+        .main-wallet-actions { display: flex; gap: 10px; margin-top: 10px; }
+        .main-wallet-actions button { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; color: white; }
+        .btn-dep-main { background: #28a745; }
+        .btn-with-main { background: #dc3545; }
+
+        .bet-selection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 15px; }
+        .bet-btn { padding: 20px 10px; font-size: 18px; font-weight: bold; background: #ffb703; color: #4a2c73; border: none; border-radius: 12px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; }
         .bet-btn:active { transform: scale(0.95); background: #e6a602; }
 
         /* Top Header Stats */
@@ -27,15 +35,12 @@
         .stat-card { background: white; color: #4a2c73; padding: 6px 2px; border-radius: 10px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .stat-card span { display: block; font-size: 12px; color: #7b2cbf; margin-top: 2px; }
 
-        /* Deposit/Withdraw Buttons Header */
         .wallet-actions { display: flex; gap: 4px; margin-top: 4px; width: 100%; }
         .btn-dep { background: #28a745; color: white; border: none; padding: 2px 5px; border-radius: 4px; font-size: 9px; cursor: pointer; font-weight: bold; flex: 1; }
         .btn-with { background: #dc3545; color: white; border: none; padding: 2px 5px; border-radius: 4px; font-size: 9px; cursor: pointer; font-weight: bold; flex: 1; }
 
-        /* Bet Controls (- Bet +) */
         .bet-control { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; }
-        .btn-step { background: #7b2cbf; color: white; border: none; width: 18px; height: 18px; border-radius: 50%; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
-        .btn-step:active { background: #551a8b; transform: scale(0.95); }
+        .btn-step { background: #7b2cbf; color: white; border: none; width: 18px; height: 18px; border-radius: 50%; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .bet-val { font-size: 12px; color: #7b2cbf; min-width: 20px; }
 
         /* SCREEN 1 STYLES */
@@ -47,7 +52,6 @@
         .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; background: #e2d5f0; padding: 4px; border-radius: 6px; width: 160px; }
         .preview-cell { background: white; color: #222; font-size: 10px; font-weight: bold; text-align: center; padding: 5px 0; border-radius: 3px; }
         .preview-cell.free { background: #008000; color: white; }
-
         .controls { display: flex; flex-direction: column; gap: 8px; }
 
         /* SCREEN 2 STYLES */
@@ -77,8 +81,7 @@
         .user-board { background: #d0c0e0; padding: 5px; border-radius: 8px; }
         .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 3px; }
         .board-cell { background: white; color: #222; font-size: 11px; font-weight: bold; text-align: center; padding: 6px 0; border-radius: 3px; cursor: pointer; user-select: none; }
-        .board-cell.free { background: #008000; color: white; }
-        .board-cell.marked { background: #008000; color: white; }
+        .board-cell.free, .board-cell.marked { background: #008000; color: white; }
         .board-footer { text-align: center; font-size: 9px; color: #4a2c73; margin-top: 3px; font-weight: bold; }
 
         .btn-bingo { background: #ff6f00; color: white; border: none; width: 100%; padding: 12px; border-radius: 25px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
@@ -101,12 +104,27 @@
 
     <div class="main-container">
 
-        <!-- PAGE 0: LANDING PAGE (BET SELECTION) -->
+        <!-- PAGE 0: LANDING / WALLET & BET SELECTION -->
         <div id="page0" class="page active">
             <div class="header-box">
                 <h2>እንኳን ወደ ቢንጎ ጨዋታ በደህና መጡ!</h2>
-                <p>እየተዝናኑ ብር ይስሩ። ለመጀመር የሚፈልጉትን የጨዋታ ዋጋ ይምረጡ፡</p>
+                <p>እየተዝናኑ ብር ይስሩ። በመጀመሪያ የሂሳብዎ ሁኔታ ይመልከቱ፦</p>
             </div>
+
+            <!-- Main Wallet & Deposit/Withdraw Buttons -->
+            <div class="main-wallet-card">
+                የእርስዎ ቀሪ ሂሳብ (Wallet)
+                <span id="mainWalletDisplay">0.00 ETB</span>
+                <div class="main-wallet-actions">
+                    <button class="btn-dep-main" onclick="openModal('depositModal')">📥 ገቢ (Deposit)</button>
+                    <button class="btn-with-main" onclick="openModal('withdrawModal')">📤 ወጪ (Withdraw)</button>
+                </div>
+            </div>
+
+            <div class="header-box" style="margin-top: 0; padding-top: 0;">
+                <p>ለመጀመር የሚፈልጉትን የጨዋታ ዋጋ ይምረጡ፡</p>
+            </div>
+
             <div class="bet-selection-grid">
                 <button class="bet-btn" onclick="selectBet(20)">20 ብር</button>
                 <button class="bet-btn" onclick="selectBet(50)">50 ብር</button>
@@ -201,12 +219,11 @@
         </div>
     </div>
 
-    <!-- WINNER MODAL POPUP -->
+    <!-- WINNER MODAL -->
     <div class="modal-overlay" id="winnerModal">
         <div class="modal-card">
             <div class="winner-banner">BINGO!</div>
             <p style="margin-bottom:8px; font-weight:bold; font-size:13px;" id="winnerText">እንኳን ደስ አለዎት! አሸንፈዋል።</p>
-            
             <div class="user-board" style="background:#e2d5f0;">
                 <div class="bingo-header-row">
                     <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
@@ -214,7 +231,6 @@
                 <div class="board-grid" id="winnerBoardGrid"></div>
                 <div style="background:#008080; color:white; border-radius:4px; padding:2px 5px; font-size:9px; margin-top:4px; display:inline-block;">Winner Ticket</div>
             </div>
-
             <button class="play-again-btn" onclick="closeModal('winnerModal')">Play Again</button>
         </div>
     </div>
@@ -226,7 +242,7 @@
             <p style="font-size: 11px; margin-bottom: 8px;">ወደ <b>0915503379 (Mulualem)</b> የላኩበትን መጠን እና SMS ያስገቡ፦</p>
             <input type="number" id="depAmount" placeholder="መጠን (ETB)">
             <textarea id="depSMS" rows="3" placeholder="የቴሌብር SMS እዚህ ይልጠፉ"></textarea>
-            <button style="background:#28a745; color:white;" onclick="submitDeposit()">አረጋግጥ</button>
+            <button style="background:#28a745; color:white;" onclick="submitDeposit()">አረጋግጥ (Submit)</button>
             <button style="background:#dc3545; color:white;" onclick="closeModal('depositModal')">ሰርዝ</button>
         </div>
     </div>
@@ -246,10 +262,8 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Socket connection (ከእርስዎ ሰርቨር ጋር የሚገናኝበት)
         const socket = io(); 
-        
-        let currentUser = tg.initDataUnsafe?.user || { id: "test_bingo_user", first_name: "Bingo Player" };
+        let currentUser = tg.initDataUnsafe?.user || { id: "test_user_123", first_name: "Bingo Player" };
         let userWallet = 0.00;
         let currentBet = 10;
         let selectedCardsCount = 1;
@@ -261,26 +275,28 @@
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
         let countdownTimer = null;
 
-        // 1. መተግበሪያው ሲከፈት የተጠቃሚውን ባላንስ ከ ዳታቤዝ ማምጣት
+        // መተግበሪያው ሲከፈት ሪጅስትሬሽን ማረጋገጥ እና ባላንስ ማምጣት
         window.addEventListener('DOMContentLoaded', async () => {
             if (currentUser && currentUser.id) {
                 try {
-                    const res = await fetch(`/api/user/${currentUser.id}`);
-                    const data = await res.json();
-                    if (res.ok) {
-                        userWallet = data.balance || 0;
+                    // 1. ሪጅስትሬሽን ማረጋገጥ (አንዴ ከገባ ሁለተኛ አዲስ አካውንት እንዳይከፈት)
+                    const regRes = await fetch('/api/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ telegramId: currentUser.id, name: currentUser.first_name })
+                    });
+                    const regData = await regRes.json();
+                    if(regRes.ok) {
+                        userWallet = regData.user.balance || 0;
                         updateHeaderStats();
                     }
                 } catch (e) {
-                    console.error('የተጠቃሚ መረጃ ማምጣት አልተቻለም', e);
+                    console.error('የሰርቨር ስህተት:', e);
                 }
             }
         });
 
-        // Socket.io Realtime Sync
-        socket.on('connect', () => {
-            console.log("ከቢንጎ ሰርቨር ጋር በትክክል ተገናኝቷል!");
-        });
+        socket.on('connect', () => { console.log("ከቢንጎ ሰርቨር ጋር ተገናኝቷል!"); });
 
         socket.on('numberDrawn', (data) => {
             let rand = data.number;
@@ -298,20 +314,10 @@
             ball.className = 'recent-ball';
             ball.innerText = callText;
             recentCalls.prepend(ball);
-
-            playPopSound();
         });
 
-        socket.on('gameOver', (data) => {
-            alert(data.message);
-            leaveGame();
-        });
+        socket.on('gameOver', (data) => { alert(data.message); leaveGame(); });
 
-        socket.on('bingoDeclared', (data) => {
-            alert(data.message);
-        });
-
-        // Modals
         const cardsGrid = document.getElementById('cardsGrid');
         const previewTicket = document.getElementById('previewTicket');
         const calledGrid = document.getElementById('calledGrid');
@@ -330,14 +336,14 @@
             if(id === 'winnerModal') leaveGame();
         }
 
-        // ዲፖዚት ጥያቄ ወደ ሰርቨር መላክ
+        // ዲፖዚት ጥያቄ ወደ አድሚን መላክ (Pending)
         function submitDeposit() {
             const amount = document.getElementById('depAmount').value;
             const smsText = document.getElementById('depSMS').value;
             if (!amount || !smsText) return alert('እባክዎን ሁሉንም ያሟሉ!');
             
-            socket.emit('verifyAndDeposit', { userId: currentUser.id, amount: parseFloat(amount), smsText: smsText });
-            alert('የዲፖዚት ጥያቄዎ ተልኳል! በአጭር ጊዜ ውስጥ ይረጋገጣል።');
+            socket.emit('requestDeposit', { telegramId: currentUser.id, amount: parseFloat(amount), smsText: smsText });
+            alert('የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል! አድሚኑ ሲያረጋግጠው አካውንትዎ ላይ ይገባል።');
             closeModal('depositModal');
         }
 
@@ -347,7 +353,7 @@
             const accountDetails = document.getElementById('withAccount').value;
             if (!amount || !accountDetails) return alert('እባክዎን ሁሉንም ያሟሉ!');
             
-            socket.emit('requestWithdraw', { userId: currentUser.id, amount: parseFloat(amount), accountDetails: accountDetails });
+            socket.emit('requestWithdraw', { telegramId: currentUser.id, amount: parseFloat(amount), accountDetails: accountDetails });
             alert('የወጪ ጥያቄዎ ተልኳል።');
             closeModal('withdrawModal');
         }
@@ -369,58 +375,18 @@
         function updateHeaderStats() {
             let totalStake = currentBet * selectedCardsCount;
             document.getElementById('walletDisplay').innerText = userWallet.toFixed(2);
+            document.getElementById('mainWalletDisplay').innerText = userWallet.toFixed(2) + " ETB";
             document.getElementById('betDisplay').innerText = currentBet;
             document.getElementById('stakeDisplay').innerText = totalStake.toFixed(2);
             document.getElementById('liveBetDisplay').innerText = currentBet;
         }
 
-        function generateGameId() {
-            let randomNum = Math.floor(1000 + Math.random() * 9000);
-            return 'BQ' + randomNum;
-        }
-
-        function calculateDerash() {
-            let totalPool = currentBet * activePlayersCount;
-            let derash = totalPool * 0.85;
-            return derash.toFixed(1);
-        }
-
-        // ድምጾች
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playPopSound() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
-        }
-
-        function playWinSound() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.4);
-            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.4);
-        }
+        function generateGameId() { return 'BQ' + Math.floor(1000 + Math.random() * 9000); }
+        function calculateDerash() { return (currentBet * activePlayersCount * 0.85).toFixed(1); }
 
         function generateBingoCard() {
             let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
             let cols = [];
-
             for(let c = 0; c < 5; c++) {
                 let col = [];
                 let min = ranges[c][0], max = ranges[c][1];
@@ -430,16 +396,11 @@
                 }
                 cols.push(col);
             }
-
             let card = [];
             for(let r = 0; r < 5; r++) {
                 let row = [];
                 for(let c = 0; c < 5; c++) {
-                    if(r === 2 && c === 2) {
-                        row.push("*");
-                    } else {
-                        row.push(cols[c][r]);
-                    }
+                    row.push(r === 2 && c === 2 ? "*" : cols[c][r]);
                 }
                 card.push(row);
             }
@@ -505,11 +466,11 @@
             clearInterval(countdownTimer);
             document.getElementById('page2').classList.remove('active');
             document.getElementById('page0').classList.add('active');
+            updateHeaderStats();
         }
 
         function startLiveGame() {
             calledGrid.innerHTML = '';
-
             for (let row = 0; row < 15; row++) {
                 for (let col = 0; col < 5; col++) {
                     let num = (col * 15) + (row + 1);
@@ -517,13 +478,12 @@
                     cell.className = 'grid-num';
                     cell.id = `grid-num-${num}`;
                     cell.innerText = num;
-                    calledGrid.appendChild(cell);
+                    calledGrid.appendChild(city = cell);
                 }
             }
 
             playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
             playerMarkedBoard[2][2] = true;
-
             renderInteractiveBoard();
 
             drawnNumbers = [];
@@ -532,7 +492,6 @@
             callCountEl.innerText = '0';
 
             clearInterval(countdownTimer);
-            
             let count = 5;
             countdownText.innerText = `${count}s`;
 
@@ -551,14 +510,12 @@
         function renderInteractiveBoard() {
             userBoardGrid.innerHTML = '';
             const card = allCardsData[selectedCardId];
-            
             card.forEach((row, r) => {
                 row.forEach((val, c) => {
                     let cell = document.createElement('div');
                     cell.className = `board-cell ${val === '*' ? 'free' : ''}`;
                     if(playerMarkedBoard[r][c]) cell.classList.add('marked');
                     cell.innerText = val;
-                    
                     cell.onclick = () => {
                         if(val !== '*') {
                             playerMarkedBoard[r][c] = !playerMarkedBoard[r][c];
@@ -573,48 +530,33 @@
         function checkPlayerBingo() {
             const card = allCardsData[selectedCardId];
             let isBingo = false;
-
             const isValidMark = (r, c) => {
                 let num = card[r][c];
                 return (num === '*' || drawnNumbers.includes(num)) && playerMarkedBoard[r][c];
             };
 
-            for(let r=0; r<5; r++) {
-                if([0,1,2,3,4].every(c => isValidMark(r, c))) isBingo = true;
-            }
-
-            for(let c=0; c<5; c++) {
-                if([0,1,2,3,4].every(r => isValidMark(r, c))) isBingo = true;
-            }
-
+            for(let r=0; r<5; r++) if([0,1,2,3,4].every(c => isValidMark(r, c))) isBingo = true;
+            for(let c=0; c<5; c++) if([0,1,2,3,4].every(r => isValidMark(r, c))) isBingo = true;
             if([0,1,2,3,4].every(i => isValidMark(i, i))) isBingo = true;
             if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) isBingo = true;
 
             if(isBingo) {
                 clearInterval(countdownTimer);
-                
                 let winAmount = parseFloat(calculateDerash());
                 userWallet += winAmount;
                 updateHeaderStats();
-                
-                playWinSound();
                 showWinnerModal(winAmount);
-
                 socket.emit('claimBingo', { card, winAmount });
             } else {
-                alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ ወይም የቢንጎ ህግ አልተሟላም።");
+                alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
             }
         }
 
-        function restartLiveGame() {
-            clearInterval(countdownTimer);
-            startLiveGame();
-        }
+        function restartLiveGame() { clearInterval(countdownTimer); startLiveGame(); }
 
         function showWinnerModal(winAmount) {
             const winnerBoardGrid = document.getElementById('winnerBoardGrid');
             document.getElementById('winnerText').innerText = `እንኳን ደስ አለዎት! ${winAmount} ብር አሸንፈዋል።`;
-            
             winnerBoardGrid.innerHTML = '';
             allCardsData[selectedCardId].forEach((row, r) => {
                 row.forEach((val, c) => {
