@@ -37,7 +37,7 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB ከሰርቨር ጋር በအောင်ኬት ተገናኝቷል!'))
     .catch(err => console.error('MongoDB Connection Error:', err));
 
-// የተጠቃሚ ስኬማ (50 ብር ቦነስ አለው)
+// የተጠቃሚ ስኬማ
 const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true },
     name: { type: String },
@@ -68,7 +68,7 @@ bot.onText(/\/start/, (msg) => {
     });
 });
 
-// 1. የተጠቃሚ ምዝገባ (Register / Auto-login) ኤፒአይ
+// 1. የተጠቃሚ ምዝገባ (የነበረውን ትክክለኛ ባላንስ የሚይዝ - የጠፋ ብር ተመልሶ እንዳይመጣ)
 app.post('/api/register', async (req, res) => {
     try {
         const { identifier, name } = req.body;
@@ -76,16 +76,45 @@ app.post('/api/register', async (req, res) => {
 
         let user = await User.findOne({ identifier });
         if (!user) {
+            // የመጀመሪያ ጊዜ ሲመዝገብ ብቻ 50 ብር ቦነስ ይሰጠዋል
             user = new User({ identifier, name: name || 'ተጫዋች', balance: 50 });
             await user.save();
         }
+        // ተጠቃሚው ቀድሞውኑ ካለ የነበረበትን ትክክለኛ ቀሪ ሂሳብ እንጂ ሁልጊዜ 50 ብር አልሰጠውም
         res.status(200).json({ success: true, user });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
 });
 
-// 2. የዲፖዚት ጥያቄ መቀበያ ኤፒአይ (ለአድሚን አፕሩቭ ማድረጊያ ቁልፍ ጋር)
+// 2. ጨዋታ ሲጀመር ከባላንስ ላይ ብር ቆርጦ በዳታቤዝ የሚያስቀምጥ ኤፒአይ
+app.post('/api/play-game', async (req, res) => {
+    try {
+        const { identifier, stakeAmount } = req.body;
+        if (!identifier || !stakeAmount) {
+            return res.status(400).json({ success: false, error: 'መረጃዎች ሙሉ አይደሉም' });
+        }
+
+        let user = await User.findOne({ identifier });
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም' });
+        }
+
+        if (user.balance < stakeAmount) {
+            return res.status(400).json({ success: false, error: 'በቂ ባላንስ የለዎትም!' });
+        }
+
+        // ከባላንሱ ላይ ስቴኩን መቀነስ እና ወዲያውኑ በዳታቤዝ ማስቀመጥ
+        user.balance -= stakeAmount;
+        await user.save();
+
+        res.status(200).json({ success: true, balance: user.balance });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 3. የዲፖዚት ጥያቄ መቀበያ ኤፒአይ (ለአድሚን አፕሩቭ ማድረጊያ ቁልፍ ጋር)
 app.post('/api/deposit', async (req, res) => {
     try {
         const { identifier, amount, smsText } = req.body;
@@ -96,7 +125,6 @@ app.post('/api/deposit', async (req, res) => {
         const newDep = new Deposit({ identifier, amount, smsText, status: 'pending' });
         await newDep.save();
 
-        // ለአድሚን አፕሩቭ ማድረጊያ Inline Button መላክ
         const inlineKeyboard = {
             inline_keyboard: [
                 [
@@ -116,7 +144,7 @@ app.post('/api/deposit', async (req, res) => {
     }
 });
 
-// 3. አድሚኑ ቁልፉን ሲጫን (Callback Query) ብሩን ወደ ተጠቃሚው አካውንት የሚጨምርበት ሎጂክ
+// 4. አድሚኑ ቁልፉን ሲጫን ብሩን ወደ ተጠቃሚው አካውንት የሚጨምርበት ሎጂክ
 bot.on('callback_query', async (query) => {
     const data = query.data;
     const chatId = query.message.chat.id;
@@ -133,11 +161,9 @@ bot.on('callback_query', async (query) => {
                 return bot.answerCallbackQuery(query.id, { text: "ጥያቄው አልተገኘም ወይም უკვე ተረጋግጧል!" });
             }
 
-            // የዲፖዚት ሁኔታን መቀየር
             dep.status = 'approved';
             await dep.save();
 
-            // ተጠቃሚው ላይ ብሩን መጨመር
             let user = await User.findOne({ identifier: dep.identifier });
             if (user) {
                 user.balance += dep.amount;
@@ -149,7 +175,6 @@ bot.on('callback_query', async (query) => {
                 message_id: query.message.message_id
             });
 
-            // ለተጠቃሚው ማሳወቂያ መላክ
             bot.sendMessage(dep.identifier, `🎉 የእርስዎ የ ${dep.amount} ብር የዲፖዚት ጥያቄ በአድሚን ጸድቋል! አሁን መጫወት ይችላሉ።`);
 
         } catch (e) {
