@@ -11,29 +11,25 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.json());
 app.use(express.static('public'));
 
-// 📌 የአካባቢ ተለዋዋጮች (Environment Variables)
+// 📌 የአካባቢ ተለዋዋጮች
 const TOKEN = process.env.BOT_TOKEN || '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_ID = process.env.ADMIN_ID || '686733543';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/addis_bingo';
 
-// 📌 የቴሌግራም ቦት አጀማመር
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-// Render ላይ Deploy ሲደረግ የሚመጣውን ጊዜያዊ 409 Conflict ኤረር ማኔጅ ማድረጊያ
 bot.on('polling_error', (error) => {
-    if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
-        // በ Render re-deploy ወቅት ለጥቂት ሰከንዶች የሚፈጠር ግጭት ስለሆነ ችላ ይለዋል
-        return;
-    }
+    if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) return;
     console.error('Telegram Polling Error:', error.message);
 });
 
-// 📌 1. የዳታቤዝ ስኬማዎች (Database Schemas)
+// 📌 1. የተሻሻለ የተጠቃሚዎች ዳታቤዝ ስኬማ (Telegram ID + Username)
 const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true }, // Telegram ID
+    username: { type: String, default: '' },                   // Telegram Username (@username)
     name: { type: String, default: 'ተጫዋች' },
     phone: { type: String, default: '' },
-    balance: { type: Number, default: 50 }, // የመጀመሪያ ጊዜ ቦነስ 50 ብር
+    balance: { type: Number, default: 50 },                   // ለመጀመሪያ ጊዜ አዲስ ምዝገባ ብቻ የሚሰጥ ቦነስ
     registeredAt: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
@@ -58,7 +54,7 @@ mongoose.connect(MONGO_URI)
 // ሀ) አውቶማቲክ ምዝገባ እና ዳታ ማወጫ (Get User / Auto-Register)
 app.post('/api/get-user', async (req, res) => {
     try {
-        const { identifier, name, phone } = req.body;
+        const { identifier, name, username, phone } = req.body;
         if (!identifier) {
             return res.status(400).json({ success: false, error: 'Telegram ID አልተገኘም' });
         }
@@ -66,19 +62,25 @@ app.post('/api/get-user', async (req, res) => {
         let user = await User.findOne({ identifier: String(identifier) });
 
         if (!user) {
+            // 🆕 አዲስ ተጠቃሚ ከሆነ ብቻ 50 ብር ይሰጠዋል
             user = new User({
                 identifier: String(identifier),
+                username: username || '',
                 name: name || 'ተጫዋች',
                 phone: phone || '',
-                balance: 50 // የመጀመሪያ ጊዜ ቦነስ
+                balance: 50 
             });
             await user.save();
-            console.log(`አዲስ ተጠቃሚ ተመዝግቧል: ${identifier}`);
-        } else if (phone && !user.phone) {
-            user.phone = phone;
-            await user.save();
+            console.log(`አዲስ ተጠቃሚ ተመዝግቧል: ID=${identifier}, Username=@${username}`);
+        } else {
+            // 🔄 ነባር ተጠቃሚ ከሆነ Username ወይም ስም ከተቀየረ ያዝምነዋል (ባላንሱን ግን አይነካውም!)
+            let updated = false;
+            if (username && user.username !== username) { user.username = username; updated = true; }
+            if (name && user.name !== name) { user.name = name; updated = true; }
+            if (updated) await user.save();
         }
 
+        // የቆየውን ትክክለኛ ባላንስ ይመልሳል
         res.status(200).json({ success: true, user });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -140,7 +142,7 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
-// 📌 3. የአድሚን አፕሩቫል ሎጂክ (Telegram Callback Query)
+// 📌 3. የአድሚን አፕሩቫል ሎጂክ
 bot.on('callback_query', async (query) => {
     const data = query.data;
     const chatId = query.message.chat.id;
@@ -172,7 +174,7 @@ bot.on('callback_query', async (query) => {
             if (user) await user.save();
             await trans.save();
 
-            bot.editMessageText(`✅ የ${trans.type} ጥያቄ ጸድቋል።\nተጠቃሚ: ${trans.identifier}\nመጠን: ${trans.amount} ETB`, {
+            bot.editMessageText(`✅ የ${trans.type} ጥያቄ ጸድቋል።\nተጠቃሚ ID: ${trans.identifier}\nመጠን: ${trans.amount} ETB`, {
                 chat_id: chatId, message_id: query.message.message_id
             });
 
@@ -193,7 +195,7 @@ bot.on('callback_query', async (query) => {
     }
 });
 
-// 📌 4. REAL-TIME BINGO SOCKET.IO LOGIC
+// 📌 4. REAL-TIME BINGO SOCKET.IO LOGIC (የማሸነፊያ ብር ዳታቤዝ ላይ መደመሪያ የተካተተበት)
 io.on('connection', (socket) => {
     let gameInterval = null;
 
@@ -218,8 +220,24 @@ io.on('connection', (socket) => {
         }, 3000);
     });
 
+    // 🌟 አሸናፊ ሲኖር ብሩን በዳታቤዝ ውስጥ ማስቀመጥ
     socket.on('claimBingo', async (data) => {
         clearInterval(gameInterval);
+        const { identifier, winAmount } = data;
+
+        if (identifier && winAmount) {
+            try {
+                const user = await User.findOne({ identifier: String(identifier) });
+                if (user) {
+                    user.balance += parseFloat(winAmount);
+                    await user.save();
+                    console.log(`🎉 ተጠቃሚ ${identifier} ${winAmount} ETB አሸንፎ ዳታቤዝ ላይ ተደመረለት። አዲስ ባላንስ: ${user.balance}`);
+                }
+            } catch (err) {
+                console.error("የማሸነፊያ ብር ዳታቤዝ ላይ ሲመዘገብ ስህተት ተፈጠረ:", err);
+            }
+        }
+
         io.emit('gameOver', { message: `አሸናፊ ተገኝቷል!` });
     });
 
