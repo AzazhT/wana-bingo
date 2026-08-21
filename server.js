@@ -3,14 +3,13 @@ const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const TelegramBot = require('node-telegram-bot-api');
-const path = require('path'); // 📌 1. የ path ሞጁል ተጨምሯል
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.json());
-// 📌 2. Static ፎልደር ማስተካከያ
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 📌 የአካባቢ ተለዋዋጮች
@@ -21,17 +20,27 @@ const WEB_APP_URL = process.env.WEB_APP_URL || 'https://wana-bingo.onrender.com'
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
+// 📌 1. የቴሌግራም MENU BUTTON ትዕዛዞች ማዘጋጀት
+bot.setMyCommands([
+    { command: 'start', description: '🤖 ቦቱን ለመጀመር / Start' },
+    { command: 'register', description: '📝 ለመመዝገብ / Register' },
+    { command: 'deposit', description: '💳 ብር ገቢ ለማድረግ / Deposit' },
+    { command: 'withdraw', description: '💸 ብር ወጪ ለማድረግ / Withdraw' }
+]);
+
 bot.on('polling_error', (error) => {
     if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) return;
     console.error('Telegram Polling Error:', error.message);
 });
 
-// 📌 የ /start ትዕዛዝ
+// 📌 2. የቴሌግራም COMMAND HANDLERS
+
+// /start ትዕዛዝ
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const firstName = msg.from.first_name || 'ተጫዋች';
 
-    const welcomeMessage = `👋 ሰላም **${firstName}**!\n\nእንኳን ወደ **Wana Bingo** በደህና መጡ! 🎲🎉\n\nከታች ያለውን **"🎮 ጨዋታውን ጀምር"** የሚለውን በተን በመጫን ቢንጎ መጫወት እና ማሸነፍ ይችላሉ!`;
+    const welcomeMessage = `👋 ሰላም **${firstName}**!\n\nእንኳን ወደ **Wana Bingo** በደህና መጡ! 🎲🎉\n\n📲 **Telebirr:** \`0946330954\`\n\nከታች ያለውን **"🎮 ጨዋታውን ጀምር"** የሚለውን በተን በመጫን ቢንጎ መጫወት እና ማሸነፍ ይችላሉ!`;
 
     const options = {
         parse_mode: 'Markdown',
@@ -44,7 +53,8 @@ bot.onText(/\/start/, async (msg) => {
                     }
                 ],
                 [
-                    { text: "📞 እገዛ (Support)", callback_data: "help_info" }
+                    { text: "💳 Deposit Info", callback_data: "deposit_info" },
+                    { text: "📞 Support", callback_data: "help_info" }
                 ]
             ]
         }
@@ -53,7 +63,34 @@ bot.onText(/\/start/, async (msg) => {
     bot.sendMessage(chatId, welcomeMessage, options);
 });
 
-// 📌 የዳታቤዝ ስኬማዎች (Database Schemas)
+// /register ትዕዛዝ
+bot.onText(/\/register/, (msg) => {
+    const regMsg = `📝 **ምዝገባ:**\n\nጨዋታውን ሲከፍቱ በራስ-ሰር ይመዘገባሉ። ከታች ያለውን በተን በመጫን መጫወት መጀመር ይችላሉ!`;
+    bot.sendMessage(msg.chat.id, regMsg, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [[{ text: "🎮 ጨዋታውን ጀምር", web_app: { url: WEB_APP_URL } }]]
+        }
+    });
+});
+
+// /deposit ትዕዛዝ
+bot.onText(/\/deposit/, (msg) => {
+    const depositMsg = `💳 **ብር ገቢ ለማድረግ (Deposit):**\n\n` +
+                       `1. በ Telebirr ወደዚህ ቁጥር ይላኩ፡\n` +
+                       `📱 **Telebirr:** \`0946330954\`\n\n` +
+                       `2. ብር ከላኩ በኋላ የላኩበትን Transaction ID/SMS በ Mini App ውስጥ ባለው Deposit ገጽ ላይ ያስገቡ!`;
+    bot.sendMessage(msg.chat.id, depositMsg, { parse_mode: 'Markdown' });
+});
+
+// /withdraw ትዕዛዝ
+bot.onText(/\/withdraw/, (msg) => {
+    const withdrawMsg = `💸 **ብር ወጪ ለማድረግ (Withdraw):**\n\n` +
+                        `በ Mini App ውስጥ ወደ Wallet/Profile ገጽ በመሄድ የትርፍዎን Withdraw ጥያቄ ማቅረብ ይችላሉ።`;
+    bot.sendMessage(msg.chat.id, withdrawMsg, { parse_mode: 'Markdown' });
+});
+
+// 📌 3. የዳታቤዝ ስኬማዎች (Database Schemas)
 const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true },
     username: { type: String, default: '' },
@@ -79,7 +116,7 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB Connected!'))
     .catch(err => console.error('MongoDB Error:', err));
 
-// 📌 API ENDPOINTS
+// 📌 4. API ENDPOINTS
 app.post('/api/get-user', async (req, res) => {
     try {
         const { identifier, name, username, phone } = req.body;
@@ -162,7 +199,7 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
-// 📌 TELEGRAM CALLBACK QUERY
+// 📌 5. TELEGRAM CALLBACK QUERY
 bot.on('callback_query', async (query) => {
     const data = query.data;
     const chatId = query.message.chat.id;
@@ -172,6 +209,10 @@ bot.on('callback_query', async (query) => {
             text: "ለማንኛውም ጥያቄ ወይም እገዛ በአድሚን አድራሻ ያግኙን!", 
             show_alert: true 
         });
+    }
+
+    if (data === 'deposit_info') {
+        return bot.sendMessage(chatId, `💳 **Telebirr Number:** \`0946330954\`\n\nብር ከላኩ በኋላ Transaction Reference ቁጥሩን በ Mini App ያስገቡ።`, { parse_mode: 'Markdown' });
     }
 
     if (chatId.toString() !== ADMIN_ID) {
@@ -222,12 +263,12 @@ bot.on('callback_query', async (query) => {
     }
 });
 
-// 📌 3. ለ Frontend ገጽ (index.html) የሚሰጥ Fallback Route (ይህ "Not Found" ኤረርን ያስቀራል)
+// 📌 6. FRONTEND FALLBACK ROUTE (Not Found እንዳይል የሚከለክል)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 📌 SOCKET.IO BINGO LOGIC
+// 📌 7. SOCKET.IO BINGO LOGIC
 io.on('connection', (socket) => {
     let gameInterval = null;
 
