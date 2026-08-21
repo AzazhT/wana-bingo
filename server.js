@@ -1,164 +1,190 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const mongoose = require('mongoose');
+const TelegramBot = require('node-telegram-bot-api');
+
+// 📌 የተሰጡት ቶከን እና የአድሚን አይዲ
+const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
+const ADMIN_ID = '686733543';
+const WEBAPP_URL = 'https://wana-bingo.onrender.com'; // የ Render ሊንክዎ
+
+const bot = new TelegramBot(TOKEN, { polling: true });
+
+// 📌 ከቻት ሳጥኑ ግርጌ (Message Bar) አጠገብ ቋሚ የሜኑ ቁልፍ ማስተካከል
+bot.setChatMenuButton({
+    menu_button: {
+        type: 'web_app',
+        text: '🎮 ፕሌይ ቢንጎ (Play Bingo)',
+        web_app: { url: WEBAPP_URL }
+    }
+}).then(() => {
+    console.log('የሜኑ ቁልፍ (Menu Button) በትክክል ተስተካክሏል!');
+}).catch(err => {
+    console.error('Menu button error:', err);
+});
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*" }
+    cors: { origin: "*" }
 });
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 
-// --- 1. ዳታቤዝ ማዘጋጀት (SQLite) ---
-const db = new sqlite3.Database('./bingo.db', (err) => {
-    if (err) console.error('የዳታቤዝ ስህተት:', err.message);
-    else console.log('ከ SQLite ዳታቤዝ ጋር ተገናኝቷል!');
+// 1. የሞንጎዲቢ ግንኙነት
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/addis_bingo';
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('MongoDB ከሰርቨር ጋር በအောင်ኬት ተገናኝቷል!'))
+    .catch(err => console.error('MongoDB Connection Error:', err));
+
+// 2. የተጠቃሚ ስኬማ (50 ብር ቦነስ አለው)
+const userSchema = new mongoose.Schema({
+    identifier: { type: String, required: true, unique: true },
+    name: { type: String },
+    balance: { type: Number, default: 50 },
+    createdAt: { type: Date, default: Date.now }
 });
+const User = mongoose.model('User', userSchema);
 
-// ቴብሎችን መፍጠር (ከተጠቃሚ ምዝገባ እስከ ዴፖዚት እና ዊዝድሮ)
-db.serialize(() => {
-    // የተጠቃሚዎች ቴብል (መጀመሪያ ሲመዘገቡ 50 ብር ቦነስ እንዲኖራቸው ይደረጋል)
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-        telegramId TEXT PRIMARY KEY,
-        name TEXT,
-        balance REAL DEFAULT 50.0,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    // የገቢ (Deposit) ጥያቄዎች ቴብል
-    db.run(`CREATE TABLE IF NOT EXISTS deposits (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        telegramId TEXT,
-        amount REAL,
-        smsText TEXT,
-        status TEXT DEFAULT 'pending',
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    // የወጪ (Withdraw) ጥያቄዎች ቴብል
-    db.run(`CREATE TABLE IF NOT EXISTS withdrawals (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        telegramId TEXT,
-        amount REAL,
-        accountDetails TEXT,
-        status TEXT DEFAULT 'pending',
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+// 3. የዲፖዚት ስኬማ
+const depositSchema = new mongoose.Schema({
+    identifier: String,
+    amount: Number,
+    smsText: String,
+    status: { type: String, default: 'pending' },
+    createdAt: { type: Date, default: Date.now }
 });
+const Deposit = mongoose.model('Deposit', depositSchema);
 
-// --- 2. የኤፒአይ (API) ክፍሎች ---
+// 4. የዊዝድሮ ስኬማ
+const withdrawSchema = new mongoose.Schema({
+    identifier: String,
+    amount: Number,
+    phone: String,
+    status: { type: String, default: 'pending' },
+    createdAt: { type: Date, default: Date.now }
+});
+const Withdraw = mongoose.model('Withdraw', withdrawSchema);
 
-// ተጠቃሚን መመዝገብ ወይም መረጃውን ማምጣት (Register / Login)
-app.post('/api/register', (req, res) => {
-    const { telegramId, name } = req.body;
-    if (!telegramId) return res.status(400).json({ success: false, error: 'Telegram ID ያስፈልጋል' });
-
-    db.get(`SELECT * FROM users WHERE telegramId = ?`, [telegramId], (err, row) => {
-        if (err) return res.status(500).json({ success: false, error: err.message });
-        
-        if (row) {
-            // ተጠቃሚው ቀደም ብሎ ከነበረ υ መረጃውን እንመልሳለን
-            res.json({ success: true, user: row });
-        } else {
-            // አዲስ ተጠቃሚ ሲመዘገብ 50 ብር ቦነስ እንሰጠዋለን
-            db.run(`INSERT INTO users (telegramId, name, balance) VALUES (?, ?, ?)`, [telegramId, name || 'Player', 50.0], function(err) {
-                if (err) return res.status(500).json({ success: false, error: err.message });
-                res.json({ success: true, user: { telegramId, name, balance: 50.0 } });
-            });
+// --- 5. ቴሌግራም /start ትዕዛዝ ---
+bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+    bot.sendMessage(chatId, "እንኳን ወደ Wana Bingo መጡ! ጨዋታውን ለመጀመር እና አካውንትዎን ለማስተዳደር ከታች ያለውን ቁልፍ ይጫኑ፡", {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    {
+                        text: "🎮 ፕሌይ ቢንጎ (Play Bingo)",
+                        web_app: { url: WEBAPP_URL }
+                    }
+                ]
+            ]
         }
     });
 });
 
-// --- 3. የሶኬት (Socket.io) ሎጅክ (ገቢ፣ ወጪ እና ጨዋታ) ---
+// --- 6. ኤፒአይዎች (APIs) ---
 
+// ምዝገባ እና 50 ብር ቦነስ
+app.post('/api/register', async (req, res) => {
+    try {
+        const { identifier, name } = req.body;
+        if (!identifier) return res.status(400).json({ success: false, error: 'ስልክ ቁጥር ወይም ቴሌግራም ID ያስፈልጋል' });
+
+        let user = await User.findOne({ identifier });
+        if (!user) {
+            user = new User({ identifier, name: name || 'ተጫዋች', balance: 50 });
+            await user.save();
+        }
+        res.status(200).json({ success: true, user });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ዲፖዚት (ብር ማስገባት) - ለአድሚን በቴሌግራም ማሳወቂያ ይልካል
+app.post('/api/deposit', async (req, res) => {
+    try {
+        const { identifier, amount, smsText } = req.body;
+        if (!identifier || !amount || !smsText) {
+            return res.status(400).json({ success: false, error: 'መረጃዎች ሙሉ አይደሉም' });
+        }
+
+        const newDep = new Deposit({ identifier, amount, smsText, status: 'pending' });
+        await newDep.save();
+
+        // ለአድሚን በቀጥታ ቴክስት መላክ
+        bot.sendMessage(ADMIN_ID, `📥 **አዲስ የዲፖዚት ጥያቄ!**\n\nተጠቃሚ: ${identifier}\nመጠን: ${amount} ብር\nመልእክት: ${smsText}\n\nአይዲ: ${newDep._id}`);
+
+        res.status(200).json({ success: true, message: 'የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል!' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// ዊዝድሮ (ብር ማውጣት) - ከባላንስ ቀንሶ ለአድሚን በቴሌግራም ማሳወቂያ ይልካል
+app.post('/api/withdraw', async (req, res) => {
+    try {
+        const { identifier, amount, phone } = req.body;
+        if (!identifier || !amount || !phone) {
+            return res.status(400).json({ success: false, error: 'መረጃዎች ሙሉ አይደሉም' });
+        }
+
+        let user = await User.findOne({ identifier });
+        if (!user || user.balance < amount) {
+            return res.status(400).json({ success: false, error: 'በቂ የሂሳብ መጠን (Balance) የለዎትም!' });
+        }
+
+        user.balance -= Number(amount);
+        await user.save();
+
+        const newWith = new Withdraw({ identifier, amount, phone, status: 'pending' });
+        await newWith.save();
+
+        // ለአድሚን በቀጥታ ቴክስት መላክ
+        bot.sendMessage(ADMIN_ID, `📤 **አዲስ የዊዝድሮ (ብር ማውጣት) ጥያቄ!**\n\nተጠቃሚ: ${identifier}\nስልክ: ${phone}\nመጠን: ${amount} ብር`);
+
+        res.status(200).json({ success: true, message: 'የዊዝድሮ ጥያቄዎ ተልኳል!', balance: user.balance });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// አድሚን ዲፖዚት አፕሩቭ ሲያደርግ ብሩ ተጠቃሚው አካውንት ላይ ይገባል
+app.post('/api/admin/approve-deposit', async (req, res) => {
+    try {
+        const { depositId } = req.body;
+        const dep = await Deposit.findById(depositId);
+        if (!dep || dep.status !== 'pending') {
+            return res.status(400).json({ success: false, error: 'ጥያቄው አልተገኘም ወይም ተይዟል' });
+        }
+
+        dep.status = 'approved';
+        await dep.save();
+
+        let user = await User.findOne({ identifier: dep.identifier });
+        if (user) {
+            user.balance += dep.amount;
+            await user.save();
+        }
+
+        res.json({ success: true, message: 'ብር ተጠቃሚው አካውንት ላይ በအောင်ኬት ገብቷል!' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// --- 7. ሶኬት.አይኦ ---
 io.on('connection', (socket) => {
-    console.log('አዲስ ተጠቃሚ ተገናኝቷል:', socket.id);
-
-    // 📥 1. የዲፖዚት (ገቢ ማስገባት) ጥያቄ መቀበል
-    socket.on('requestDeposit', (data) => {
-        const { telegramId, amount, smsText } = data;
-        if (!telegramId || !amount || !smsText) return;
-
-        db.run(`INSERT INTO deposits (telegramId, amount, smsText, status) VALUES (?, ?, ?, 'pending')`, 
-            [telegramId, amount, smsText], (err) => {
-                if (err) {
-                    console.error('Deposit Error:', err.message);
-                } else {
-                    console.log(`📥 አዲስ የገቢ ጥያቄ ደርሷል፦ ተጠቃሚ ID: ${telegramId}, መጠን: ${amount} ብር`);
-                    socket.emit('depositResponse', { success: true, message: 'የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል!' });
-                }
-            }
-        );
-    });
-
-    // 📤 2. የወጪ (Withdraw / ብር ማውጣት) ጥያቄ መቀበል
-    socket.on('requestWithdraw', (data) => {
-        const { telegramId, amount, accountDetails } = data;
-        if (!telegramId || !amount || !accountDetails) return;
-
-        // መጀመሪያ ተጠቃሚው በቂ ባላንስ እንዳለው እናረጋግጣለን
-        db.get(`SELECT balance FROM users WHERE telegramId = ?`, [telegramId], (err, row) => {
-            if (err || !row) {
-                socket.emit('withdrawResponse', { success: false, message: 'ተጠቃሚው አልተገኘም!' });
-                return;
-            }
-
-            if (row.balance >= amount) {
-                // ከሂሳቡ ወዲያውኑ ገንዘቡን እንቀንሳለን (Pending እስኪሆን ድረስ)
-                db.run(`UPDATE users SET balance = balance - ? WHERE telegramId = ?`, [amount, telegramId], (updateErr) => {
-                    if (updateErr) {
-                        socket.emit('withdrawResponse', { success: false, message: 'ስህተት ተፈጥሯል!' });
-                        return;
-                    }
-
-                    // የዊዝድሮ ጥያቄውን በዳታቤዝ እንመዘግባለን
-                    db.run(`INSERT INTO withdrawals (telegramId, amount, accountDetails, status) VALUES (?, ?, ?, 'pending')`, 
-                        [telegramId, amount, accountDetails], () => {
-                            console.log(`📤 አዲስ የወጪ ጥያቄ፦ ተጠቃሚ ID: ${telegramId}, መጠን: ${amount} ብር`);
-                            socket.emit('withdrawResponse', { success: true, message: 'የወጪ ጥያቄዎ በተሳካ ሁኔታ ተልኳል!', newBalance: row.balance - amount });
-                        }
-                    );
-                });
-            } else {
-                socket.emit('withdrawResponse', { success: false, message: 'በቂ የሂሳብ መጠን (Balance) የለዎትም!' });
-            }
-        });
-    });
-
-    // 🎮 የቢንጎ ጨዋታ ቆጣሪ እና ቁጥር ማውጣት ሂደት
-    socket.on('startGame', () => {
-        let drawnHistory = [];
-        let interval = setInterval(() => {
-            if (drawnHistory.length >= 75) {
-                clearInterval(interval);
-                return;
-            }
-            let randNum;
-            do {
-                randNum = Math.floor(Math.random() * 75) + 1;
-            } while (drawnHistory.includes(randNum));
-
-            drawnHistory.push(randNum);
-
-            // ለሁሉም ተጫዋቾች የወጣውን ቁጥር በቅጽበት እንልካለን
-            io.emit('numberDrawn', { number: randNum, drawnHistory });
-        }, 3000);
-
-        socket.on('disconnect', () => {
-            clearInterval(interval);
-        });
-    });
-
+    console.log('ተጠቃሚ ተገናኝቷል:', socket.id);
     socket.on('disconnect', () => {
-        console.log('ተጠቃሚው ከሰርቨር ወጥቷል:', socket.id);
+        console.log('ተጠቃሚ ወጥቷል:', socket.id);
     });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`የቢንጎ ሰርቨር በፖርት ${PORT} እየሰራ ይገኛል...`);
+    console.log(`ሰርቨሩ በፖርት ${PORT} እየሰራ ነው...`);
 });
