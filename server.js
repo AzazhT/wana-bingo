@@ -11,36 +11,52 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.json());
 app.use(express.static('public'));
 
-// 📌 የቦት፣ የአድሚን እና የሞንጎዲቢ መረጃዎች
+// 📌 የአካባቢ ተለዋዋጮች (Environment Variables)
 const TOKEN = process.env.BOT_TOKEN || '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_ID = process.env.ADMIN_ID || '686733543';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/addis_bingo';
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+// 📌 409 Conflict ስህተት እንዳይፈጠር polling: false ተደርጎ ይጀመራል
+const bot = new TelegramBot(TOKEN, { polling: false });
+
+// የድሮ Webhook/Polling ግንኙነቶችን አጽድቶ አዲስ Polling ማስጀመር
+bot.removeWebHook({ drop_pending_updates: true })
+    .then(() => {
+        bot.startPolling();
+        console.log("Telegram Bot polling started successfully!");
+    })
+    .catch((err) => {
+        console.error("Telegram Bot Polling Error:", err.message);
+    });
+
+// Polling Error አያያዝ
+bot.on('polling_error', (error) => {
+    if (error.code !== 'ETELEGRAM') {
+        console.error(`[polling_error] ${error.code}: ${error.message}`);
+    }
+});
 
 // 📌 1. የዳታቤዝ ስኬማዎች (Database Schemas)
-// የተጠቃሚዎች ዳታቤዝ - በቴሌግራም አይዲ ይለያል
 const userSchema = new mongoose.Schema({
     identifier: { type: String, required: true, unique: true }, // Telegram ID
     name: { type: String, default: 'ተጫዋች' },
     phone: { type: String, default: '' },
-    balance: { type: Number, default: 50 }, // የመጀመሪያ ጊዜ ምዝገባ ቦነስ 50 ብር
+    balance: { type: Number, default: 50 }, // የመጀመሪያ ጊዜ ቦነስ 50 ብር
     registeredAt: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
 
-// የገቢ እና ወጪ (Transactions) ዳታቤዝ
 const transactionSchema = new mongoose.Schema({
     identifier: { type: String, required: true },
     type: { type: String, enum: ['DEPOSIT', 'WITHDRAW'], required: true },
     amount: { type: Number, required: true },
-    details: { type: String, required: true }, // የቴሌብር SMS ወይም የባንክ መረጃ
+    details: { type: String, required: true },
     status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
     createdAt: { type: Date, default: Date.now }
 });
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
-// የሞንጎዲቢ ግንኙነት
+// 📌 የሞንጎዲቢ ግንኙነት
 mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB Database Successfully Connected!'))
     .catch(err => console.error('MongoDB Connection Error:', err));
@@ -55,11 +71,9 @@ app.post('/api/get-user', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Telegram ID አልተገኘም' });
         }
 
-        // 1. ዳታቤዙ ውስጥ ተጠቃሚው ቀድሞ መኖሩን ማረጋገጥ
         let user = await User.findOne({ identifier: String(identifier) });
 
         if (!user) {
-            // 2. ከሌለ አዲስ ተጠቃሚ መመዝገብ (Registering new user)
             user = new User({
                 identifier: String(identifier),
                 name: name || 'ተጫዋች',
@@ -69,12 +83,10 @@ app.post('/api/get-user', async (req, res) => {
             await user.save();
             console.log(`አዲስ ተጠቃሚ ተመዝግቧል: ${identifier}`);
         } else if (phone && !user.phone) {
-            // ስልክ ቁጥር ከላከ እና ዳታቤዝ ላይ ከሌለ ማዘመን
             user.phone = phone;
             await user.save();
         }
 
-        // 3. የተጠቃሚውን ሙሉ ዳታቤዝ መረጃ መመለስ
         res.status(200).json({ success: true, user });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -90,7 +102,6 @@ app.post('/api/place-bet', async (req, res) => {
         if (!user) return res.status(404).json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
         if (user.balance < amount) return res.status(400).json({ success: false, message: 'በቂ ባላንስ የለዎትም!' });
 
-        // ከባላንሱ ላይ ቀንሶ ዳታቤዝ ላይ ማስቀመጥ
         user.balance -= amount;
         await user.save();
 
@@ -116,7 +127,6 @@ app.post('/api/request-transaction', async (req, res) => {
         });
         await trans.save();
 
-        // ለአድሚን በቴሌግራም መልእክት መላክ
         const inlineKeyboard = {
             inline_keyboard: [
                 [
@@ -226,7 +236,7 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
     console.log(`Bingo Backend Server runs on port ${PORT}`);
 });
