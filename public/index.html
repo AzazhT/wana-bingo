@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Addis Bingo - Live System</title>
+    <title>Wana Bingo</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
@@ -18,10 +18,10 @@
         .header-box h2 { font-size: 20px; margin-bottom: 5px; color: #ffb703; }
         .header-box p { font-size: 12px; color: #f0e6ff; line-height: 1.4; }
         
-        .main-wallet-card { background: white; color: #4a2c73; padding: 12px; border-radius: 12px; margin: 10px 15px; text-align: center; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .main-wallet-card span { display: block; font-size: 20px; color: #7b2cbf; margin-top: 4px; }
-        .main-wallet-actions { display: flex; gap: 10px; margin-top: 10px; }
-        .main-wallet-actions button { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; color: white; }
+        .main-wallet-card { background: white; color: #4a2c73; padding: 15px; border-radius: 12px; margin: 10px 15px; text-align: center; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .main-wallet-card span { display: block; font-size: 22px; color: #7b2cbf; margin-top: 5px; }
+        .main-wallet-actions { display: flex; gap: 10px; margin-top: 12px; }
+        .main-wallet-actions button { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; color: white; }
         .btn-dep-main { background: #28a745; }
         .btn-with-main { background: #dc3545; }
 
@@ -94,16 +94,16 @@
 <body>
 
     <div class="main-container">
-        <!-- PAGE 0 -->
+        <!-- PAGE 0: MAIN DASHBOARD -->
         <div id="page0" class="page active">
             <div class="header-box">
-                <h2>እንኳን ወደ ቢንጎ ጨዋታ በደህና መጡ!</h2>
+                <h2>እንኳን ወደ Wana Bingo በደህና መጡ!</h2>
                 <p>እየተዝናኑ ብር ይስሩ። በመጀመሪያ የሂሳብዎ ሁኔታ ይመልከቱ፦</p>
             </div>
 
             <div class="main-wallet-card">
                 የእርስዎ ቀሪ ሂሳብ (Wallet)
-                <span id="mainWalletDisplay">50.00 ETB</span>
+                <span id="mainWalletDisplay">0.00 ETB</span>
                 <div class="main-wallet-actions">
                     <button class="btn-dep-main" onclick="openModal('depositModal')">📥 ገቢ (Deposit)</button>
                     <button class="btn-with-main" onclick="openModal('withdrawModal')">📤 ወጪ (Withdraw)</button>
@@ -122,10 +122,10 @@
             </div>
         </div>
 
-        <!-- PAGE 1 -->
+        <!-- PAGE 1: TICKET SELECTION -->
         <div id="page1" class="page">
             <div class="top-stats">
-                <div class="stat-card">Wallet<span id="walletDisplay">50.00</span></div>
+                <div class="stat-card">Wallet<span id="walletDisplay">0.00</span></div>
                 <div class="stat-card">Bet
                     <div class="bet-control">
                         <button class="btn-step" onclick="adjustBet(-5)">-</button>
@@ -147,7 +147,7 @@
             </div>
         </div>
 
-        <!-- PAGE 2 -->
+        <!-- PAGE 2: LIVE BINGO GAME -->
         <div id="page2" class="page">
             <div class="top-stats">
                 <div class="stat-card">Game<span id="gameIdDisplay">BQ0000</span></div>
@@ -240,8 +240,8 @@
         tg.expand();
 
         const socket = io(); 
-        let currentUser = tg.initDataUnsafe?.user || { id: "test_user_123", first_name: "Bingo Player" };
-        let userWallet = 50.00;
+        let currentUser = tg.initDataUnsafe?.user || { id: "test_user_123", first_name: "Bingo Player", username: "test_user" };
+        let userWallet = 0.00;
         let currentBet = 10;
         let selectedCardsCount = 1;
         let activePlayersCount = 15;
@@ -252,36 +252,42 @@
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
         let countdownTimer = null;
 
-        // አውቶማቲክ ምዝገባ (Auto Registration)
+        // 🌟 1. አፑ ሲከፈት በቴሌግራም ID እና Username ዳታቤዝ ላይ ፈልጎ ትክክለኛውን ባላንስ ያመጣል
         window.addEventListener('DOMContentLoaded', async () => {
-            if (currentUser && currentUser.id) {
-                try {
-                    const regRes = await fetch('/api/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ identifier: String(currentUser.id), name: currentUser.first_name })
-                    });
-                    const regData = await regRes.json();
-                    if(regRes.ok && regData.user) {
-                        userWallet = regData.user.balance;
-                        updateHeaderStats();
-                    }
-                } catch (e) {
-                    console.error('የሰርቨር ምዝገባ ስህተት:', e);
-                }
-            }
+            fetchUserData();
         });
+
+        async function fetchUserData() {
+            try {
+                const res = await fetch('/api/get-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        identifier: String(currentUser.id), 
+                        name: currentUser.first_name,
+                        username: currentUser.username || ''
+                    })
+                });
+                const data = await res.json();
+                if(data.success && data.user) {
+                    userWallet = data.user.balance;
+                    updateHeaderStats();
+                }
+            } catch (e) {
+                console.error('የተጠቃሚ መረጃ የማምጣት ስህተት:', e);
+            }
+        }
 
         socket.on('connect', () => { console.log("ከቢንጎ ሰርቨር ጋር ተገናኝቷል!"); });
 
         socket.on('numberDrawn', (data) => {
             let rand = data.number;
             drawnNumbers = data.drawnHistory;
-            callCountEl.innerText = drawnNumbers.length;
+            document.getElementById('callCount').innerText = drawnNumbers.length;
 
             let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
             let callText = `${letter}-${rand}`;
-            currentCallCircle.innerText = callText;
+            document.getElementById('currentCallCircle').innerText = callText;
 
             let gridCell = document.getElementById(`grid-num-${rand}`);
             if(gridCell) gridCell.classList.add('called');
@@ -289,22 +295,10 @@
             let ball = document.createElement('div');
             ball.className = 'recent-ball';
             ball.innerText = callText;
-            recentCalls.prepend(ball);
+            document.getElementById('recentCalls').prepend(ball);
         });
 
         socket.on('gameOver', (data) => { alert(data.message); leaveGame(); });
-
-        const cardsGrid = document.getElementById('cardsGrid');
-        const previewTicket = document.getElementById('previewTicket');
-        const calledGrid = document.getElementById('calledGrid');
-        const userBoardGrid = document.getElementById('userBoardGrid');
-        const currentCallCircle = document.getElementById('currentCallCircle');
-        const recentCalls = document.getElementById('recentCalls');
-        const callCountEl = document.getElementById('callCount');
-        const playerCountEl = document.getElementById('playerCount');
-        const gameIdDisplay = document.getElementById('gameIdDisplay');
-        const derashDisplay = document.getElementById('derashDisplay');
-        const countdownText = document.getElementById('countdownText');
 
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { 
@@ -312,24 +306,28 @@
             if(id === 'winnerModal') leaveGame();
         }
 
-        // የዲፖዚት ጥያቄ መላኪያ
         async function submitDeposit() {
             const amount = document.getElementById('depAmount').value;
             const smsText = document.getElementById('depSMS').value;
             if (!amount || !smsText) return alert('እባክዎን ሁሉንም ያሟሉ!');
             
             try {
-                const res = await fetch('/api/deposit', {
+                const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: String(currentUser.id), amount: parseFloat(amount), smsText })
+                    body: JSON.stringify({ 
+                        identifier: String(currentUser.id), 
+                        type: 'DEPOSIT', 
+                        amount: parseFloat(amount), 
+                        details: smsText 
+                    })
                 });
                 const data = await res.json();
                 if(data.success) {
                     alert('የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል!');
                     closeModal('depositModal');
                 } else {
-                    alert(data.error || 'ስህተት ተፈጥሯል');
+                    alert(data.message || 'ስህተት ተፈጥሯል');
                 }
             } catch(e) {
                 console.error(e);
@@ -338,23 +336,26 @@
 
         async function submitWithdraw() {
             const amount = document.getElementById('withAmount').value;
-            const phone = document.getElementById('withAccount').value;
-            if (!amount || !phone) return alert('እባክዎን ሁሉንም ያሟሉ!');
+            const accountInfo = document.getElementById('withAccount').value;
+            if (!amount || !accountInfo) return alert('እባክዎን ሁሉንም ያሟሉ!');
             
             try {
-                const res = await fetch('/api/withdraw', {
+                const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: String(currentUser.id), amount: parseFloat(amount), phone })
+                    body: JSON.stringify({ 
+                        identifier: String(currentUser.id), 
+                        type: 'WITHDRAW', 
+                        amount: parseFloat(amount), 
+                        details: accountInfo 
+                    })
                 });
                 const data = await res.json();
                 if(data.success) {
-                    userWallet = data.balance;
-                    updateHeaderStats();
                     alert('የወጪ ጥያቄዎ ለአድሚን ተልኳል!');
                     closeModal('withdrawModal');
                 } else {
-                    alert(data.error || 'በቂ ባላንስ የለዎትም!');
+                    alert(data.message || 'ስህተት ተፈጥሯል');
                 }
             } catch(e) {
                 console.error(e);
@@ -411,6 +412,7 @@
         }
 
         function initPage1() {
+            const cardsGrid = document.getElementById('cardsGrid');
             cardsGrid.innerHTML = '';
             for(let i = 1; i <= 100; i++) {
                 allCardsData[i] = generateBingoCard();
@@ -433,6 +435,7 @@
         }
 
         function displayPreview(id) {
+            const previewTicket = document.getElementById('previewTicket');
             previewTicket.innerHTML = '';
             allCardsData[id].forEach(row => {
                 row.forEach(val => {
@@ -444,19 +447,38 @@
             });
         }
 
-        function goToGame() {
+        async function goToGame() {
             let totalStake = currentBet * selectedCardsCount;
-            if (userWallet < totalStake) {
-                alert("በቂ ባላንስ የለዎትም! እባክዎ Wallet ይሙሉ።");
+
+            try {
+                const res = await fetch('/api/place-bet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        identifier: String(currentUser.id), 
+                        amount: totalStake 
+                    })
+                });
+                const data = await res.json();
+
+                if(!data.success) {
+                    alert(data.message || 'በቂ ባላንስ የለዎትም!');
+                    return;
+                }
+
+                userWallet = data.newBalance;
+                updateHeaderStats();
+
+            } catch (e) {
+                console.error('የጨዋታ ክፍያ ስህተት:', e);
+                alert("የኔትወርክ ስህተት ተፈጥሯል፣ እባክዎ እንደገና ይሞክሩ።");
                 return;
             }
-            userWallet -= totalStake;
-            updateHeaderStats();
 
             activePlayersCount = Math.floor(10 + Math.random() * 30);
-            gameIdDisplay.innerText = generateGameId();
-            playerCountEl.innerText = activePlayersCount;
-            derashDisplay.innerText = calculateDerash();
+            document.getElementById('gameIdDisplay').innerText = generateGameId();
+            document.getElementById('playerCount').innerText = activePlayersCount;
+            document.getElementById('derashDisplay').innerText = calculateDerash();
 
             document.getElementById('page1').classList.remove('active');
             document.getElementById('page2').classList.add('active');
@@ -469,10 +491,11 @@
             clearInterval(countdownTimer);
             document.getElementById('page2').classList.remove('active');
             document.getElementById('page0').classList.add('active');
-            updateHeaderStats();
+            fetchUserData(); // ከተጫወተ በኋላ ወቅታዊውን ባላንስ ዳታቤዝ ላይ መልሶ ማረጋገጥ
         }
 
         function startLiveGame() {
+            const calledGrid = document.getElementById('calledGrid');
             calledGrid.innerHTML = '';
             for (let row = 0; row < 15; row++) {
                 for (let col = 0; col < 5; col++) {
@@ -490,27 +513,28 @@
             renderInteractiveBoard();
 
             drawnNumbers = [];
-            recentCalls.innerHTML = '';
-            currentCallCircle.innerText = '-';
-            callCountEl.innerText = '0';
+            document.getElementById('recentCalls').innerHTML = '';
+            document.getElementById('currentCallCircle').innerText = '-';
+            document.getElementById('callCount').innerText = '0';
 
             clearInterval(countdownTimer);
             let count = 5;
-            countdownText.innerText = `${count}s`;
+            document.getElementById('countdownText').innerText = `${count}s`;
 
             countdownTimer = setInterval(() => {
                 count--;
                 if (count > 0) {
-                    countdownText.innerText = `${count}s`;
+                    document.getElementById('countdownText').innerText = `${count}s`;
                 } else {
                     clearInterval(countdownTimer);
-                    countdownText.innerText = "Started";
+                    document.getElementById('countdownText').innerText = "Started";
                     socket.emit('startGame');
                 }
             }, 1000);
         }
 
         function renderInteractiveBoard() {
+            const userBoardGrid = document.getElementById('userBoardGrid');
             userBoardGrid.innerHTML = '';
             const card = allCardsData[selectedCardId];
             card.forEach((row, r) => {
@@ -546,10 +570,13 @@
             if(isBingo) {
                 clearInterval(countdownTimer);
                 let winAmount = parseFloat(calculateDerash());
-                userWallet += winAmount;
-                updateHeaderStats();
                 showWinnerModal(winAmount);
-                socket.emit('claimBingo', { card, winAmount });
+                // 🌟 ያሸነፈውን ብር ከነ Telegram ID ለሰርቨሩ በመላክ ዳታቤዝ ላይ ማስጨመር
+                socket.emit('claimBingo', { 
+                    identifier: String(currentUser.id),
+                    card, 
+                    winAmount 
+                });
             } else {
                 alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
             }
