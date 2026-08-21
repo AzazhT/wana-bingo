@@ -16,24 +16,16 @@ const TOKEN = process.env.BOT_TOKEN || '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1
 const ADMIN_ID = process.env.ADMIN_ID || '686733543';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/addis_bingo';
 
-// 📌 409 Conflict ስህተት እንዳይፈጠር polling: false ተደርጎ ይጀመራል
-const bot = new TelegramBot(TOKEN, { polling: false });
+// 📌 የቴሌግራም ቦት አጀማመር
+const bot = new TelegramBot(TOKEN, { polling: true });
 
-// የድሮ Webhook/Polling ግንኙነቶችን አጽድቶ አዲስ Polling ማስጀመር
-bot.removeWebHook({ drop_pending_updates: true })
-    .then(() => {
-        bot.startPolling();
-        console.log("Telegram Bot polling started successfully!");
-    })
-    .catch((err) => {
-        console.error("Telegram Bot Polling Error:", err.message);
-    });
-
-// Polling Error አያያዝ
+// Render ላይ Deploy ሲደረግ የሚመጣውን ጊዜያዊ 409 Conflict ኤረር ማኔጅ ማድረጊያ
 bot.on('polling_error', (error) => {
-    if (error.code !== 'ETELEGRAM') {
-        console.error(`[polling_error] ${error.code}: ${error.message}`);
+    if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
+        // በ Render re-deploy ወቅት ለጥቂት ሰከንዶች የሚፈጠር ግጭት ስለሆነ ችላ ይለዋል
+        return;
     }
+    console.error('Telegram Polling Error:', error.message);
 });
 
 // 📌 1. የዳታቤዝ ስኬማዎች (Database Schemas)
