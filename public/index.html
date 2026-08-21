@@ -14,7 +14,7 @@
         .page { display: none; width: 100%; }
         .page.active { display: block; }
 
-        /* PAGE 0: LANDING / BET SELECTION & WALLET */
+        /* PAGE 0: LANDING / WALLET & BET SELECTION */
         .header-box { text-align: center; padding: 15px 10px; color: #fff; margin-top: 10px; }
         .header-box h2 { font-size: 20px; margin-bottom: 5px; color: #ffb703; }
         .header-box p { font-size: 12px; color: #f0e6ff; line-height: 1.4; }
@@ -30,14 +30,10 @@
         .bet-btn { padding: 20px 10px; font-size: 18px; font-weight: bold; background: #ffb703; color: #4a2c73; border: none; border-radius: 12px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; }
         .bet-btn:active { transform: scale(0.95); background: #e6a602; }
 
-        /* Top Header Stats */
+        /* Top Header Stats (ሁለተኛው ፔጅ ላይ ገቢ/ወጪ አልተካተተም) */
         .top-stats { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 10px; }
-        .stat-card { background: white; color: #4a2c73; padding: 6px 2px; border-radius: 10px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .stat-card { background: white; color: #4a2c73; padding: 6px 4px; border-radius: 10px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .stat-card span { display: block; font-size: 12px; color: #7b2cbf; margin-top: 2px; }
-
-        .wallet-actions { display: flex; gap: 4px; margin-top: 4px; width: 100%; }
-        .btn-dep { background: #28a745; color: white; border: none; padding: 2px 5px; border-radius: 4px; font-size: 9px; cursor: pointer; font-weight: bold; flex: 1; }
-        .btn-with { background: #dc3545; color: white; border: none; padding: 2px 5px; border-radius: 4px; font-size: 9px; cursor: pointer; font-weight: bold; flex: 1; }
 
         .bet-control { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; }
         .btn-step { background: #7b2cbf; color: white; border: none; width: 18px; height: 18px; border-radius: 50%; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -111,7 +107,6 @@
                 <p>እየተዝናኑ ብር ይስሩ። በመጀመሪያ የሂሳብዎ ሁኔታ ይመልከቱ፦</p>
             </div>
 
-            <!-- Main Wallet & Deposit/Withdraw Buttons -->
             <div class="main-wallet-card">
                 የእርስዎ ቀሪ ሂሳብ (Wallet)
                 <span id="mainWalletDisplay">0.00 ETB</span>
@@ -133,16 +128,12 @@
             </div>
         </div>
 
-        <!-- PAGE 1: CARD SELECTOR -->
+        <!-- PAGE 1: CARD SELECTOR (ገቢ እና ወጪ ከዚህ ጠፍቷል) -->
         <div id="page1" class="page">
             <div class="top-stats">
                 <div class="stat-card">
                     Wallet
                     <span id="walletDisplay">0.00</span>
-                    <div class="wallet-actions">
-                        <button class="btn-dep" onclick="openModal('depositModal')">ገቢ</button>
-                        <button class="btn-with" onclick="openModal('withdrawModal')">ወጪ</button>
-                    </div>
                 </div>
                 <div class="stat-card">
                     Bet
@@ -174,7 +165,6 @@
             <div class="top-stats">
                 <div class="stat-card">Game<span id="gameIdDisplay">BQ0000</span></div>
                 <div class="stat-card">Derash<span id="derashDisplay">0.0</span></div>
-                <div class="stat-card">Bonus<span id="bonusDisplay">On</span></div>
                 <div class="stat-card">Players<span id="playerCount">25</span></div>
                 <div class="stat-card">Bet<span id="liveBetDisplay">10</span></div>
                 <div class="stat-card">call<span id="callCount">0</span></div>
@@ -275,15 +265,13 @@
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
         let countdownTimer = null;
 
-        // መተግበሪያው ሲከፈት ሪጅስትሬሽን ማረጋገጥ እና ባላንስ ማምጣት
         window.addEventListener('DOMContentLoaded', async () => {
             if (currentUser && currentUser.id) {
                 try {
-                    // 1. ሪጅስትሬሽን ማረጋገጥ (አንዴ ከገባ ሁለተኛ አዲስ አካውንት እንዳይከፈት)
                     const regRes = await fetch('/api/register', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ telegramId: currentUser.id, name: currentUser.first_name })
+                        body: JSON.stringify({ telegramId: String(currentUser.id), name: currentUser.first_name })
                     });
                     const regData = await regRes.json();
                     if(regRes.ok) {
@@ -336,24 +324,22 @@
             if(id === 'winnerModal') leaveGame();
         }
 
-        // ዲፖዚት ጥያቄ ወደ አድሚን መላክ (Pending)
         function submitDeposit() {
             const amount = document.getElementById('depAmount').value;
             const smsText = document.getElementById('depSMS').value;
             if (!amount || !smsText) return alert('እባክዎን ሁሉንም ያሟሉ!');
             
-            socket.emit('requestDeposit', { telegramId: currentUser.id, amount: parseFloat(amount), smsText: smsText });
+            socket.emit('requestDeposit', { telegramId: String(currentUser.id), amount: parseFloat(amount), smsText: smsText });
             alert('የዲፖዚት ጥያቄዎ ለአድሚን ተልኳል! አድሚኑ ሲያረጋግጠው አካውንትዎ ላይ ይገባል።');
             closeModal('depositModal');
         }
 
-        // ዊዝድሮ ጥያቄ መላክ
         function submitWithdraw() {
             const amount = document.getElementById('withAmount').value;
             const accountDetails = document.getElementById('withAccount').value;
             if (!amount || !accountDetails) return alert('እባክዎን ሁሉንም ያሟሉ!');
             
-            socket.emit('requestWithdraw', { telegramId: currentUser.id, amount: parseFloat(amount), accountDetails: accountDetails });
+            socket.emit('requestWithdraw', { telegramId: String(currentUser.id), amount: parseFloat(amount), accountDetails: accountDetails });
             alert('የወጪ ጥያቄዎ ተልኳል።');
             closeModal('withdrawModal');
         }
@@ -478,7 +464,7 @@
                     cell.className = 'grid-num';
                     cell.id = `grid-num-${num}`;
                     cell.innerText = num;
-                    calledGrid.appendChild(city = cell);
+                    calledGrid.appendChild(cell);
                 }
             }
 
