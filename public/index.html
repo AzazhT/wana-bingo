@@ -228,6 +228,8 @@
         let drawnNumbers = [];
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
         let roomSelectedBoards = {};
+        let globalStartTime = null;
+        let clientTimerInterval = null;
 
         window.addEventListener('DOMContentLoaded', async () => {
             await fetchUserData();
@@ -251,11 +253,15 @@
             } catch (e) { console.error(e); }
         }
 
+        // --- SOCKET EVENT HANDLERS ---
+
         socket.on('assignedRoom', (data) => {
             currentRoomId = data.roomId;
             document.getElementById('gameIdDisplay').innerText = currentRoomId;
-            document.getElementById('countdownText').innerText = `${data.countdown}s`;
+            globalStartTime = data.startTime;
             
+            startClientCountdown();
+
             if (data.selectedBoards) {
                 roomSelectedBoards = data.selectedBoards;
                 updateBoardsUI();
@@ -263,12 +269,34 @@
         });
 
         socket.on('countdownUpdate', (data) => {
-            document.getElementById('countdownText').innerText = `${data.countdown}s`;
+            globalStartTime = data.startTime;
         });
+
+        function startClientCountdown() {
+            if (clientTimerInterval) clearInterval(clientTimerInterval);
+
+            clientTimerInterval = setInterval(() => {
+                if (!globalStartTime) return;
+                let remaining = Math.max(0, Math.floor((globalStartTime - Date.now()) / 1000));
+                document.getElementById('countdownText').innerText = `${remaining}s`;
+
+                if (remaining <= 0) {
+                    clearInterval(clientTimerInterval);
+                }
+            }, 1000);
+        }
 
         socket.on('gameStarted', (data) => {
             document.getElementById('countdownText').innerText = "Started!";
+            if (clientTimerInterval) clearInterval(clientTimerInterval);
             updateBoardsUI();
+        });
+
+        // --- 3. ዘግይቶ ለሚገባ ተጫዋች የሚሰጥ ማሳሰቢያ ---
+        socket.on('gameAlreadyStarted', (data) => {
+            alert(data.message);
+            // አስፈላጊ ከሆነ ወደ መጀመሪያው (Bet Selection) ወይም ቆይቶ እንዲገባ ማድረግ ይቻላል
+            showGameStep('gameStepBet');
         });
 
         socket.on('boardSelected', (data) => {
@@ -383,7 +411,7 @@
                 btn.id = `card-btn-${i}`;
                 btn.innerText = i;
                 btn.onclick = () => {
-                    // ሌላ ተጫዋች ያዘው መሆኑን ማረጋገጥ
+                    // 1. ሌላ ተጫዋች ያዘው መሆኑን ማረጋገጥ እና በከለር መቆለፍ
                     if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
                         alert('ይህ ቦርድ በሌላ ተጫዋች ተይዟል!');
                         return;
@@ -404,9 +432,9 @@
                     btn.classList.remove('active', 'taken');
                     if(roomSelectedBoards[i]) {
                         if(roomSelectedBoards[i] === socket.id) {
-                            btn.classList.add('active');
+                            btn.classList.add('active'); // የኔ የተመረጠ ቦርድ (ሰማያዊ)
                         } else {
-                            btn.classList.add('taken'); // ለሌሎች ተጫዋቾች በቀይ ቀለም ተይዟል ብሎ ያሳያል
+                            btn.classList.add('taken');  // በሌላ ተጫዋች የተያዘ (ቀይ)
                         }
                     }
                 }
