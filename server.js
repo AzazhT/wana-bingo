@@ -22,7 +22,43 @@ let usersDatabase = {};
 // የტრንዛክሽን ጥያቄዎች ማከማቻ
 let pendingTransactions = {};
 
-// 1. የተጠቃሚውን መረጃ እና ባላንስ ማምጫ API (አፑ ሲከፈት ራሱ ይጠራል)
+// 1. ተጠቃሚው ቦቱ ላይ /start ሲል የሚሰራ (መመዝገቢያ እና አቀባበል)
+bot.onText(/\/start/, async (msg) => {
+    const chatId = msg.chat.id;
+    const name = msg.from.first_name || 'Bingo Player';
+    const username = msg.from.username || '';
+
+    // ተጠቃሚው ከዚህ ቀደም ካልተመዘገበ መመዝገብ
+    if (!usersDatabase[chatId]) {
+        usersDatabase[chatId] = {
+            identifier: String(chatId),
+            name: name,
+            username: username,
+            balance: 0.00,
+            phone: 'አልተጋራም'
+        };
+        console.log(`አዲስ ተጠቃሚ በ /start ተመዝግቧል: ID: ${chatId}, ስም: ${name}`);
+    }
+
+    const welcomeMessage = `👋 ሰላም <b>${name}</b>!\n\nወደ <b>ቢንጎ ጨዋታ (Bingo Game)</b> እንኳን ደህና መጡ። ጨዋታውን ለመጀመር እና ባላንስዎን ለማየት ከታች ያለውን ቁልፍ ይጫኑ!`;
+
+    // ተጠቃሚው አፑን የሚከፍትበት አዝራር
+    // (ማስታወሻ: የ 'https://your-app.onrender.com' የሚለውን በእርስዎ Render ሊንክ መቀየር ይችላሉ)
+    const webAppUrl = process.env.RENDER_EXTERNAL_URL || 'https://your-app.onrender.com';
+
+    await bot.sendMessage(chatId, welcomeMessage, {
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '🎮 ቢንጎ ጨዋታውን ክፈት (Play Bingo)', web_app: { url: webAppUrl } }
+                ]
+            ]
+        }
+    });
+});
+
+// 2. የተጠቃሚውን መረጃ እና ባላንስ ማምጫ API (አፑ ሲከፈት ራሱ ይጠራል)
 app.post('/api/get-user', (req, res) => {
     const { identifier, name, username } = req.body;
     if (!identifier) return res.status(400).json({ success: false, message: 'Invalid ID' });
@@ -41,7 +77,6 @@ app.post('/api/get-user', (req, res) => {
         }
     }
     
-    console.log(`ተጠቃሚ ገብቷል/ተመዝግቧል: ID: ${identifier}, ስም: ${usersDatabase[identifier].name}`);
     res.json({ success: true, user: usersDatabase[identifier] });
 });
 
@@ -55,7 +90,7 @@ app.post('/api/update-phone', (req, res) => {
     res.status(404).json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
 });
 
-// 2. ጨዋታ ሲጀመር ብር መቀነሻ API
+// 3. ጨዋታ ሲጀመር ብር መቀነሻ API
 app.post('/api/place-bet', (req, res) => {
     const { identifier, amount } = req.body;
     const user = usersDatabase[identifier];
@@ -69,7 +104,7 @@ app.post('/api/place-bet', (req, res) => {
     res.json({ success: true, newBalance: user.balance });
 });
 
-// 3. የዲፖዚት እና ዊዝድሮው ጥያቄ በቀጥታ ወደ አድሚን ቴሌግራም መላኪያ API
+// 4. የዲፖዚት እና ዊዝድሮው ጥያቄ በቀጥታ ወደ አድሚን ቴሌግራም መላኪያ API
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const user = usersDatabase[identifier];
@@ -110,18 +145,17 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
-// 4. አድሚኑ በቴሌግራም /users ብሎ ሲልክ የተመዘገቡትን ዝርዝር የሚልክበት ትእዛዝ
+// 5. አድሚኑ በቴሌግራም /users ብሎ ሲልክ የተመዘገቡትን ዝርዝር የሚልክበት ትእዛዝ
 bot.onText(/\/users/, async (msg) => {
     const chatId = msg.chat.id;
 
-    // አድሚኑ ብቻ መሆኑን ማረጋገጫ (Chat ID ን በ string መልክ ማወዳደር)
     if (chatId.toString() !== ADMIN_CHAT_ID.toString()) {
         return bot.sendMessage(chatId, "⚠️ ይህን ትእዛዝ ለመጠቀም ፈቃድ የለዎትም!");
     }
 
     const userKeys = Object.keys(usersDatabase);
     if (userKeys.length === 0) {
-        return bot.sendMessage(chatId, "📭 እስካሁን የተመዘገበ ተጠቃሚ የለም። (ወይም አፑን የከፈተ ተጠቃሚ የለም)", { parse_mode: 'HTML' });
+        return bot.sendMessage(chatId, "📭 እስካሁን የተመዘገበ ተጠቃሚ የለም።", { parse_mode: 'HTML' });
     }
 
     let message = `📋 <b>የተመዘገቡ ተጠቃሚዎች ዝርዝር (${userKeys.length}):</b>\n\n`;
@@ -146,7 +180,7 @@ bot.onText(/\/users/, async (msg) => {
     }
 });
 
-// 5. አድሚኑ በቴሌግራም አዝራሮቹን ሲጫጫን የሚሰራ logic
+// 6. አድሚኑ በቴሌግራም አዝራሮቹን ሲጫጫን የሚሰራ logic
 bot.on('callback_query', async (query) => {
     const action = query.data;
     const msg = query.message;
