@@ -82,10 +82,10 @@
         .board-cell.free, .board-cell.marked { background: #4caf50; color: white; }
         .board-footer { text-align: center; font-size: 9px; color: #7f91a4; margin-top: 4px; font-weight: bold; }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 2000; }
-        .modal-card { background: #1e2a38; width: 85%; max-width: 340px; padding: 20px; border-radius: 14px; text-align: center; border: 2px solid #ffca28; color: white; box-shadow: 0 0 20px rgba(255,202,40,0.4); }
-        .winner-banner { background: #ffca28; color: #000; padding: 10px; border-radius: 8px; font-size: 22px; font-weight: 900; margin-bottom: 12px; }
-        .play-again-btn { background: #4caf50; color: white; border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 15px; margin-top: 12px; cursor: pointer; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 2000; }
+        .modal-card { background: #1e2a38; width: 85%; max-width: 340px; padding: 16px; border-radius: 12px; text-align: center; border: 1px solid #3b4e62; color: white; }
+        .winner-banner { background: #ffca28; color: #000; padding: 8px; border-radius: 8px; font-size: 20px; font-weight: 900; margin-bottom: 8px; }
+        .play-again-btn { background: #4caf50; color: white; border: none; width: 100%; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; margin-top: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -112,10 +112,9 @@
 
             <div id="gameStepCards" class="game-step">
                 <div class="top-stats">
-                    <div class="stat-card">Players<span id="activePlayersDisplay">1</span></div>
-                    <div class="stat-card">Derash<span id="derashDisplay">0.0</span></div>
+                    <div class="stat-card">Wallet<span id="walletDisplay">0.00</span></div>
                     <div class="stat-card">Bet<span id="betDisplay">20</span></div>
-                    <div class="stat-card">Stake<span id="stakeDisplay">20.00</span></div>
+                    <div class="stat-card">Active<span id="activePlayersDisplay">0</span></div>
                 </div>
 
                 <div class="cards-grid" id="cardsGrid"></div>
@@ -132,7 +131,8 @@
             <div id="gameStepLive" class="game-step">
                 <div class="top-stats">
                     <div class="stat-card">Room<span id="gameIdDisplay">--</span></div>
-                    <div class="stat-card">Derash<span id="liveDerashDisplay">0.0</span></div>
+                    <div class="stat-card">Derash<span id="derashDisplay">0.0</span></div>
+                    <div class="stat-card">Active<span id="activePlayersDisplayLive">0</span></div>
                     <div class="stat-card">Bet<span id="liveBetDisplay">20</span></div>
                     <div class="stat-card">Call<span id="callCount">0</span></div>
                 </div>
@@ -194,11 +194,10 @@
         </div>
     </div>
 
-    <!-- የቢንጎ ማሸነፊያ ፖፕ-አፕ (Winner Modal) -->
     <div class="modal-overlay" id="winnerModal">
         <div class="modal-card">
             <div class="winner-banner">🎉 BINGO!</div>
-            <p style="margin-bottom:12px; font-weight:bold; font-size:14px; line-height: 1.5;" id="winnerText">እንኳን ደስ አለዎት! አሸንፈዋል።</p>
+            <p style="margin-bottom:8px; font-weight:bold; font-size:13px;" id="winnerText">እንኳን ደስ አለዎት! አሸንፈዋል።</p>
             <button class="play-again-btn" onclick="closeModal('winnerModal')">ቀጥል (Continue)</button>
         </div>
     </div>
@@ -257,10 +256,30 @@
 
         // --- SOCKET EVENT HANDLERS ---
 
+        socket.on('playersUpdate', (data) => {
+            if (data && typeof data.activePlayersCount !== 'undefined') {
+                document.getElementById('activePlayersDisplay').innerText = data.activePlayersCount;
+                document.getElementById('activePlayersDisplayLive').innerText = data.activePlayersCount;
+            }
+        });
+
+        socket.on('activePlayersUpdate', (data) => {
+            if (data && typeof data.activePlayersCount !== 'undefined') {
+                document.getElementById('activePlayersDisplay').innerText = data.activePlayersCount;
+                document.getElementById('activePlayersDisplayLive').innerText = data.activePlayersCount;
+            }
+        });
+
         socket.on('assignedRoom', (data) => {
             currentRoomId = data.roomId;
             document.getElementById('gameIdDisplay').innerText = currentRoomId;
             globalStartTime = data.startTime;
+            
+            if (typeof data.activePlayersCount !== 'undefined') {
+                document.getElementById('activePlayersDisplay').innerText = data.activePlayersCount;
+                document.getElementById('activePlayersDisplayLive').innerText = data.activePlayersCount;
+            }
+
             startClientCountdown();
 
             if (data.selectedBoards) {
@@ -269,10 +288,12 @@
             }
         });
 
-        socket.on('roomStatsUpdate', (data) => {
-            document.getElementById('activePlayersDisplay').innerText = data.activePlayers;
-            document.getElementById('derashDisplay').innerText = data.derash.toFixed(1);
-            document.getElementById('liveDerashDisplay').innerText = data.derash.toFixed(1);
+        socket.on('countdownUpdate', (data) => {
+            globalStartTime = data.startTime;
+            if (typeof data.activePlayersCount !== 'undefined') {
+                document.getElementById('activePlayersDisplay').innerText = data.activePlayersCount;
+                document.getElementById('activePlayersDisplayLive').innerText = data.activePlayersCount;
+            }
         });
 
         function startClientCountdown() {
@@ -295,6 +316,17 @@
             updateBoardsUI();
         });
 
+        socket.on('gameAlreadyStarted', (data) => {
+            alert(data.message);
+            showGameStep('gameStepBet');
+        });
+
+        socket.on('boardTempSelected', (data) => {
+            selectedCardId = data.boardNumber;
+            updateBoardsUI();
+            displayPreview(selectedCardId);
+        });
+
         socket.on('boardSelected', (data) => {
             roomSelectedBoards[data.boardNumber] = data.socketId;
             updateBoardsUI();
@@ -305,9 +337,19 @@
             updateBoardsUI();
         });
 
+        socket.on('gameJoinSuccess', (data) => {
+            selectedCardId = data.boardNumber;
+            displayPreview(selectedCardId);
+            updateBoardsUI();
+        });
+
+        socket.on('boardSelectError', (data) => {
+            alert(data.message);
+        });
+
         socket.on('numberDrawn', (data) => {
             let rand = data.number;
-            drawnNumbers = data.drawnHistory;
+            drawnNumbers = data.drawnHistory || [];
             document.getElementById('callCount').innerText = drawnNumbers.length;
 
             let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
@@ -323,7 +365,6 @@
             document.getElementById('recentCalls').prepend(ball);
         });
 
-        // የቢንጎ ማሸነፊያ መልእክት ሲመጣ (ፖፕ-አፕ ማሳያ)
         socket.on('gameOver', (data) => {
             document.getElementById('winnerText').innerText = data.message;
             document.getElementById('winnerModal').style.display = 'flex';
@@ -354,9 +395,10 @@
 
         function updateHeaderStats() {
             document.getElementById('userBalanceDisplay').innerText = userWallet.toFixed(2);
+            document.getElementById('walletDisplay').innerText = userWallet.toFixed(2);
             document.getElementById('betDisplay').innerText = currentBet;
-            document.getElementById('stakeDisplay').innerText = currentBet.toFixed(2);
             document.getElementById('liveBetDisplay').innerText = currentBet;
+            document.getElementById('derashDisplay').innerText = (currentBet * 15 * 0.85).toFixed(1);
         }
 
         function generateBingoCard() {
@@ -458,6 +500,7 @@
             } catch (e) { return alert('የኔትወርክ ስህተት።'); }
 
             socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId });
+
             updateHeaderStats();
 
             const calledGrid = document.getElementById('calledGrid');
@@ -523,8 +566,8 @@
             if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) isBingo = true;
 
             if(isBingo) {
-                let winAmount = parseFloat(document.getElementById('liveDerashDisplay').innerText);
-                socket.emit('claimBingo', { identifier: currentUser.id, winAmount, roomId: currentRoomId, boardNumber: selectedCardId });
+                let winAmount = currentBet * 15 * 0.85;
+                socket.emit('claimBingo', { identifier: currentUser.id, winAmount, roomId: currentRoomId });
             } else {
                 alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
             }
