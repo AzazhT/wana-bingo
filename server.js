@@ -23,7 +23,7 @@ const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 let bot = null;
 if (TOKEN) {
     try {
-        bot = new TelegramBot(TOKEN, { 
+        bot = new TelegramBot(TOKEN, {  
             polling: {
                 interval: 300,
                 autoStart: true,
@@ -126,14 +126,14 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                             `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
-                             `─────────────────────\n` +
-                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
-                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
-                             `💰 /balance - 💵 ቀሪ ሂሳብዎን ለማየት\n` +
-                             `💳 /deposit - 📥 የዲፖዚት መመሪያዎችን ለማግኘት\n` +
-                             `💸 /withdraw - 📤 ያሸነፉትን ገንዘብ ወጪ ለማድረግ\n` +
-                             `─────────────────────`;
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                            `─────────────────────\n` +
+                            `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
+                            `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
+                            `💰 /balance - 💵 ቀሪ ሂሳብዎን ለማየት\n` +
+                            `💳 /deposit - 📥 የዲፖዚት መመሪያዎችን ለማግኘት\n` +
+                            `💸 /withdraw - 📤 ያሸነፉትን ገንዘብ ወጪ ለማድረግ\n` +
+                            `─────────────────────`;
 
         if (chatId.toString() === ADMIN_CHAT_ID) {
             welcomeMessage += `\n\n👑 **የአድሚን መቆጣጠሪያ ፓነል፡**\n` +
@@ -311,17 +311,19 @@ let activeRooms = {};
 function getActivePlayersCount(room) {
     let activeSocketIds = new Set();
     
-    // ቦርድ የያዙ ሁሉ እንደ አክቲቭ ተጫዋች ይቆጠራሉ (ተጫዋቹ ሊቭ ቢልም ቦርዱ እስካለ ድረስ ብሩ አይመለስም)
     for (let bNum in room.selectedBoards) {
         if (room.selectedBoards[bNum]) {
             activeSocketIds.add(room.selectedBoards[bNum]);
         }
     }
 
-    return activeSocketIds.size > 0 ? activeSocketIds.size : room.players.size;
+    for (let socketId of room.players) {
+        activeSocketIds.add(socketId);
+    }
+
+    return activeSocketIds.size;
 }
 
-// የደራሽ (Prize Pool) ማስያ የሂሳብ ሎጂክ
 function calculatePrizePool(room) {
     let activeCount = getActivePlayersCount(room);
     let totalBet = activeCount * parseFloat(room.betAmount);
@@ -543,6 +545,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // 💡 እዚህ ጋር ተስተካከለ፡ ተጫዋቹ ጆይን አድርጎ ጨዋታው ከጀመረ በኋላ (ወይም ቦርድ ይዞ) ሊቭ ቢል/ዲስኮኔክት ሲያደርግ ቦርዱ እንዳይጠፋ ተደርጓል።
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
         for (let roomId in activeRooms) {
@@ -554,10 +557,33 @@ io.on('connection', (socket) => {
                     delete room.tempSelections[socket.id];
                 }
 
-                // ማስተካከያ፡ ተጫዋቹ ጀምሮ (Board ይዞ) ከገባ በኋላ ሊቭ ቢልም/ዲኮኔክት ቢልም 
-                // ቦርዱ ከ selectedBoards እንድናጠፋው አናደርግም። 
-                // ምክንያቱም ጨዋታው እስኪያልቅ ድረስ ተጫዋቹ በቦርዱ ተሳትፏልና ደራሹ እና አክቲቭ ተጫዋቹ መቀነስ የለበትም።
-                // ቦርዱ የሚሰረዘው ጨዋታው አልቆ (ended) አዲስ ዙር ሲጀምር ብቻ ነው።
+                // ጨዋታው 'waiting' በሆነበት ሰዓት ብቻ ፔጅ ሪፍሬሽ ወይም ሊቭ ሲሉ ቦርዱ እንዲለቀቅ ይደረጋል፤
+                // ነገር ግን ጨዋታው 'playing' ከገባ (ስታርት ካለ) ቦርዱ ከቶም እንዳይጠፋ ይደረጋል።
+                let boardReleasedFlag = false;
+                if (room.status === 'waiting') {
+                    for (let bNum in room.selectedBoards) {
+                        if (room.selectedBoards[bNum] === socket.id) {
+                            delete room.selectedBoards[bNum];
+                            boardReleasedFlag = true;
+                            io.to(roomId).emit('boardReleased', { boardNumber: bNum });
+                        }
+                    }
+                }
+
+                let currentPrizePool = calculatePrizePool(room);
+
+                io.to(roomId).emit('playersUpdate', { 
+                    playersCount: room.players.size,
+                    activePlayersCount: getActivePlayersCount(room),
+                    prizePool: currentPrizePool
+                });
+
+                if (boardReleasedFlag) {
+                    io.to(roomId).emit('activePlayersUpdate', { 
+                        activePlayersCount: getActivePlayersCount(room),
+                        prizePool: currentPrizePool 
+                    });
+                }
             }
         }
     });
