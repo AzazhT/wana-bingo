@@ -6,7 +6,12 @@ const pool = require('./database');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 app.use(express.json());
 app.use(express.static('public'));
@@ -122,7 +127,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                             `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
+                             `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
                              `─────────────────────\n` +
                              `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                              `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -415,7 +420,7 @@ io.on('connection', (socket) => {
         io.to(room.roomId).emit('playersUpdate', { playersCount: room.players.size });
     });
 
-    // 🚀 ተጫዋቹ "Start game" ሲጫን ብቻ ቦርዱ የሚመዘገብበት እና ለሌሎች በከለር የሚታይበት ሎጂክ
+    // 🚀 ተጫዋቹ ቦርድ መርጦ "Start game" ሲጫን የሚከናወን ሎጂክ
     socket.on('startPlayerGame', (data) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
@@ -438,7 +443,7 @@ io.on('connection', (socket) => {
             if (!room.selectedBoards[boardNumber]) {
                 room.selectedBoards[boardNumber] = socket.id;
                 
-                // ለሁሉም ተጫዋቾች ይህ ቦርድ በሌላ ሰው መያዙን በከለር እንዲታይ እንልክልን
+                // ለሁሉም ተጫዋቾች ይህ ቦርድ መያዙን በከለር እንዲታይ እንልካለን
                 io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
                 
                 // ለራሱ ተጫዋቹ ስኬታማ መሆኑን እና ወደ ጨዋታው መግባቱን እናሳውቃለን
@@ -459,7 +464,7 @@ io.on('connection', (socket) => {
             if (room.timer) clearInterval(room.timer);
 
             try {
-                const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                const userRes = __await = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
                 if (userRes.rows.length > 0) {
                     let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(winAmount);
                     await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
@@ -486,7 +491,7 @@ io.on('connection', (socket) => {
                         io.to(roomId).emit('boardReleased', { boardNumber: bNum });
                     }
                 }
-                io.to(roomId).emit('playersUpdate', { playersCount: room.players.size });
+                io.to(roomId).id && io.to(roomId).emit('playersUpdate', { playersCount: room.players.size });
             }
         }
     });
