@@ -14,7 +14,7 @@ app.use(express.static('public'));
 // እርስዎ የሰጡዋቸው ቋሚ መረጃዎች
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_CHAT_ID = '686733543';
-const WEB_APP_URL = 'https://wana-bingo.onrender.com'; // የድር ጣቢያዎ ዩአርኤል (እባክዎ ትክክለኛውን ሊንክ ያስገቡ)
+const WEB_APP_URL = 'https://wana-bingo.onrender.com'; // የድር ጣቢያዎ ዩአርኤል
 
 let bot = null;
 if (TOKEN) {
@@ -30,7 +30,6 @@ if (TOKEN) {
         });
         console.log('Telegram Bot started successfully!');
 
-        // የፖሊንግ ስህተቶችን በመያዝ ሰርቨሩ እንዳይዘጋ ማድረግ
         bot.on('polling_error', (error) => {
             console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
         });
@@ -109,7 +108,6 @@ app.post('/api/request-transaction', async (req, res) => {
 
 // --- TELEGRAM BOT COMMANDS & ADMIN PANEL ---
 if (bot) {
-    // ቦቱ ሲጀመር የሜኑ ቁልፎችን (Commands) በቴሌግራም ማስመዝገብ
     bot.setMyCommands([
         { command: 'start', description: 'ቦቱን ለመጀመር' },
         { command: 'play', description: '🎮 Play Bingo (ጨዋታውን ክፈት)' },
@@ -122,23 +120,27 @@ if (bot) {
         const chatId = msg.chat.id;
         const name = msg.from.first_name;
         
-        let welcomeMessage = `ሰላም ${name}! ወደ ዋና ቢንጎ (Wana Bingo) እንኳን ደህና መጡ። 🎉\n\n` +
-                             `📌 **ትዕዛዞች:**\n` +
-                             `/play - 🎮 ቢንጎ ለመጫወት (Web App)\n` +
-                             `/balance - ቀሪ ገንዘብዎን ለማየት\n` +
-                             `/deposit - የዲፖዚት መመሪያ ለማየት\n` +
-                             `/withdraw - ገንዘብ ወጪ ለማድረግ`;
+        let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
+                             `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                             `─────────────────────\n` +
+                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
+                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
+                             `💰 /balance - 💵 ቀሪ ሂሳብዎን ለማየት\n` +
+                             `💳 /deposit - 📥 የዲፖዚት መመሪያዎችን ለማግኘት\n` +
+                             `💸 /withdraw - 📤 ያሸነፉትን ገንዘብ ወጪ ለማድረግ\n` +
+                             `─────────────────────`;
 
         if (chatId.toString() === ADMIN_CHAT_ID) {
-            welcomeMessage += `\n\n👑 **የአድሚን ትዕዛዞች:**\n` +
-                              `/admin - ዳሽቦርድ ለማየት\n` +
-                              `/pending - ያልተረጋገጡ ጥያቄዎችን ለማየት`;
+            welcomeMessage += `\n\n👑 **የአድሚን መቆጣጠሪያ ፓነል፡**\n` +
+                              `📊 /admin - አጠቃላይ ድምር መረጃዎችን ለማየት\n` +
+                              `📋 /pending - የሚጠብቁ የገንዘብ ጥያቄዎችን ለማጽደቅ`;
         }
 
         bot.sendMessage(chatId, welcomeMessage, {
+            parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🎮 Play Bingo (Web App)', web_app: { url: WEB_APP_URL } }]
+                    [{ text: '🚀  ዋናውን ቢንጎ ጨዋታ ጀምር (Play Bingo)  🎮', web_app: { url: WEB_APP_URL } }]
                 ]
             }
         });
@@ -149,7 +151,7 @@ if (bot) {
         bot.sendMessage(chatId, `🎮 የቢንጎ ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ፡`, {
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🎮 Play Bingo', web_app: { url: WEB_APP_URL } }]
+                    [{ text: '🚀  Play Bingo Web App  🎮', web_app: { url: WEB_APP_URL } }]
                 ]
             }
         });
@@ -157,12 +159,12 @@ if (bot) {
 
     bot.onText(/\/deposit/, (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ።`);
+        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ።`, { parse_mode: 'Markdown' });
     });
 
     bot.onText(/\/withdraw/, (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `💸 **ገንዘብ ወጪ (Withdraw)**\n\nያሸነፉትን ገንዘብ ወጪ ለማድረግ እባክዎ ወደ ዌብሳይቱ በመግባት የ "Withdraw" ቅጹን ይሙሉ::`);
+        bot.sendMessage(chatId, `💸 **ገንዘብ ወጪ (Withdraw)**\n\nያሸነፉትን ገንዘብ ወጪ ለማድረግ እባክዎ ወደ ዌብሳይቱ በመግባት የ "Withdraw" ቅጹን ይሙሉ::`, { parse_mode: 'Markdown' });
     });
 
     bot.onText(/\/balance/, async (msg) => {
@@ -194,7 +196,7 @@ if (bot) {
             const balanceRes = await pool.query('SELECT SUM(balance) FROM users');
             const totalBalance = balanceRes.rows[0].sum || 0;
 
-            bot.sendMessage(chatId, `👑 **የአድሚን ዳሽቦርድ**\n\n👥 ጠቅላላ ተጫዋቾች: ${totalUsers}\n💰 ጠቅላላ ባላንስ: ${totalBalance} ብር\n\nያልተረጋገጡ ጥያቄዎችን ለማየት /pending ይጠቀሙ።`);
+            bot.sendMessage(chatId, `👑 **የአድሚን ዳሽቦርድ**\n\n👥 ጠቅላላ ተጫዋቾች: ${totalUsers}\n💰 ጠቅላላ ባላንስ: ${totalBalance} ብር\n\nያልተረጋገጡ ጥያቄዎችን ለማየት /pending ይጠቀሙ።`, { parse_mode: 'Markdown' });
         } catch (err) {
             console.error(err);
         }
@@ -217,7 +219,7 @@ if (bot) {
                 return bot.sendMessage(chatId, '✅ ምንም ያልተረጋገጠ (Pending) የዲፖዚት ወይም ዊዝድሮው ጥያቄ የለም!');
             }
 
-            bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`);
+            bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`, { parse_mode: 'Markdown' });
 
             for (let tx of pendingRes.rows) {
                 let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
