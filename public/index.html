@@ -87,11 +87,22 @@
             color: #c05621;
         }
 
-        /* Number Calling Board */
+        /* Selection Board (ካርድ መምረጫ ክፍል) */
+        .selection-board {
+            background: #f0fff4;
+            border: 1px solid #c6f6d5;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        /* Call Board (ቁጥር መጥሪያ ቦርድ) */
         .call-board {
             text-align: center;
             background: #ebf8ff;
-            padding: 10px;
+            border: 1px solid #bee3f8;
+            padding: 12px;
             border-radius: 8px;
             margin-bottom: 15px;
         }
@@ -162,10 +173,6 @@
             color: white;
         }
 
-        .btn-primary:active {
-            background: var(--secondary-color);
-        }
-
         .btn-success {
             background: var(--accent-color);
             color: white;
@@ -206,14 +213,22 @@
 
         <!-- Lobby & Countdown Box -->
         <div id="lobby-section" class="lobby-box">
-            <h3 id="round-title">ክፍለ ጊዜ (Round Loining)</h3>
+            <h3 id="round-title">ክፍለ ጊዜ (Round Lobby)</h3>
             <div class="timer-display" id="timer">30 ሰከንድ ቀርቷል</div>
-            <p id="lobby-status-text" style="margin: 5px 0 0 0; font-size: 0.85rem; color: #718096;">ተጫዋቾች በመጠባበቅ ላይ ይገኛሉ...</p>
+            <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: #718096;">ጨዋታው እስኪጀመር ይጠብቁ ወይም ከታች ካርድ ይምረጡ</p>
         </div>
 
-        <!-- Active Game Calling Board -->
-        <div id="game-board-section" class="call-board hidden">
-            <div style="font-size: 0.85rem; color: #4a5568;">የወጣ ቁጥር (Current Call):</div>
+        <!-- 1. Selection Board (የካርድ መምረጫ ክፍል) -->
+        <div id="selection-board-section" class="selection-board">
+            <h4 style="margin: 0 0 8px 0; color: #22543d;">🎯 ካርድ መምረጫ (Selection Board)</h4>
+            <p style="margin: 0 0 10px 0; font-size: 0.85rem; color: #2f855a;">ለሚቀጥለው ዙር የሚፈልጉትን የቢንጎ ካርድ ይምረጡ</p>
+            <button class="btn btn-primary" style="margin-bottom: 0; padding: 8px;" onclick="generateBingoCard()">አዲስ ካርድ አቀያይር (Shuffle Card)</button>
+        </div>
+
+        <!-- 2. Call Board (የቁጥር መጥሪያ ቦርድ - ጨዋታው ሲጀመር የሚታይ) -->
+        <div id="call-board-section" class="call-board hidden">
+            <h4 style="margin: 0 0 5px 0; color: #2b6cb0;">📢 የቁጥር መጥሪያ ቦርድ (Call Board)</h4>
+            <div style="font-size: 0.8rem; color: #4a5568;">የወጣ ቁጥር (Current Call):</div>
             <div class="current-number" id="current-drawn-num">--</div>
             <div style="font-size: 0.8rem; color: #718096; margin-top: 5px;" id="drawn-history">ወጡ: የሉም</div>
         </div>
@@ -316,7 +331,8 @@
             document.getElementById('round-title').innerText = `ክፍለ ጊዜ (Round ${currentRoundId})`;
             if (data.status === 'PLAYING') {
                 document.getElementById('lobby-section').classList.add('hidden');
-                document.getElementById('game-board-section').classList.remove('hidden');
+                document.getElementById('selection-board-section').classList.add('hidden');
+                document.getElementById('call-board-section').classList.remove('hidden');
                 document.getElementById('bingo-btn').classList.remove('hidden');
             }
         });
@@ -331,7 +347,8 @@
             if (data.roundId === currentRoundId) {
                 alert(data.message);
                 document.getElementById('lobby-section').classList.add('hidden');
-                document.getElementById('game-board-section').classList.remove('hidden');
+                document.getElementById('selection-board-section').classList.add('hidden');
+                document.getElementById('call-board-section').classList.remove('hidden');
                 document.getElementById('bingo-btn').classList.remove('hidden');
             }
         });
@@ -345,14 +362,14 @@
 
         socket.on('gameOver', (data) => {
             alert(data.message);
-            location.reload(); // Refresh to join new round lobby
+            location.reload(); 
         });
 
         // Claim Bingo Button Action
         document.getElementById('bingo-btn').onclick = () => {
             socket.emit('claimBingo', {
                 identifier: currentUser.identifier,
-                winAmount: 50.00, // የሽልማት መጠን
+                winAmount: 50.00, 
                 roundId: currentRoundId
             });
         };
