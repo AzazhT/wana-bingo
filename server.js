@@ -313,6 +313,7 @@ function getOrCreateLobby(betAmount) {
             status: 'waiting', // waiting, playing, ended
             players: new Set(),
             reservedNumbers: {}, // { number: socketId }
+            selectedBoards: {},  // { boardNumber: socketId } -> የተመረጡ ቦርዶች መቆጣጠሪያ ተጨምሯል
             drawnNumbers: [],
             countdown: 30,
             timer: null,
@@ -396,23 +397,48 @@ io.on('connection', (socket) => {
             betAmount: room.betAmount,
             countdown: room.countdown,
             status: room.status,
-            reservedNumbers: room.reservedNumbers
+            reservedNumbers: room.reservedNumbers,
+            selectedBoards: room.selectedBoards // አሁን የተመረጡትን ቦርዶች ለተጫዋቹ እንልካለን
         });
     });
 
-    // ተጫዋች ቁጥር ሲመርጥ (Real-time Reservation) - የተስተካከለ ጥብቅ ሎጂክ
+    // ተጫዋች ቦርድ ቁጥር ሲመርጥ (የተስተካከለ ጥብቅ ሎጂክ - አንድ ቦርድ ለአንድ ተጫዋች ብቻ)
+    socket.on('selectBoard', (data) => {
+        const { roomId, boardNumber } = data;
+        let room = activeRooms[roomId];
+
+        if (room && room.status === 'waiting') {
+            // ከዚህ ቀደም የዚህ ተጫዋች ሌላ የተመረጠ ቦርድ ካለ እናጸዳለን
+            for (let bNum in room.selectedBoards) {
+                if (room.selectedBoards[bNum] === socket.id) {
+                    delete room.selectedBoards[bNum];
+                }
+            }
+
+            // ቦርዱ በሌላ ተጫዋች መያዙን ማረጋገጥ
+            if (!room.selectedBoards[boardNumber]) {
+                room.selectedBoards[boardNumber] = socket.id;
+                // ለሁሉም ተጫዋቾች ይህ ቦርድ መያዙን እናሳውቃለን
+                io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
+                // ለቦታው ባለቤት የተሳካ መሆኑን እንነግራለን
+                socket.emit('boardSelectSuccess', { boardNumber });
+            } else {
+                // ቦርዱ አስቀድሞ ከተያዘ ስህተት እንመልሳለን
+                socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
+            }
+        }
+    });
+
+    // ተጫዋች ቁጥር ሲመርጥ (Real-time Reservation)
     socket.on('reserveNumber', (data) => {
         const { roomId, number } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'waiting') {
-            // ቁጥሩ ከዚህ በፊት በሌላ ተጫዋች መያዙን ማረጋገጥ
             if (!room.reservedNumbers[number]) {
                 room.reservedNumbers[number] = socket.id;
-                // ለሁሉም በዛ 룸 ውስጥ ያሉ ተጫዋቾች ቁጥሩ መያዙን ማሳወቅ
                 io.to(roomId).emit('numberReserved', { number, socketId: socket.id });
             } else {
-                // ቁጥሩ አስቀድሞ ተይዞ ከሆነ ለጠያቂው ብቻ ማሳወቂያ መላክ
                 socket.emit('reservationError', { message: 'ይህ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
             }
         }
@@ -448,11 +474,20 @@ io.on('connection', (socket) => {
             let room = activeRooms[roomId];
             if (room.players.has(socket.id)) {
                 room.players.delete(socket.id);
+                
                 // የተያዙ ቁጥሮች ካሉ መልቀቅ 
                 for (let num in room.reservedNumbers) {
                     if (room.reservedNumbers[num] === socket.id) {
                         delete room.reservedNumbers[num];
                         io.to(roomId).emit('numberReleased', { number: num });
+                    }
+                }
+
+                // የተመረጡ ቦርዶች ካሉ መልቀቅ
+                for (let bNum in room.selectedBoards) {
+                    if (room.selectedBoards[bNum] === socket.id) {
+                        delete room.selectedBoards[bNum];
+                        io.to(roomId).emit('boardReleased', { boardNumber: bNum });
                     }
                 }
             }
