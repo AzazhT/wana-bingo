@@ -319,7 +319,8 @@ function getOrCreateLobby(betAmount) {
             status: 'waiting', 
             players: new Set(),
             reservedNumbers: {}, 
-            selectedBoards: {},  
+            selectedBoards: {}, // በቋሚነት የተያዙ (Locked/Taken) ቦርዶች
+            tempSelections: {},  // አሁን የተጨመረው: ጊዜያዊ የተመረጡ (ለሌሎች የማይታዩ) ቦርዶች
             drawnNumbers: [],
             countdown: 30,
             startTime: Date.now() + 30000,
@@ -420,13 +421,38 @@ io.on('connection', (socket) => {
         io.to(room.roomId).emit('playersUpdate', { playersCount: room.players.size });
     });
 
-    // 🚀 ተጫዋቹ ቦርድ መርጦ "Start game" ሲጫን የሚከናወን ሎጂክ
+    // 1️⃣ ተጫዋቹ ቦርድ ሲነካ (ጊዜያዊ - Temporary Selection) -> ለሌሎች ቀይ ሆኖ አይታይም
+    socket.on('selectBoardTemp', (data) => {
+        const { roomId, boardNumber } = data;
+        let room = activeRooms[roomId];
+
+        if (room && room.status === 'waiting') {
+            // ቦርዱ በሌላ ተጫዋች በቋሚነት (Locked) ተይዞ ከሆነ
+            if (room.selectedBoards[boardNumber]) {
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
+            }
+
+            // ለዚህ ተጫዋች ጊዜያዊ ምርጫውን እንመዝግብ
+            if (!room.tempSelections) room.tempSelections = {};
+            room.tempSelections[socket.id] = boardNumber;
+
+            // ለተጠቃሚው ብቻ ግሪን (Green) እንዲሆን እንልክለታለን
+            socket.emit('boardTempSelected', { boardNumber });
+        }
+    });
+
+    // 2️⃣ ተጫዋቹ "Start game" ሲጫን (ቋሚ መያዝ - Locked/Taken) -> ለሌሎች በብርቱካናማ/ቀይ ይታያል
     socket.on('startPlayerGame', (data) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'waiting') {
-            // ተጫዋቹ አስቀድሞ ሌላ ቦርድ ይዞ ከነበረ እንለቅለታለን
+            // ቦርዱ አስቀድሞ በሌላ ተጫዋች ተይዞ ከሆነ
+            if (room.selectedBoards[boardNumber]) {
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
+            }
+
+            // ተጫዋቹ አስቀድሞ ሌላ ቦርድ በቋሚነት ይዞ ከነበረ እንለቅለታለን
             let previousBoard = null;
             for (let bNum in room.selectedBoards) {
                 if (room.selectedBoards[bNum] === socket.id) {
@@ -439,18 +465,19 @@ io.on('connection', (socket) => {
                 io.to(roomId).emit('boardReleased', { boardNumber: previousBoard });
             }
 
-            // አዲሱ ቦርድ የተያዘ መሆን አለመሆኑን ማረጋገጥ
-            if (!room.selectedBoards[boardNumber]) {
-                room.selectedBoards[boardNumber] = socket.id;
-                
-                // ለሁሉም ተጫዋቾች ይህ ቦርድ መያዙን በከለር እንዲታይ እንልካለን
-                io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
-                
-                // ለራሱ ተጫዋቹ ስኬታማ መሆኑን እና ወደ ጨዋታው መግባቱን እናሳውቃለን
-                socket.emit('gameJoinSuccess', { boardNumber });
-            } else {
-                socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
+            // አዲሱን ቦርድ በቋሚነት (Locked) እንይዘዋለን
+            room.selectedBoards[boardNumber] = socket.id;
+
+            // ከጊዜያዊ ዝርዝር ውስጥ እናጸዳዋለን
+            if (room.tempSelections && room.tempSelections[socket.id]) {
+                delete room.tempSelections[socket.id];
             }
+            
+            // ለሁሉም ተጫዋቾች ይህ ቦርድ መያዙን (እንደተያዘ/ቀይ/ብርቱካናማ ሆኖ እንዲታይ) እንልካለን
+            io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
+            
+            // ለራሱ ተጫዋቹ ስኬታማ መሆኑን እና ወደ ጨዋታው መግባቱን እናሳውቃለን
+            socket.emit('gameJoinSuccess', { boardNumber });
         }
     });
 
@@ -464,7 +491,7 @@ io.on('connection', (socket) => {
             if (room.timer) clearInterval(room.timer);
 
             try {
-                const userRes = __await = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
                 if (userRes.rows.length > 0) {
                     let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(winAmount);
                     await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
@@ -484,14 +511,19 @@ io.on('connection', (socket) => {
             if (room.players.has(socket.id)) {
                 room.players.delete(socket.id);
                 
-                // ተጫዋቹ ሲወጣ የያዛቸውን ቦርዶች መልቀቅ
+                // ጊዜያዊ ምርጫውን ካለ እናጸዳለን
+                if (room.tempSelections && room.tempSelections[socket.id]) {
+                    delete room.tempSelections[socket.id];
+                }
+
+                // ተጫዋቹ ሲወጣ በቋሚነት የያዛቸውን ቦርዶች መልቀቅ
                 for (let bNum in room.selectedBoards) {
                     if (room.selectedBoards[bNum] === socket.id) {
                         delete room.selectedBoards[bNum];
                         io.to(roomId).emit('boardReleased', { boardNumber: bNum });
                     }
                 }
-                io.to(roomId).id && io.to(roomId).emit('playersUpdate', { playersCount: room.players.size });
+                io.to(roomId).emit('playersUpdate', { playersCount: room.players.size });
             }
         }
     });
