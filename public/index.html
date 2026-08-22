@@ -122,7 +122,7 @@
                 <div class="bottom-section">
                     <div class="preview-ticket" id="previewTicket"></div>
                     <div class="controls">
-                        <button class="btn" onclick="goToGame()">Start game (Join Lobby)</button>
+                        <button class="btn" onclick="goToGame()">Start game (Join)</button>
                     </div>
                 </div>
                 <button class="btn" style="width: 100%; margin-top: 8px; background: #2b3a4a;" onclick="goToBetStep()">‹ ተመለስ (Back)</button>
@@ -292,10 +292,8 @@
             updateBoardsUI();
         });
 
-        // --- 3. ዘግይቶ ለሚገባ ተጫዋች የሚሰጥ ማሳሰቢያ ---
         socket.on('gameAlreadyStarted', (data) => {
             alert(data.message);
-            // አስፈላጊ ከሆነ ወደ መጀመሪያው (Bet Selection) ወይም ቆይቶ እንዲገባ ማድረግ ይቻላል
             showGameStep('gameStepBet');
         });
 
@@ -309,7 +307,7 @@
             updateBoardsUI();
         });
 
-        socket.on('boardSelectSuccess', (data) => {
+        socket.on('gameJoinSuccess', (data) => {
             selectedCardId = data.boardNumber;
             displayPreview(selectedCardId);
             updateBoardsUI();
@@ -411,12 +409,11 @@
                 btn.id = `card-btn-${i}`;
                 btn.innerText = i;
                 btn.onclick = () => {
-                    // 1. ሌላ ተጫዋች ያዘው መሆኑን ማረጋገጥ እና በከለር መቆለፍ
                     if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
                         alert('ይህ ቦርድ በሌላ ተጫዋች ተይዟል!');
                         return;
                     }
-                    socket.emit('selectBoard', { roomId: currentRoomId, boardNumber: i });
+                    socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: i });
                 };
                 cardsGrid.appendChild(btn);
             }
@@ -432,9 +429,9 @@
                     btn.classList.remove('active', 'taken');
                     if(roomSelectedBoards[i]) {
                         if(roomSelectedBoards[i] === socket.id) {
-                            btn.classList.add('active'); // የኔ የተመረጠ ቦርድ (ሰማያዊ)
+                            btn.classList.add('active'); 
                         } else {
-                            btn.classList.add('taken');  // በሌላ ተጫዋች የተያዘ (ቀይ)
+                            btn.classList.add('taken');  
                         }
                     }
                 }
