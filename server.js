@@ -17,6 +17,71 @@ const ADMIN_CHAT_ID = '686733543';
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
+// --- Game Rooms Management ---
+let currentRoundId = 1;
+let rooms = {
+    [currentRoundId]: {
+        status: 'WAITING', // WAITING, PLAYING, FINISHED
+        timeLeft: 30,
+        players: [],
+        drawnNumbers: [],
+        timer: null
+    }
+};
+
+// Start the global countdown for the active waiting room
+function startLobbyTimer(roundId) {
+    if (rooms[roundId].timer) return;
+
+    rooms[roundId].timer = setInterval(() => {
+        if (rooms[roundId].timeLeft > 0) {
+            rooms[roundId].timeLeft--;
+            io.to(`room_${roundId}`).emit('timerUpdate', { timeLeft: rooms[roundId].timeLeft, roundId });
+        } else {
+            // Time's up! Lock the room and start the game
+            clearInterval(rooms[roundId].timer);
+            rooms[roundId].status = 'PLAYING';
+            io.to(`room_${roundId}`).emit('gameStarted', { roundId, message: `Round ${roundId} ጀምሯል! በሮች ተዘግተዋል (Locked)።` });
+
+            // Start drawing numbers for this specific room
+            startRoomGame(roundId);
+
+            // Create a new room for upcoming players immediately
+            currentRoundId++;
+            rooms[currentRoundId] = {
+                status: 'WAITING',
+                timeLeft: 30,
+                players: [],
+                drawnNumbers: [],
+                timer: null
+            };
+            startLobbyTimer(currentRoundId);
+        }
+    }, 1000);
+}
+
+// Start drawing numbers every 3 seconds for the active playing room
+function startRoomGame(roundId) {
+    let room = rooms[roundId];
+    let interval = setInterval(() => {
+        if (room.status !== 'PLAYING' || room.drawnNumbers.length >= 75) {
+            clearInterval(interval);
+            return;
+        }
+        let rand;
+        do {
+            rand = Math.floor(Math.random() * 75) + 1;
+        } while (room.drawnNumbers.includes(rand));
+
+        room.drawnNumbers.push(rand);
+        io.to(`room_${roundId}`).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers, roundId });
+    }, 3000);
+}
+
+// Initialize the first room timer on boot
+startLobbyTimer(currentRoundId);
+
+// --- Telegram & API Routes ---
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id.toString();
     const name = msg.from.first_name || 'Bingo Player';
@@ -94,16 +159,7 @@ app.post('/api/request-transaction', async (req, res) => {
     
     try {
         let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
-        let user;
-        if (userRes.rows.length === 0) {
-            const ins = await pool.query(
-                `INSERT INTO users (identifier, name, balance, phone) VALUES ($1, 'Bingo Player', 0.00, 'አልተጋራም') RETURNING *`,
-                [identifier]
-            );
-            user = ins.rows[0];
-        } else {
-            user = userRes.rows[0];
-        }
+        let user = userRes.rows[0];
 
         if (type === 'WITHDRAW' && parseFloat(user.balance) < parseFloat(amount)) {
             return res.json({ success: false, message: 'ያለዎት ባላንስ ከጠየቁት የብር መጠን ያንሳል!' });
@@ -141,110 +197,40 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
-bot.onText(/\/users/, async (msg) => {
-    const chatId = msg.chat.id.toString();
-    if (chatId !== ADMIN_CHAT_ID.toString()) {
-        return bot.sendMessage(chatId, "⚠️ ፈቃድ የለዎትም!");
-    }
-
-    try {
-        const result = await pool.query('SELECT * FROM users');
-        const users = result.rows;
-
-        if (users.length === 0) {
-            return bot.sendMessage(chatId, "📭 እስካሁን የተመዘገበ ተጠቃሚ የለም።");
-        }
-
-        let message = `📋 <b>የተመዘገቡ ተጠቃሚዎች (${users.length}):</b>\n\n`;
-        users.forEach((u, index) => {
-            message += `${index + 1}. <b>ስም:</b> ${u.name}\n` +
-                       `   <b>ID:</b> <code>${u.identifier}</code>\n` +
-                       `   <b>ስልክ:</b> ${u.phone}\n` +
-                       `   <b>ባላንስ:</b> ${parseFloat(u.balance).toFixed(2)} ETB\n\n`;
-        });
-
-        await bot.sendMessage(ADMIN_CHAT_ID, message, { parse_mode: 'HTML' });
-    } catch (err) {
-        console.error(err);
-    }
-});
-
-bot.on('callback_query', async (query) => {
-    const action = query.data;
-    const msg = query.message;
-    const [actionType, txId] = action.split('_');
-
-    try {
-        const txRes = await pool.query('SELECT * FROM transactions WHERE tx_id = $1', [txId]);
-        if (txRes.rows.length === 0) {
-            await bot.answerCallbackQuery(query.id, { text: '⚠️ ይህ ጥያቄ አልተገኘም!' });
-            return;
-        }
-
-        const tx = txRes.rows[0];
-        if (tx.handled) {
-            await bot.answerCallbackQuery(query.id, { text: '⚠️ ይህ ጥያቄ ቀድሞውኑ ተጠናቋል!' });
-            return;
-        }
-
-        const userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [tx.identifier]);
-        const user = userRes.rows[0];
-
-        if (actionType === 'app') {
-            if (tx.type === 'DEPOSIT') {
-                const newBalance = parseFloat(user.balance) + parseFloat(tx.amount);
-                await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, tx.identifier]);
-                await bot.sendMessage(ADMIN_CHAT_ID, `✅ ዲፖዚቱ ተረጋግጧል! ለተጠቃሚው ${tx.amount} ETB ተጨምሯል።\nአሁን ያለው ባላንስ: ${newBalance} ETB`, { parse_mode: 'HTML' });
-            } else if (tx.type === 'WITHDRAW') {
-                if (parseFloat(user.balance) >= parseFloat(tx.amount)) {
-                    const newBalance = parseFloat(user.balance) - parseFloat(tx.amount);
-                    await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, tx.identifier]);
-                    await bot.sendMessage(ADMIN_CHAT_ID, `✅ ዊዝድሮው ተረጋግጧል! ከባላንሱ ${tx.amount} ETB ተቀንሷል።`, { parse_mode: 'HTML' });
-                } else {
-                    await bot.sendMessage(ADMIN_CHAT_ID, `⚠️ ተጠቃሚው በቂ ባላንስ የለውም!`);
-                }
-            }
-        } else {
-            await bot.sendMessage(ADMIN_CHAT_ID, `❌ የ${tx.type} ጥያቄ ተሰርዟል (Rejected)።`, { parse_mode: 'HTML' });
-        }
-
-        await pool.query('UPDATE transactions SET handled = true WHERE tx_id = $1', [txId]);
-        try {
-            await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: msg.chat.id, message_id: msg.message_id });
-        } catch (e) {}
-
-        await bot.answerCallbackQuery(query.id, { text: 'ተከናውኗል!' });
-    } catch (err) {
-        console.error(err);
-    }
-});
-
+// --- Socket.io Rooms Connection Handling ---
 io.on('connection', (socket) => {
-    socket.on('startGame', () => {
-        let drawnNumbers = [];
-        let interval = setInterval(() => {
-            if (drawnNumbers.length >= 75) {
-                clearInterval(interval);
-                return;
-            }
-            let rand;
-            do {
-                rand = Math.floor(Math.random() * 75) + 1;
-            } while (drawnNumbers.includes(rand));
+    // Client joins the currently active WAITING room
+    socket.on('joinActiveLobby', () => {
+        // Find the active waiting room
+        let activeRoomId = Object.keys(rooms).find(id => rooms[id].status === 'WAITING');
+        if (!activeRoomId) {
+            activeRoomId = currentRoundId;
+        }
 
-            drawnNumbers.push(rand);
-            io.emit('numberDrawn', { number: rand, drawnHistory: drawnNumbers });
-        }, 3000);
+        socket.join(`room_${activeRoomId}`);
+        socket.emit('joinedRoom', { 
+            roundId: activeRoomId, 
+            status: rooms[activeRoomId].status, 
+            timeLeft: rooms[activeRoomId].timeLeft 
+        });
     });
 
     socket.on('claimBingo', async (data) => {
-        const { identifier, winAmount } = data;
+        const { identifier, winAmount, roundId } = data;
+        let room = rooms[roundId];
+        
+        if (!room || room.status !== 'PLAYING') {
+            return socket.emit('bingoResponse', { success: false, message: 'ይህ ዙር አልተፈቀደም ወይም አብቅቷል!' });
+        }
+
         try {
             let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
             if (userRes.rows.length > 0) {
                 let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(winAmount);
                 await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
-                io.emit('gameOver', { message: `ተጫዋች ${userRes.rows[0].name} አሸንፏል!` });
+                
+                room.status = 'FINISHED';
+                io.to(`room_${roundId}`).emit('gameOver', { message: `🎉 ተጫዋች ${userRes.rows[0].name} በ Round ${roundId} አሸንፏል!` });
             }
         } catch (e) {
             console.error(e);
