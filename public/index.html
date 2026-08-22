@@ -283,6 +283,7 @@
         socket.on('boardSelectSuccess', (data) => {
             selectedCardId = data.boardNumber;
             displayPreview(selectedCardId);
+            updateBoardsUI();
         });
 
         socket.on('boardSelectError', (data) => {
