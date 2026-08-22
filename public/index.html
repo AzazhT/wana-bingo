@@ -228,6 +228,7 @@
         let drawnNumbers = [];
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
         let roomSelectedBoards = {};
+        let gameHasStarted = false; // ጨዋታው መጀመሩን (Start መሆኑን) ለመቆጣጠር
 
         window.addEventListener('DOMContentLoaded', async () => {
             await fetchUserData();
@@ -253,6 +254,7 @@
 
         socket.on('assignedRoom', (data) => {
             currentRoomId = data.roomId;
+            gameHasStarted = false; // በሎቢ ሰዓት ገና ጨዋታው አልጀመረም
             document.getElementById('gameIdDisplay').innerText = currentRoomId;
             document.getElementById('countdownText').innerText = `${data.countdown}s`;
             
@@ -267,7 +269,9 @@
         });
 
         socket.on('gameStarted', (data) => {
+            gameHasStarted = true; // ጨዋታው በይፋ ተጀምሯል (Start ሆኗል)
             document.getElementById('countdownText').innerText = "Started!";
+            updateBoardsUI(); // ጨዋታው ሲጀምር የተያዙት ቦርዶች በግልጽ እንዲታዩ እና እንዲቆለፉ እናደርጋለን
         });
 
         socket.on('boardSelected', (data) => {
@@ -332,6 +336,7 @@
 
         function selectBet(amount) {
             currentBet = amount;
+            gameHasStarted = false;
             showGameStep('gameStepCards');
             initPage1();
             socket.emit('joinLobby', { betAmount: amount });
@@ -387,7 +392,9 @@
                 btn.id = `card-btn-${i}`;
                 btn.innerText = i;
                 btn.onclick = () => {
-                    if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
+                    // ጨዋታው ገና ካልጀመረ (በሎቢ ሰዓት ከሆነ) ማንም ሰው የሚፈልገውን ቦርድ መምረጥ ይችላል (ምንም ክልከላ የለም)
+                    // ነገር ግን ጨዋታው Start ብሎ ከጀመረ በኋላ (gameHasStarted == true) ለሌላ ሰው የተያዘውን መምረጥ አይቻልም
+                    if (gameHasStarted && roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
                         alert('ይህ ቦርድ በሌላ ተጫዋች ተይዟል!');
                         return;
                     }
@@ -409,7 +416,10 @@
                         if(roomSelectedBoards[i] === socket.id) {
                             btn.classList.add('active');
                         } else {
-                            btn.classList.add('taken');
+                            // የተያዘው ቦርድ የሚታየው እና 'taken' የሚሆነው ጨዋታው Start ብሎ ሲጀምር ብቻ ነው
+                            if (gameHasStarted) {
+                                btn.classList.add('taken');
+                            }
                         }
                     }
                 }
@@ -519,6 +529,7 @@
         }
 
         function leaveGame() {
+            gameHasStarted = false;
             document.getElementById('winnerModal').style.display = 'none';
             showGameStep('gameStepBet');
             fetchUserData();
