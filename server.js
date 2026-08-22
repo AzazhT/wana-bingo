@@ -11,10 +11,10 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
-// እርስዎ የሰጡዋቸው ቋሚ መረጃዎች
+// ቋሚ መረጃዎች
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_CHAT_ID = '686733543';
-const WEB_APP_URL = 'https://wana-bingo.onrender.com'; // የድር ጣቢያዎ ዩአርኤል
+const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 
 let bot = null;
 if (TOKEN) {
@@ -306,7 +306,6 @@ let activeRooms = {}; // Key: ROOM_betAmount, Value: Room Object
 function getOrCreateLobby(betAmount) {
     let roomId = `ROOM_${betAmount}`;
     
-    // ጨዋታው ካለቀ ወይም ከሌለ አዲስ 룸 እና ቋሚ ቆጣሪ እንፈጥራለን
     if (!activeRooms[roomId] || activeRooms[roomId].status === 'ended') {
         activeRooms[roomId] = {
             roomId,
@@ -338,17 +337,13 @@ function startGlobalLobbyCountdown(roomId) {
         io.to(roomId).emit('countdownUpdate', { countdown: room.countdown, playersCount: room.players.size });
 
         if (room.countdown <= 0) {
-            // ሰዓቱ ዜሮ ሲደርስ ጨዋታው ለመጀመር መስፈርቶቹን ማረጋገጥ፡
-            // 1. ቢያንስ 2 ተጫዋቾች መኖር አለባቸው
-            // 2. ቢያንስ 2 የተለያዩ ቦርዶች ተመርጠው መያዝ አለባቸው
             let selectedBoardsCount = Object.keys(room.selectedBoards).length;
 
             if (room.players.size < 2 || selectedBoardsCount < 2) {
-                // መስፈርቶቹ ካልሟሉ ሰዓቱ እንደገና ከ 30 ጀምሮ ይቆጥራል (አይቆምም!)
+                // መስፈርቶቹ ካልሟሉ ሰዓቱ እንደገና ከ 30 ጀምሮ ይቆጥራል
                 room.countdown = 30;
                 io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
             } else {
-                // ሁለቱም መስፈርቶች ከተሟሉ ጨዋታው ይጀመራል
                 startRoomGame(roomId);
             }
         }
@@ -360,10 +355,9 @@ function startRoomGame(roomId) {
     if (!room) return;
 
     room.status = 'playing';
-    if (room.timer) clearInterval(room.timer); // ቆጣሪውን እናቆማለን
+    if (room.timer) clearInterval(room.timer);
     io.to(roomId).emit('gameStarted', { message: 'ጨዋታው ተጀምሯል!' });
 
-    // ቦቱ በየ 3 ሰከንዱ ቁጥሮችን መጥራት ይጀምራል
     room.gameInterval = setInterval(() => {
         if (room.drawnNumbers.length >= 75) {
             clearInterval(room.gameInterval);
@@ -385,12 +379,10 @@ function startRoomGame(roomId) {
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // ተጫዋች የብር መጠኑን መርጦ ሎቢ ሲቀላቀል
     socket.on('joinLobby', (data) => {
-        const betAmount = data && data.betAmount ? data.betAmount : '20'; // ነባሪ 20 ብር
+        const betAmount = data && data.betAmount ? data.betAmount : '20';
         let room = getOrCreateLobby(betAmount);
 
-        // ጨዋታው ከተጀመረ አዲስ ሰው እንዳይገባ መከልከል
         if (room.status === 'playing') {
             socket.emit('joinError', { message: 'ጨዋታው ተጀምሯል፤ እባክዎን ቀጣዩን ዙር ይጠብቁ!' });
             return;
@@ -400,7 +392,6 @@ io.on('connection', (socket) => {
         room.players.add(socket.id);
         socket.currentRoomId = room.roomId;
 
-        // ተጫዋቹ ሲገባ አሁን ያለውን የኮመን/ግሎባል ሰዓት ይረከባል እንጂ ሰዓቱ ዳግም ከ 30 አይጀምርም
         socket.emit('assignedRoom', { 
             roomId: room.roomId, 
             betAmount: room.betAmount,
@@ -411,7 +402,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    // ተጫዋች ቦርድ ቁጥር ሲመርጥ (ጥብቅ ሎጂክ - አንድ ቦርድ ለአንድ ተጫዋች ብቻ)
+    // ጥብቅ የቦርድ ግጭት መቆጣጠሪያ (Strict Board Reservation)
     socket.on('selectBoard', (data) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
@@ -424,21 +415,18 @@ io.on('connection', (socket) => {
                 }
             }
 
-            // ቦርዱ በሌላ ተጫዋች መያዙን ማረጋገጥ
+            // ቦርዱ በሌላ ተጫዋች መያዙን በጥብቅ ማረጋገጥ
             if (!room.selectedBoards[boardNumber]) {
                 room.selectedBoards[boardNumber] = socket.id;
-                // ለሁሉም ተጫዋቾች ይህ ቦርድ መያዙን እናሳውቃለን
                 io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
-                // ለቦታው ባለቤት የተሳካ መሆኑን እንነግራለን
                 socket.emit('boardSelectSuccess', { boardNumber });
             } else {
-                // ቦርዱ አስቀድሞ ከተያዘ ስህተት እንመልሳለን
                 socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
             }
         }
     });
 
-    // ተጫዋች ቁጥር ሲመርጥ (Real-time Reservation)
+    // ጥብቅ የቁጥር ግጭት መቆጣጠሪያ (Strict Number Reservation)
     socket.on('reserveNumber', (data) => {
         const { roomId, number } = data;
         let room = activeRooms[roomId];
@@ -453,7 +441,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ተጫዋች ቢንጎ ሲል
     socket.on('claimBingo', async (data) => {
         const { identifier, winAmount, roomId } = data;
         let room = activeRooms[roomId];
