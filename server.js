@@ -11,7 +11,8 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
-const TOKEN = process.env.BOT_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN';
+const TOKEN = process.env.BOT_TOKEN;
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || 'YOUR_ADMIN_TELEGRAM_CHAT_ID'; // የርስዎን ቴሌግራም ቻት ID ያስገቡ
 const bot = new TelegramBot(TOKEN, { polling: true });
 
 // REST APIs for User & Wallet
@@ -59,36 +60,118 @@ app.post('/api/place-bet', async (req, res) => {
         await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, identifier]);
         res.json({ success: true, newBalance });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
+// --- DEPOSIT & WITHDRAWAL REQUESTS WITH ADMIN NOTIFICATION ---
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
     try {
+        const userRes = await pool.query('SELECT name, username, phone FROM users WHERE identifier = $1', [identifier]);
+        let userInfo = userRes.rows[0] || { name: 'Unknown', username: '', phone: 'N/A' };
+
         await pool.query(
             'INSERT INTO transactions (tx_id, identifier, type, amount, handled) VALUES ($1, $2, $3, $4, FALSE)',
             [tx_id, identifier, type, amount]
         );
+
+        let message = `🔔 አዲስ የ ${type} ጥያቄ መጥቷል!\n\n` +
+                      `🆔 TxID: ${tx_id}\n` +
+                      `👤 ስም: ${userInfo.name} (@${userInfo.username || 'none'})\n` +
+                      `📱 ስልክ: ${userInfo.phone}\n` +
+                      `💰 መጠን: ${amount} ብር\n` +
+                      (details ? `📄 ዝርዝር/SMS: ${details}\n` : '');
+
+        bot.sendMessage(ADMIN_CHAT_ID, message, {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}` },
+                        { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}` }
+                    ]
+                ]
+            }
+        });
+
         res.json({ success: true, tx_id });
     } catch (err) {
-        res.status(500).json({ success: false });
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
-// --- LOBBY & ROOM SOCKET MANAGEMENT ---
-let activeRooms = {}; // roomId -> { status: 'waiting'|'playing', players: [], drawnNumbers: [], timer: null, countdown: 30 }
+// Admin Telegram Inline Button Handler
+bot.on('callback_query', async (query) => {
+    const data = query.data;
+    const parts = data.split('_');
+    const action = parts[0];
+    const tx_id = parts[1];
+
+    try {
+        if (action === 'approve') {
+            const identifier = parts[2];
+            const amount = parseFloat(parts[3]);
+
+            const txRes = await pool.query('SELECT handled, type FROM transactions WHERE tx_id = $1', [tx_id]);
+            if (txRes.rows.length > 0 && txRes.rows[0].handled) {
+                bot.answerCallbackQuery(query.id, { text: 'ይህ ጥያቄ ቀድሞ ተረጋግጧል!' });
+                return;
+            }
+
+            let txType = txRes.rows[0]?.type;
+
+            if (txType === 'DEPOSIT') {
+                const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                if (userRes.rows.length > 0) {
+                    let newBal = parseFloat(userRes.rows[0].balance) + amount;
+                    await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
+                }
+            } else if (txType === 'WITHDRAW') {
+                // ዊዝድሮው ከሆነ አድሚኑ ሲያረጋግጥ ገንዘቡ ከባላንሱ መቀነስ አለበት (ካልተቀነሰ)
+                const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                if (userRes.rows.length > 0) {
+                    let newBal = parseFloat(userRes.rows[0].balance) - amount;
+                    await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal >= 0 ? newBal : 0, identifier]);
+                }
+            }
+
+            await pool.query('UPDATE transactions SET handled = TRUE WHERE tx_id = $1', [tx_id]);
+
+            bot.editMessageText(`✅ ጥያቄው ተረጋግጧል (Approved)!\n🆔 TxID: ${tx_id}`, {
+                chat_id: query.message.chat.id,
+                message_id: query.message.message_id
+            });
+            bot.answerCallbackQuery(query.id, { text: 'በအောင်မြင်ነት ተረጋግጧል!' });
+
+        } else if (action === 'reject') {
+            await pool.query('UPDATE transactions SET handled = TRUE WHERE tx_id = $1', [tx_id]);
+            bot.editMessageText(`❌ ጥያቄው ውድቅ ተደርጓል (Rejected)\n🆔 TxID: ${tx_id}`, {
+                chat_id: query.message.chat.id,
+                message_id: query.message.message_id
+            });
+            bot.answerCallbackQuery(query.id, { text: 'ጥያቄው ውድቅ ተደረገ' });
+        }
+    } catch (err) {
+        console.error('Callback error:', err);
+    }
+});
+
+// --- LOBBY & ROOM SOCKET MANAGEMENT (30s Countdown & Lock on Start) ---
+let activeRooms = {}; 
 
 function createNewRoom() {
     const roomId = 'ROOM_' + Math.floor(1000 + Math.random() * 9000);
     activeRooms[roomId] = {
         roomId,
-        status: 'waiting',
+        status: 'waiting', // waiting, playing, ended
         players: new Set(),
         drawnNumbers: [],
         countdown: 30,
-        timer: null
+        timer: null,
+        gameInterval: null
     };
     startLobbyCountdown(roomId);
     return roomId;
@@ -115,18 +198,20 @@ function startRoomGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
 
+    // 1. ሎቢውን እንቆልፋለን (Locked - status -> playing)
     room.status = 'playing';
-    io.to(roomId).emit('gameStarted', { message: 'ጨዋታው ተጀምሯል!' });
+    io.to(roomId).emit('gameStarted', { message: 'ጨዋታው ተጀምሯል! ሎቢው ተቆልፏል።' });
 
-    // Create next lobby for incoming players
+    // 2. አዲስ የሚመጡ ተጫዋቾች ወደ ሚቀጥለው ሎቢ እንዲገቡ አዲስ ሩም እንፈጥራለን
     if (currentActiveLobbyId === roomId) {
         currentActiveLobbyId = createNewRoom();
     }
 
-    // Start drawing numbers every 3 seconds
+    // 3. የቁጥር መጥራት ሂደት በየ 3 ሰከንዱ ይጀምራል
     room.gameInterval = setInterval(() => {
         if (room.drawnNumbers.length >= 75) {
             clearInterval(room.gameInterval);
+            room.status = 'ended';
             io.to(roomId).emit('gameOver', { message: 'ጨዋታው አልቋል! አሸናፊ አልተገኘም።' });
             return;
         }
@@ -142,10 +227,16 @@ function startRoomGame(roomId) {
 }
 
 io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
-
     socket.on('joinLobby', () => {
+        // ሁልጊዜ ክፍት ወደሆነው (waiting state ላይ ወደሚገኘው) ሎቢ ብቻ ነው ተጫዋቹን የምንጨምረው
         let roomId = currentActiveLobbyId;
+        
+        // ደህንነቱ የተጠበቀ ማረጋገጫ: ሩሙ ከተጀመረ (playing ከሆነ) አዲስ ሩም እንፈጥራለን
+        if (!activeRooms[roomId] || activeRooms[roomId].status !== 'waiting') {
+            roomId = createNewRoom();
+            currentActiveLobbyId = roomId;
+        }
+
         socket.join(roomId);
         activeRooms[roomId].players.add(socket.id);
 
@@ -163,8 +254,8 @@ io.on('connection', (socket) => {
         if (room && room.status === 'playing') {
             room.status = 'ended';
             if (room.gameInterval) clearInterval(room.gameInterval);
+            if (room.timer) clearInterval(room.timer);
 
-            // Update user balance in DB for winning
             try {
                 const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
                 if (userRes.rows.length > 0) {
@@ -188,7 +279,7 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
