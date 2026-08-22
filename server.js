@@ -103,7 +103,112 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
-// Admin Telegram Inline Button Handler
+// --- TELEGRAM BOT COMMANDS & ADMIN PANEL ---
+bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+    const name = msg.from.first_name;
+    
+    let welcomeMessage = `ሰላም ${name}! ወደ ዋና ቢንጎ (Wana Bingo) እንኳን ደህና መጡ። 🎉\n\n` +
+                         `ትዕዛዞች:\n` +
+                         `/balance - ቀሪ ገንዘብዎን ለማየት\n` +
+                         `/deposit - የዲፖዚት መመሪያዎችን ለማየት`;
+
+    if (chatId.toString() === ADMIN_CHAT_ID.toString()) {
+        welcomeMessage += `\n\n👑 **የአድሚን ትዕዛዞች:**\n` +
+                          `/admin - የተጫዋቾች ស្ថቲስቲክስ ለማየት\n` +
+                          `/pending - ያልተረጋገጡ የዲፖዚት/ዊዝድሮው ጥያቄዎችን ለማየት`;
+    }
+
+    bot.sendMessage(chatId, welcomeMessage);
+});
+
+bot.onText(/\/balance/, async (msg) => {
+    const chatId = msg.chat.id;
+    const username = msg.from.username || '';
+    
+    try {
+        const userRes = await pool.query('SELECT balance, name FROM users WHERE username = $1 OR identifier = $2', [username, chatId.toString()]);
+        if (userRes.rows.length > 0) {
+            let user = userRes.rows[0];
+            bot.sendMessage(chatId, `👤 ስም: ${user.name}\n💰 ቀሪ ባላንስዎ: ${user.balance} ብር`);
+        } else {
+            bot.sendMessage(chatId, `እባክዎ መጀመሪያ ዌብሳይቱ ላይ በመግባት አካውንት ይክፈቱ!`);
+        }
+    } catch (err) {
+        console.error(err);
+        bot.sendMessage(chatId, 'የሰርቨር ስህተት አጋጥሟል።');
+    }
+});
+
+bot.onText(/\/deposit/, (msg) => {
+    const chatId = msg.chat.id;
+    bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ በኩል የዲፖዚት ጥያቄ ይላኩ።`);
+});
+
+bot.onText(/\/admin/, async (msg) => {
+    const chatId = msg.chat.id;
+    if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
+
+    try {
+        const usersRes = await pool.query('SELECT COUNT(*) FROM users');
+        const totalUsers = usersRes.rows[0].count;
+
+        const balanceRes = await pool.query('SELECT SUM(balance) FROM users');
+        const totalBalance = balanceRes.rows[0].sum || 0;
+
+        bot.sendMessage(chatId, `👑 **የአድሚን ዳሽቦርድ**\n\n👥 ጠቅላላ ተጫዋቾች: ${totalUsers}\n💰 ጠቅላላ የተጫዋቾች ባላንስ: ${totalBalance} ብር\n\nያልተረጋገጡ ጥያቄዎችን ለማየት /pending የሚለውን ይጠቀሙ።`);
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+// NEW: /pending command for Admin to view and handle pending deposits/withdrawals
+bot.onText(/\/pending/, async (msg) => {
+    const chatId = msg.chat.id;
+    if (chatId.toString() !== ADMIN_CHAT_ID.toString()) {
+        return bot.sendMessage(chatId, 'ይህንን ትዕዛዝ መጠቀም የሚችሉት አድሚኖች ብቻ ናቸው!');
+    }
+
+    try {
+        const pendingRes = await pool.query(`
+            SELECT t.*, u.name, u.username, u.phone 
+            FROM transactions t 
+            LEFT JOIN users u ON t.identifier = u.identifier 
+            WHERE t.handled = FALSE 
+            ORDER BY t.id DESC LIMIT 10
+        `);
+
+        if (pendingRes.rows.length === 0) {
+            return bot.sendMessage(chatId, '✅ ምንም ያልተረጋገጠ (Pending) የዲፖዚት ወይም ዊዝድሮው ጥያቄ የለም!');
+        }
+
+        bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`);
+
+        for (let tx of pendingRes.rows) {
+            let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
+                          `🆔 TxID: ${tx.tx_id}\n` +
+                          `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
+                          `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
+                          `💰 መጠን: ${tx.amount} ብር`;
+
+            bot.sendMessage(chatId, msgText, {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx.tx_id}_${tx.identifier}_${tx.amount}` },
+                            { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx.tx_id}` }
+                        ]
+                    ]
+                }
+            });
+        }
+    } catch (err) {
+        console.error(err);
+        bot.sendMessage(chatId, 'መረጃዎችን ማምጣት አልተቻለም።');
+    }
+});
+
+// Admin Telegram Inline Button Handler for Approvals/Rejections
 bot.on('callback_query', async (query) => {
     const data = query.data;
     const parts = data.split('_');
@@ -130,7 +235,6 @@ bot.on('callback_query', async (query) => {
                     await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
                 }
             } else if (txType === 'WITHDRAW') {
-                // ዊዝድሮው ከሆነ አድሚኑ ሲያረጋግጥ ገንዘቡ ከባላንሱ መቀነስ አለበት (ካልተቀነሰ)
                 const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
                 if (userRes.rows.length > 0) {
                     let newBal = parseFloat(userRes.rows[0].balance) - amount;
@@ -166,7 +270,7 @@ function createNewRoom() {
     const roomId = 'ROOM_' + Math.floor(1000 + Math.random() * 9000);
     activeRooms[roomId] = {
         roomId,
-        status: 'waiting', // waiting, playing, ended
+        status: 'waiting', 
         players: new Set(),
         drawnNumbers: [],
         countdown: 30,
@@ -198,16 +302,13 @@ function startRoomGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
 
-    // 1. ሎቢውን እንቆልፋለን (Locked - status -> playing)
     room.status = 'playing';
     io.to(roomId).emit('gameStarted', { message: 'ጨዋታው ተጀምሯል! ሎቢው ተቆልፏል።' });
 
-    // 2. አዲስ የሚመጡ ተጫዋቾች ወደ ሚቀጥለው ሎቢ እንዲገቡ አዲስ ሩም እንፈጥራለን
     if (currentActiveLobbyId === roomId) {
         currentActiveLobbyId = createNewRoom();
     }
 
-    // 3. የቁጥር መጥራት ሂደት በየ 3 ሰከንዱ ይጀምራል
     room.gameInterval = setInterval(() => {
         if (room.drawnNumbers.length >= 75) {
             clearInterval(room.gameInterval);
@@ -228,10 +329,8 @@ function startRoomGame(roomId) {
 
 io.on('connection', (socket) => {
     socket.on('joinLobby', () => {
-        // ሁልጊዜ ክፍት ወደሆነው (waiting state ላይ ወደሚገኘው) ሎቢ ብቻ ነው ተጫዋቹን የምንጨምረው
         let roomId = currentActiveLobbyId;
         
-        // ደህንነቱ የተጠበቀ ማረጋገጫ: ሩሙ ከተጀመረ (playing ከሆነ) አዲስ ሩም እንፈጥራለን
         if (!activeRooms[roomId] || activeRooms[roomId].status !== 'waiting') {
             roomId = createNewRoom();
             currentActiveLobbyId = roomId;
