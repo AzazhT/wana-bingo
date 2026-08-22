@@ -17,19 +17,19 @@ const ADMIN_CHAT_ID = '686733543'; // የአድሚን ቴሌግራም ID
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
-// የሁሉም ተጠቃሚዎች የባንክ ሂሳብ እና መረጃ (Database)
+// የሁሉም ተጠቃሚዎች የባንክ ሂሳብ እና መረጃ ማከማቻ (Database)
 let usersDatabase = {};
 // የტრንዛክሽን ጥያቄዎች ማከማቻ
 let pendingTransactions = {};
 
-// 1. የተጠቃሚውን መረጃ እና ባላንስ ማምጫ API
+// 1. የተጠቃሚውን መረጃ እና ባላንስ ማምጫ API (አፑ ሲከፈት ራሱ ይጠራል)
 app.post('/api/get-user', (req, res) => {
     const { identifier, name, username } = req.body;
     if (!identifier) return res.status(400).json({ success: false, message: 'Invalid ID' });
 
     if (!usersDatabase[identifier]) {
         usersDatabase[identifier] = {
-            identifier,
+            identifier: String(identifier),
             name: name || 'Bingo Player',
             username: username || '',
             balance: 0.00,
@@ -40,6 +40,8 @@ app.post('/api/get-user', (req, res) => {
             usersDatabase[identifier].name = name;
         }
     }
+    
+    console.log(`ተጠቃሚ ገብቷል/ተመዝግቧል: ID: ${identifier}, ስም: ${usersDatabase[identifier].name}`);
     res.json({ success: true, user: usersDatabase[identifier] });
 });
 
@@ -112,14 +114,14 @@ app.post('/api/request-transaction', async (req, res) => {
 bot.onText(/\/users/, async (msg) => {
     const chatId = msg.chat.id;
 
-    // አድሚኑ ብቻ መሆኑን ማረጋገጫ
-    if (chatId.toString() !== ADMIN_CHAT_ID) {
+    // አድሚኑ ብቻ መሆኑን ማረጋገጫ (Chat ID ን በ string መልክ ማወዳደር)
+    if (chatId.toString() !== ADMIN_CHAT_ID.toString()) {
         return bot.sendMessage(chatId, "⚠️ ይህን ትእዛዝ ለመጠቀም ፈቃድ የለዎትም!");
     }
 
     const userKeys = Object.keys(usersDatabase);
     if (userKeys.length === 0) {
-        return bot.sendMessage(chatId, "📭 እስካሁን የተመዘገበ ተጠቃሚ የለም።", { parse_mode: 'HTML' });
+        return bot.sendMessage(chatId, "📭 እስካሁን የተመዘገበ ተጠቃሚ የለም። (ወይም አፑን የከፈተ ተጠቃሚ የለም)", { parse_mode: 'HTML' });
     }
 
     let message = `📋 <b>የተመዘገቡ ተጠቃሚዎች ዝርዝር (${userKeys.length}):</b>\n\n`;
@@ -133,7 +135,6 @@ bot.onText(/\/users/, async (msg) => {
                    `   <b>ባላንስ:</b> ${u.balance.toFixed(2)} ETB\n\n`;
         index++;
 
-        // መልእክቱ ረጅም ከሆነ በክፍል መላክ
         if (message.length > 3500) {
             await bot.sendMessage(ADMIN_CHAT_ID, message, { parse_mode: 'HTML' });
             message = '';
