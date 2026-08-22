@@ -11,10 +11,10 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
-// እርስዎ የሰጡዋቸው ቋሚ መረጃዎች
+// ቋሚ መረጃዎች
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_CHAT_ID = '686733543';
-const WEB_APP_URL = 'https://wana-bingo.onrender.com'; // የድር ጣቢያዎ ዩአርኤል
+const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 
 let bot = null;
 if (TOKEN) {
@@ -69,7 +69,6 @@ app.post('/api/update-phone', async (req, res) => {
         await pool.query('UPDATE users SET phone = $1 WHERE identifier = $2', [phone, identifier]);
         res.json({ success: true });
     } catch (err) {
-        console.error(err);
         res.status(500).json({ success: false });
     }
 });
@@ -122,7 +121,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                             `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                             `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
                              `─────────────────────\n` +
                              `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                              `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -149,7 +148,7 @@ if (bot) {
 
     bot.onText(/\/play/, (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `🎮 የቢንጎ ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ፡`, {
+        bot.sendMessage(chatId, `🎮 የቢንጎ ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ：`, {
             reply_markup: {
                 inline_keyboard: [
                     [{ text: '🚀  Play Bingo Web App  🎮', web_app: { url: WEB_APP_URL } }]
@@ -160,7 +159,7 @@ if (bot) {
 
     bot.onText(/\/deposit/, (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ።`, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ。`, { parse_mode: 'Markdown' });
     });
 
     bot.onText(/\/withdraw/, (msg) => {
@@ -178,7 +177,7 @@ if (bot) {
                 let user = userRes.rows[0];
                 bot.sendMessage(chatId, `👤 ስም: ${user.name}\n💰 ቀሪ ባላንስዎ: ${user.balance} ብር`);
             } else {
-                bot.sendMessage(chatId, `እባክዎ መጀመሪያ ዌብሳይቱ ላይ በመግባት አካውንት ይክፈቱ!`);
+                bot.sendMessage(chatId, `እባክዎ መጀመሪያ ዌብሳይቱ ላይ በመግባት አካውንት ይክፈቱ！`);
             }
         } catch (err) {
             console.error(err);
@@ -188,7 +187,7 @@ if (bot) {
 
     bot.onText(/\/admin/, async (msg) => {
         const chatId = msg.chat.id;
-        if (chatId.toString() !== ADMIN_CHAT_ID) return bot.sendMessage(chatId, 'ይህንን ትዕዛዝ መጠቀም የሚችሉት አድሚኖች ብቻ ናቸው!');
+        if (chatId.toString() !== ADMIN_CHAT_ID) return bot.sendMessage(chatId, 'ይህንን ትዕዛዝ መጠቀም የሚችሉት አድሚኖች ብቻ ናቸው！');
 
         try {
             const usersRes = await pool.query('SELECT COUNT(*) FROM users');
@@ -197,7 +196,7 @@ if (bot) {
             const balanceRes = await pool.query('SELECT SUM(balance) FROM users');
             const totalBalance = balanceRes.rows[0].sum || 0;
 
-            bot.sendMessage(chatId, `👑 **የአድሚን ዳሽቦርድ**\n\n👥 ጠቅላላ ተጫዋቾች: ${totalUsers}\n💰 ጠቅላላ ባላንስ: ${totalBalance} ብር\n\nያልተረጋገጡ ጥያቄዎችን ለማየት /pending ይጠቀሙ።`, { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, `👑 **የአድሚን ዳሽቦርድ**\n\n👥 ጠቅላላ ተጫዋቾች: ${totalUsers}\n💰 ጠቅላላ ባላንስ: ${totalBalance} ብር\n\nያልተረጋገጡ ጥያቄዎችን ለማየት /pending ይጠቀሙ。`, { parse_mode: 'Markdown' });
         } catch (err) {
             console.error(err);
         }
@@ -217,7 +216,7 @@ if (bot) {
             `);
 
             if (pendingRes.rows.length === 0) {
-                return bot.sendMessage(chatId, '✅ ምንም ያልተረጋገጠ (Pending) የዲፖዚት ወይም ዊዝድሮው ጥያቄ የለም!');
+                return bot.sendMessage(chatId, '✅ ምንም ያልተረጋገጠ (Pending) የዲፖዚት ወይም ዊዝድሮው ጥያቄ የለም！');
             }
 
             bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`, { parse_mode: 'Markdown' });
@@ -242,7 +241,7 @@ if (bot) {
             }
         } catch (err) {
             console.error(err);
-            bot.sendMessage(chatId, 'መረጃዎችን ማምጣት አልተቻለም።');
+            bot.sendMessage(chatId, 'መረጃዎችን ማምጣት አልተቻለም。');
         }
     });
 
@@ -259,7 +258,7 @@ if (bot) {
 
                 const txRes = await pool.query('SELECT handled, type FROM transactions WHERE tx_id = $1', [tx_id]);
                 if (txRes.rows.length > 0 && txRes.rows[0].handled) {
-                    bot.answerCallbackQuery(query.id, { text: 'ይህ ጥያቄ ቀድሞ ተረጋግጧል!' });
+                    bot.answerCallbackQuery(query.id, { text: 'ይህ ጥያቄ ቀድሞ ተረጋግጧል！' });
                     return;
                 }
 
@@ -285,228 +284,10 @@ if (bot) {
                     chat_id: query.message.chat.id,
                     message_id: query.message.message_id
                 });
-                bot.answerCallbackQuery(query.id, { text: 'በအောင်မြင်ነት ተረጋግጧል!' });
+                bot.answerCallbackQuery(query.id, { text: 'በအောင်မြင်ነት ተረጋግጧል！' });
 
             } else if (action === 'reject') {
                 await pool.query('UPDATE transactions SET handled = TRUE WHERE tx_id = $1', [tx_id]);
                 bot.editMessageText(`❌ ጥያቄው ውድቅ ተደርጓል (Rejected)\n🆔 TxID: ${tx_id}`, {
                     chat_id: query.message.chat.id,
                     message_id: query.message.message_id
-                });
-                bot.answerCallbackQuery(query.id, { text: 'ጥያቄው ውድቅ ተደረገ' });
-            }
-        } catch (err) {
-            console.error('Callback error:', err);
-        }
-    });
-}
-
-// --- GLOBAL LOBBY & ROOM SOCKET MANAGEMENT ---
-let activeRooms = {}; 
-
-function getOrCreateLobby(betAmount) {
-    let roomId = `ROOM_${betAmount}`;
-    
-    if (!activeRooms[roomId] || activeRooms[roomId].status === 'ended') {
-        activeRooms[roomId] = {
-            roomId,
-            betAmount,
-            status: 'waiting', 
-            players: new Set(),
-            reservedNumbers: {}, // { number: socketId } -> የትኛው ቁጥር በማን እንደተያዘ
-            selectedBoards: {},  // { boardNumber: socketId }
-            drawnNumbers: [],
-            countdown: 30,
-            timer: null,
-            gameInterval: null
-        };
-        startGlobalLobbyCountdown(roomId);
-    }
-    return activeRooms[roomId];
-}
-
-function startGlobalLobbyCountdown(roomId) {
-    let room = activeRooms[roomId];
-    if (!room) return;
-
-    if (room.timer) clearInterval(room.timer);
-
-    room.timer = setInterval(() => {
-        if (room.status !== 'waiting') return;
-
-        room.countdown--;
-        io.to(roomId).emit('countdownUpdate', { countdown: room.countdown, playersCount: room.players.size });
-
-        if (room.countdown <= 0) {
-            let selectedBoardsCount = Object.keys(room.selectedBoards).length;
-
-            if (room.players.size < 2 || selectedBoardsCount < 2) {
-                room.countdown = 30;
-                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
-            } else {
-                startRoomGame(roomId);
-            }
-        }
-    }, 1000);
-}
-
-function startRoomGame(roomId) {
-    let room = activeRooms[roomId];
-    if (!room) return;
-
-    room.status = 'playing';
-    if (room.timer) clearInterval(room.timer);
-    io.to(roomId).emit('gameStarted', { message: 'ጨዋታው ተጀምሯል!' });
-
-    room.gameInterval = setInterval(() => {
-        if (room.drawnNumbers.length >= 75) {
-            clearInterval(room.gameInterval);
-            room.status = 'ended';
-            io.to(roomId).emit('gameOver', { message: 'ጨዋታው አልቋል! 75ቱ ቁጥሮች ተጠርተዋል አሸናፊ አልተገኘም።' });
-            return;
-        }
-
-        let rand;
-        do {
-            rand = Math.floor(Math.random() * 75) + 1;
-        } while (room.drawnNumbers.includes(rand));
-
-        room.drawnNumbers.push(rand);
-        io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
-    }, 3000);
-}
-
-io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
-
-    socket.on('joinLobby', (data) => {
-        const betAmount = data && data.betAmount ? data.betAmount : '20';
-        let room = getOrCreateLobby(betAmount);
-
-        if (room.status === 'playing') {
-            socket.emit('joinError', { message: 'ጨዋታው ተጀምሯል፤ እባክዎን ቀጣዩን ዙር ይጠብቁ!' });
-            return;
-        }
-
-        socket.join(room.roomId);
-        room.players.add(socket.id);
-        socket.currentRoomId = room.roomId;
-
-        // አዲስ ገቢ ተጫዋች ሲገባ አስቀድመው የተያዙ ቁጥሮች በሙሉ ይላኩለት (Persistent State)
-        socket.emit('assignedRoom', { 
-            roomId: room.roomId, 
-            betAmount: room.betAmount,
-            countdown: room.countdown,
-            status: room.status,
-            reservedNumbers: room.reservedNumbers,
-            selectedBoards: room.selectedBoards 
-        });
-    });
-
-    // ቦርድ ምርጫ 
-    socket.on('selectBoard', (data) => {
-        const { roomId, boardNumber } = data;
-        let room = activeRooms[roomId];
-
-        if (room && room.status === 'waiting') {
-            for (let bNum in room.selectedBoards) {
-                if (room.selectedBoards[bNum] === socket.id) {
-                    delete room.selectedBoards[bNum];
-                }
-            }
-
-            if (!room.selectedBoards[boardNumber]) {
-                room.selectedBoards[boardNumber] = socket.id;
-                io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
-                socket.emit('boardSelectSuccess', { boardNumber });
-            } else {
-                socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
-            }
-        }
-    });
-
-    // ተጫዋች ቁጥር ሲይዝ (Exclusive Lock & Real-time Update)
-    socket.on('reserveNumber', (data) => {
-        const { roomId, number } = data;
-        let room = activeRooms[roomId];
-
-        if (room && room.status === 'waiting') {
-            // ቁጥሩ በማንም አለመያዙን ማረጋገጥ
-            if (!room.reservedNumbers[number]) {
-                room.reservedNumbers[number] = socket.id;
-                // ለሁሉም በክፍሉ ውስጥ ለሚገኙ ተጫዋቾች በቅጽበት ማሳወቅ
-                io.to(roomId).emit('numberReserved', { number, socketId: socket.id });
-            } else {
-                socket.emit('reservationError', { message: 'ይህ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
-            }
-        }
-    });
-
-    // ተጫዋች የያዘውን ቁጥር መልቀቅ ከፈለገ 
-    socket.on('unreserveNumber', (data) => {
-        const { roomId, number } = data;
-        let room = activeRooms[roomId];
-
-        if (room && room.status === 'waiting') {
-            if (room.reservedNumbers[number] === socket.id) {
-                delete room.reservedNumbers[number];
-                io.to(roomId).emit('numberReleased', { number });
-            }
-        }
-    });
-
-    // ተጫዋች ቢንጎ ሲል
-    socket.on('claimBingo', async (data) => {
-        const { identifier, winAmount, roomId } = data;
-        let room = activeRooms[roomId];
-        
-        if (room && room.status === 'playing') {
-            room.status = 'ended';
-            if (room.gameInterval) clearInterval(room.gameInterval);
-            if (room.timer) clearInterval(room.timer);
-
-            try {
-                const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
-                if (userRes.rows.length > 0) {
-                    let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(winAmount);
-                    await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
-                    
-                    io.to(roomId).emit('gameOver', { message: `🎉 ተጫዋች BINGO አሸንፏል! ${winAmount} ብር ተሸልሟል።` });
-                }
-            } catch (err) {
-                console.error('Bingo claim error:', err);
-            }
-        }
-    });
-
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-        for (let roomId in activeRooms) {
-            let room = activeRooms[roomId];
-            if (room.players.has(socket.id)) {
-                room.players.delete(socket.id);
-                
-                // የተያዙ ቁጥሮች ካሉ መልቀቅ እና ለሌሎች ማሳወቅ 
-                for (let num in room.reservedNumbers) {
-                    if (room.reservedNumbers[num] === socket.id) {
-                        delete room.reservedNumbers[num];
-                        io.to(roomId).emit('numberReleased', { number: num });
-                    }
-                }
-
-                // የተመረጡ ቦርዶች ካሉ መልቀቅ
-                for (let bNum in room.selectedBoards) {
-                    if (room.selectedBoards[bNum] === socket.id) {
-                        delete room.selectedBoards[bNum];
-                        io.to(roomId).emit('boardReleased', { boardNumber: bNum });
-                    }
-                }
-            }
-        }
-    });
-});
-
-const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
