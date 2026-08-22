@@ -308,26 +308,33 @@ if (bot) {
 // --- GLOBAL LOBBY & ROOM SOCKET MANAGEMENT ---
 let activeRooms = {}; 
 
-// በሎቢ (Lobby) እና በቢት/ቦርድ መምረጥ (Bet) መካከል አክቲቪቲ ያላቸውን ተጫዋቾች በትክክል የሚቆጥር
 function getActivePlayersCount(room) {
     let activeSocketIds = new Set();
     
-    // 1. ቦርድ መርጠው በጨዋታው ውስጥ ንቁ (Active) የሆኑ ተጫዋቾች
     for (let bNum in room.selectedBoards) {
         if (room.selectedBoards[bNum]) {
             activeSocketIds.add(room.selectedBoards[bNum]);
         }
     }
 
-    // 2. ቦርድ ገና ሳይመርጡ በሎቢ (Lobby/Waiting) ውስጥ ግን አክቲቭ ሆኖ ቆጠራውን እየጠበቁ ያሉ ተጫዋቾች
     for (let socketId of room.players) {
-        // በ selectedBoards ውስጥ ያልተመዘገቡትን ነገር ግን ሎቢውን የተቀላቀሉትን ማካተት ይቻላል 
-        // ወይም ሙሉ በሙሉ በ bet/active መካከል ያሉትን ብቻ ለመቁጠር የ selectedBoards ተጫዋቾችን ብቻ መያዝ ከፈለጉ:
-        // (እዚህ ጋር በሎቢ እና በቢት መሃከል ያሉትን ቶታል ለማሳየት ሁለቱንም እንይዛለን)
         activeSocketIds.add(socketId);
     }
 
     return activeSocketIds.size;
+}
+
+// ** አዲስ የተጨመረ የደራሽ (Prize Pool) ማስያ የሂሳብ ሎጂክ **
+function calculatePrizePool(room) {
+    let activeCount = getActivePlayersCount(room);
+    let totalBet = activeCount * parseFloat(room.betAmount);
+    
+    // ለምሳሌ 10% የቤቱ ኮሚሽን ተቀንሶ የሚቀረው ገንዘብ ለደራሽነት (Prize Pool) እንዲሆን ከፈለጉ:
+    let commissionRate = 0.10; 
+    let prizePool = totalBet * (1 - commissionRate);
+    
+    // ሙሉ በሙሉ ያለ ኮሚሽን እንዲሆን ከፈለጉ ደግሞ prizePool = totalBet ማድረግ ይቻላል።
+    return Math.floor(prizePool > 0 ? prizePool : parseFloat(room.betAmount));
 }
 
 function getOrCreateLobby(betAmount) {
@@ -363,10 +370,13 @@ function startGlobalLobbyCountdown(roomId) {
         if (room.status !== 'waiting') return;
 
         room.countdown--;
+        let currentPrizePool = calculatePrizePool(room);
+
         io.to(roomId).emit('countdownUpdate', { 
             countdown: room.countdown, 
             playersCount: room.players.size,
             activePlayersCount: getActivePlayersCount(room),
+            prizePool: currentPrizePool, // 👈 የደራሽ መጠን ወደ ክላይንት ይላካል
             startTime: room.startTime 
         });
 
@@ -390,7 +400,12 @@ function startRoomGame(roomId) {
 
     room.status = 'playing';
     if (room.timer) clearInterval(room.timer);
-    io.to(roomId).emit('gameStarted', { message: 'ጨዋታው ተጀምሯል!' });
+    
+    let finalPrizePool = calculatePrizePool(room);
+    io.to(roomId).emit('gameStarted', { 
+        message: 'ጨዋታው ተጀምሯል!',
+        prizePool: finalPrizePool
+    });
 
     room.gameInterval = setInterval(() => {
         if (room.drawnNumbers.length >= 75) {
@@ -421,13 +436,16 @@ io.on('connection', (socket) => {
         room.players.add(socket.id);
         socket.currentRoomId = room.roomId;
 
+        let currentPrizePool = calculatePrizePool(room);
+
         if (room.status === 'playing') {
             socket.emit('gameAlreadyStarted', { 
                 message: 'ጨዋታው ቀደም ብሎ ተጀምሯል! እባክዎ ቀጣዩን ዙር ይጠብቁ።',
                 drawnHistory: room.drawnNumbers,
                 selectedBoards: room.selectedBoards,
                 status: room.status,
-                activePlayersCount: getActivePlayersCount(room)
+                activePlayersCount: getActivePlayersCount(room),
+                prizePool: currentPrizePool
             });
         } else {
             socket.emit('assignedRoom', { 
@@ -438,13 +456,15 @@ io.on('connection', (socket) => {
                 status: room.status,
                 reservedNumbers: room.reservedNumbers,
                 selectedBoards: room.selectedBoards,
-                activePlayersCount: getActivePlayersCount(room)
+                activePlayersCount: getActivePlayersCount(room),
+                prizePool: currentPrizePool
             });
         }
         
         io.to(room.roomId).emit('playersUpdate', { 
             playersCount: room.players.size,
-            activePlayersCount: getActivePlayersCount(room)
+            activePlayersCount: getActivePlayersCount(room),
+            prizePool: currentPrizePool
         });
     });
 
@@ -491,11 +511,15 @@ io.on('connection', (socket) => {
                 delete room.tempSelections[socket.id];
             }
             
-            io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
-            
-            io.to(roomId).emit('activePlayersUpdate', { activePlayersCount: getActivePlayersCount(room) });
+            let currentPrizePool = calculatePrizePool(room);
 
-            socket.emit('gameJoinSuccess', { boardNumber });
+            io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
+            io.to(roomId).emit('activePlayersUpdate', { 
+                activePlayersCount: getActivePlayersCount(room),
+                prizePool: currentPrizePool 
+            });
+
+            socket.emit('gameJoinSuccess', { boardNumber, prizePool: currentPrizePool });
         }
     });
 
@@ -508,13 +532,16 @@ io.on('connection', (socket) => {
             if (room.gameInterval) clearInterval(room.gameInterval);
             if (room.timer) clearInterval(room.timer);
 
+            // ሰቨር በራሱ ካልኩሌት ያደረገውን ትክክለኛ የደራሽ (Prize Pool) መጠን መጠቀም እንዲቻል:
+            let finalWinAmount = calculatePrizePool(room) || winAmount;
+
             try {
                 const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
                 if (userRes.rows.length > 0) {
-                    let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(winAmount);
+                    let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(finalWinAmount);
                     await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
                     
-                    io.to(roomId).emit('gameOver', { message: `🎉 ተጫዋች BINGO አሸንፏል! ${winAmount} ብር ተሸልሟል።` });
+                    io.to(roomId).emit('gameOver', { message: `🎉 ተጫዋች BINGO አሸንፏል! ${finalWinAmount} ብር ተሸልሟል።` });
                 }
             } catch (err) {
                 console.error('Bingo claim error:', err);
@@ -542,13 +569,19 @@ io.on('connection', (socket) => {
                     }
                 }
 
+                let currentPrizePool = calculatePrizePool(room);
+
                 io.to(roomId).emit('playersUpdate', { 
                     playersCount: room.players.size,
-                    activePlayersCount: getActivePlayersCount(room)
+                    activePlayersCount: getActivePlayersCount(room),
+                    prizePool: currentPrizePool
                 });
 
                 if (boardReleasedFlag) {
-                    io.to(roomId).emit('activePlayersUpdate', { activePlayersCount: getActivePlayersCount(room) });
+                    io.to(roomId).emit('activePlayersUpdate', { 
+                        activePlayersCount: getActivePlayersCount(room),
+                        prizePool: currentPrizePool 
+                    });
                 }
             }
         }
