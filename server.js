@@ -17,8 +17,26 @@ const ADMIN_CHAT_ID = '686733543';
 
 let bot = null;
 if (TOKEN) {
-    bot = new TelegramBot(TOKEN, { polling: true });
-    console.log('Telegram Bot started successfully!');
+    try {
+        bot = new TelegramBot(TOKEN, { 
+            polling: {
+                interval: 300,
+                autoStart: true,
+                params: {
+                    timeout: 10
+                }
+            } 
+        });
+        console.log('Telegram Bot started successfully!');
+
+        // የፖሊንግ ስህተቶችን በመያዝ ሰርቨሩ እንዳይዘጋ ማድረግ
+        bot.on('polling_error', (error) => {
+            console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
+        });
+
+    } catch (err) {
+        console.error('Telegram Bot initialization error:', err);
+    }
 } else {
     console.error('ERROR: Telegram Bot Token not provided!');
 }
