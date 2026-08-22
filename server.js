@@ -11,7 +11,7 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ⚙️ የቴሌግራም ቦት ማስተካከያ (እዚህ ጋር የባለቤቱን ማስገባት)
+// ⚙️ የቴሌግራም ቦት እና የአድሚን መረጃዎች ተሞልተዋል
 const TELEGRAM_BOT_TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec'; 
 const ADMIN_CHAT_ID = '686733543'; // የአድሚን ቴሌግራም ID
 
@@ -30,13 +30,27 @@ app.post('/api/get-user', (req, res) => {
     if (!usersDatabase[identifier]) {
         usersDatabase[identifier] = {
             identifier,
-            name: name || 'Player',
+            name: name || 'Bingo Player',
             username: username || '',
             balance: 0.00,
-            phone: ''
+            phone: 'አልተጋራም'
         };
+    } else {
+        if (name && name !== 'Bingo Player') {
+            usersDatabase[identifier].name = name;
+        }
     }
     res.json({ success: true, user: usersDatabase[identifier] });
+});
+
+// ስልክ ቁጥር ማሻሻያ API
+app.post('/api/update-phone', (req, res) => {
+    const { identifier, phone } = req.body;
+    if (usersDatabase[identifier]) {
+        usersDatabase[identifier].phone = phone;
+        return res.json({ success: true, message: 'ስልክ ቁጥር ተመዝግቧል' });
+    }
+    res.status(404).json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
 });
 
 // 2. ጨዋታ ሲጀመር ብር መቀነሻ API
@@ -64,14 +78,13 @@ app.post('/api/request-transaction', async (req, res) => {
         return res.json({ success: false, message: 'ያለዎት ባላንስ ከጠየቁት የብር መጠን ያንሳል!' });
     }
 
-    // ልዩ የტრንዛክሽን መለያ ኮድ መፍጠር
     const txId = 'TX_' + Date.now();
-    pendingTransactions[txId] = { identifier, type, amount: parseFloat(amount) };
+    pendingTransactions[txId] = { identifier, type, amount: parseFloat(amount), handled: false };
 
-    // ለአድሚን የሚላክ መልእክት ከ Approve እና Reject አዝራሮች ጋር
     const message = `🚨 <b>አዲስ የ${type === 'DEPOSIT' ? 'ገቢ (Deposit)' : 'ወጪ (Withdraw)'} ጥያቄ!</b>\n\n` +
                     `👤 ስም: ${user.name}\n` +
                     `🆔 ID: <code>${identifier}</code>\n` +
+                    `📞 ስልክ: ${user.phone}\n` +
                     `💵 የብር መጠን: <b>${amount} ETB</b>\n` +
                     `📝 መረጃ/SMS: ${details}`;
 
@@ -91,7 +104,7 @@ app.post('/api/request-transaction', async (req, res) => {
         res.json({ success: true, message: 'ጥያቄዎ ለአድሚን በቴሌግራም ተልኳል! እባክዎ ትንሽ ይጠብቁ።' });
     } catch (error) {
         console.error('Telegram Send Error:', error);
-        res.status(500).json({ success: false, message: 'አድሚኑን ማግኘት አልተቻለም። እባክዎ ቆይተው እንደገና ይሞክሩ።' });
+        res.status(500).json({ success: false, message: 'አድሚኑን ማግኘት አልተቻለም።' });
     }
 });
 
@@ -104,7 +117,12 @@ bot.on('callback_query', async (query) => {
     const tx = pendingTransactions[txId];
 
     if (!tx) {
-        await bot.answerCallbackQuery(query.id, { text: '⚠️ ይህ ጥያቄ ጊዜው አልፎበታል ወይም ተይዟል!' });
+        await bot.answerCallbackQuery(query.id, { text: '⚠️ ይህ ጥያቄ ሰርቨሩ ስለተቀየረ ወይም ቀደም ብሎ ስለተሰራበት ማግኘት አልተቻለም!' });
+        return;
+    }
+
+    if (tx.handled) {
+        await bot.answerCallbackQuery(query.id, { text: '⚠️ ይህ ጥያቄ ቀድሞውኑ ተጠናቋል!' });
         return;
     }
 
@@ -113,7 +131,7 @@ bot.on('callback_query', async (query) => {
     if (status === 'approve') {
         if (tx.type === 'DEPOSIT') {
             if (user) user.balance += tx.amount;
-            await bot.sendMessage(ADMIN_CHAT_ID, `✅ ዲፖዚቱ <b>አפסድቷል (Approved)</b>!\nለተጠቃሚው ${tx.amount} ETB ተጨምሯል።`, { parse_mode: 'HTML' });
+            await bot.sendMessage(ADMIN_CHAT_ID, `✅ ዲፖዚቱ <b>ተረጋግጧል (Approved)</b>!\nለተጠቃሚው ${tx.amount} ETB ተጨምሯል።`, { parse_mode: 'HTML' });
         } else if (tx.type === 'WITHDRAW') {
             if (user) {
                 if (user.balance >= tx.amount) {
@@ -125,16 +143,15 @@ bot.on('callback_query', async (query) => {
             }
         }
     } else {
-        // Reject ከሆነ
         await bot.sendMessage(ADMIN_CHAT_ID, `❌ የ${tx.type} ጥያቄው <b>ተሰርዟል (Rejected)</b>።`, { parse_mode: 'HTML' });
     }
 
-    delete pendingTransactions[txId];
+    tx.handled = true;
     try {
         await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: msg.chat.id, message_id: msg.message_id });
     } catch (e) {}
     
-    await bot.answerCallbackQuery(query.id, { text: 'কার্যው ተከናውኗል!' });
+    await bot.answerCallbackQuery(query.id, { text: 'ተከናውኗል!' });
 });
 
 // Real-time Socket.io Game Logic
