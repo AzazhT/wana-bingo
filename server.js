@@ -14,6 +14,7 @@ app.use(express.static('public'));
 // እርስዎ የሰጡዋቸው ቋሚ መረጃዎች
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_CHAT_ID = '686733543';
+const WEB_APP_URL = 'https://wana-bingo.onrender.com'; // የድር ጣቢያዎ ዩአርኤል (እባክዎ ትክክለኛውን ሊንክ ያስገቡ)
 
 let bot = null;
 if (TOKEN) {
@@ -108,12 +109,22 @@ app.post('/api/request-transaction', async (req, res) => {
 
 // --- TELEGRAM BOT COMMANDS & ADMIN PANEL ---
 if (bot) {
+    // ቦቱ ሲጀመር የሜኑ ቁልፎችን (Commands) በቴሌግራም ማስመዝገብ
+    bot.setMyCommands([
+        { command: 'start', description: 'ቦቱን ለመጀመር' },
+        { command: 'play', description: '🎮 Play Bingo (ጨዋታውን ክፈት)' },
+        { command: 'balance', description: '💰 ቀሪ ሂሳብዎን ለማየት' },
+        { command: 'deposit', description: '💳 የዲፖዚት መመሪያ' },
+        { command: 'withdraw', description: '💸 ገንዘብ ወጪ ለማድረግ' }
+    ]);
+
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
         const name = msg.from.first_name;
         
         let welcomeMessage = `ሰላም ${name}! ወደ ዋና ቢንጎ (Wana Bingo) እንኳን ደህና መጡ። 🎉\n\n` +
                              `📌 **ትዕዛዞች:**\n` +
+                             `/play - 🎮 ቢንጎ ለመጫወት (Web App)\n` +
                              `/balance - ቀሪ ገንዘብዎን ለማየት\n` +
                              `/deposit - የዲፖዚት መመሪያ ለማየት\n` +
                              `/withdraw - ገንዘብ ወጪ ለማድረግ`;
@@ -124,7 +135,24 @@ if (bot) {
                               `/pending - ያልተረጋገጡ ጥያቄዎችን ለማየት`;
         }
 
-        bot.sendMessage(chatId, welcomeMessage);
+        bot.sendMessage(chatId, welcomeMessage, {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🎮 Play Bingo (Web App)', web_app: { url: WEB_APP_URL } }]
+                ]
+            }
+        });
+    });
+
+    bot.onText(/\/play/, (msg) => {
+        const chatId = msg.chat.id;
+        bot.sendMessage(chatId, `🎮 የቢንጎ ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ፡`, {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🎮 Play Bingo', web_app: { url: WEB_APP_URL } }]
+                ]
+            }
+        });
     });
 
     bot.onText(/\/deposit/, (msg) => {
