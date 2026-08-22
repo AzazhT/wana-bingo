@@ -400,16 +400,20 @@ io.on('connection', (socket) => {
         });
     });
 
-    // ተጫዋች ቁጥር ሲመርጥ (Real-time Reservation)
+    // ተጫዋች ቁጥር ሲመርጥ (Real-time Reservation) - የተስተካከለ ጥብቅ ሎጂክ
     socket.on('reserveNumber', (data) => {
         const { roomId, number } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'waiting') {
+            // ቁጥሩ ከዚህ በፊት በሌላ ተጫዋች መያዙን ማረጋገጥ
             if (!room.reservedNumbers[number]) {
                 room.reservedNumbers[number] = socket.id;
                 // ለሁሉም በዛ 룸 ውስጥ ያሉ ተጫዋቾች ቁጥሩ መያዙን ማሳወቅ
                 io.to(roomId).emit('numberReserved', { number, socketId: socket.id });
+            } else {
+                // ቁጥሩ አስቀድሞ ተይዞ ከሆነ ለጠያቂው ብቻ ማሳወቂያ መላክ
+                socket.emit('reservationError', { message: 'ይህ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
             }
         }
     });
@@ -444,7 +448,7 @@ io.on('connection', (socket) => {
             let room = activeRooms[roomId];
             if (room.players.has(socket.id)) {
                 room.players.delete(socket.id);
-                // የተያዙ ቁጥሮች ካሉ መልቀቅ ይቻላል
+                // የተያዙ ቁጥሮች ካሉ መልቀቅ 
                 for (let num in room.reservedNumbers) {
                     if (room.reservedNumbers[num] === socket.id) {
                         delete room.reservedNumbers[num];
