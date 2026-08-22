@@ -11,18 +11,6 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
-// ቋሚ መረጃዎችconst express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const TelegramBot = require('node-telegram-bot-api');
-const pool = require('./database');
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.json());
-app.use(express.static('public'));
 
 // ቋሚ መረጃዎች
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
