@@ -301,8 +301,8 @@ if (bot) {
     });
 }
 
-// --- GLOBAL LOBBY & ROOM SOCKET MANAGEMENT (ቋሚ እና ኮመን የሆነ የቆጣሪ አሰራር) ---
-let activeRooms = {}; // Key: ROOM_betAmount, Value: Room Object
+// --- GLOBAL LOBBY & ROOM SOCKET MANAGEMENT ---
+let activeRooms = {}; 
 
 function getOrCreateLobby(betAmount) {
     let roomId = `ROOM_${betAmount}`;
@@ -311,7 +311,7 @@ function getOrCreateLobby(betAmount) {
         activeRooms[roomId] = {
             roomId,
             betAmount,
-            status: 'waiting', // waiting, playing, ended
+            status: 'waiting', 
             players: new Set(),
             reservedNumbers: {}, // { number: socketId } -> የትኛው ቁጥር በማን እንደተያዘ
             selectedBoards: {},  // { boardNumber: socketId }
@@ -342,7 +342,7 @@ function startGlobalLobbyCountdown(roomId) {
 
             if (room.players.size < 2 || selectedBoardsCount < 2) {
                 room.countdown = 30;
-                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረطة ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
+                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
             } else {
                 startRoomGame(roomId);
             }
@@ -392,6 +392,7 @@ io.on('connection', (socket) => {
         room.players.add(socket.id);
         socket.currentRoomId = room.roomId;
 
+        // አዲስ ገቢ ተጫዋች ሲገባ አስቀድመው የተያዙ ቁጥሮች በሙሉ ይላኩለት (Persistent State)
         socket.emit('assignedRoom', { 
             roomId: room.roomId, 
             betAmount: room.betAmount,
@@ -402,7 +403,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    // ቦርድ ምርጫ (ጥብቅ ቁጥጥር - አንድ ቦርድ ለአንድ ተጫዋች ብቻ)
+    // ቦርድ ምርጫ 
     socket.on('selectBoard', (data) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
@@ -424,16 +425,16 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ተጫዋች ቁጥር ሲይዝ (Real-time Number Reservation for Multiple Users)
+    // ተጫዋች ቁጥር ሲይዝ (Exclusive Lock & Real-time Update)
     socket.on('reserveNumber', (data) => {
         const { roomId, number } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'waiting') {
-            // ቁጥሩ አስቀድሞ በሌላ ሰው መያዙን ማረጋገጥ
+            // ቁጥሩ በማንም አለመያዙን ማረጋገጥ
             if (!room.reservedNumbers[number]) {
                 room.reservedNumbers[number] = socket.id;
-                // ለሁሉም በክፍሉ ውስጥ ያሉ ተጫዋቾች ቁጥሩ መያዙን በቅጽበት ማሳወቅ
+                // ለሁሉም በክፍሉ ውስጥ ለሚገኙ ተጫዋቾች በቅጽበት ማሳወቅ
                 io.to(roomId).emit('numberReserved', { number, socketId: socket.id });
             } else {
                 socket.emit('reservationError', { message: 'ይህ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
@@ -441,7 +442,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ተጫዋች የያዘውን ቁጥር መልቀቅ ከፈለገ (Toggle/Unreserve)
+    // ተጫዋች የያዘውን ቁጥር መልቀቅ ከፈለገ 
     socket.on('unreserveNumber', (data) => {
         const { roomId, number } = data;
         let room = activeRooms[roomId];
@@ -485,7 +486,7 @@ io.on('connection', (socket) => {
             if (room.players.has(socket.id)) {
                 room.players.delete(socket.id);
                 
-                // የተያዙ ቁጥሮች ካሉ መልቀቅ 
+                // የተያዙ ቁጥሮች ካሉ መልቀቅ እና ለሌሎች ማሳወቅ 
                 for (let num in room.reservedNumbers) {
                     if (room.reservedNumbers[num] === socket.id) {
                         delete room.reservedNumbers[num];
