@@ -11,10 +11,10 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
-// ቋሚ መረጃዎች (አንድ ጊዜ ብቻ የታወጁ)
+// እርስዎ የሰጡዋቸው ቋሚ መረጃዎች
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_CHAT_ID = '686733543';
-const WEB_APP_URL = 'https://wana-bingo.onrender.com';
+const WEB_APP_URL = 'https://wana-bingo.onrender.com'; // የድር ጣቢያዎ ዩአርኤል
 
 let bot = null;
 if (TOKEN) {
@@ -23,7 +23,9 @@ if (TOKEN) {
             polling: {
                 interval: 300,
                 autoStart: true,
-                params: { timeout: 10 }
+                params: {
+                    timeout: 10
+                }
             } 
         });
         console.log('Telegram Bot started successfully!');
@@ -31,6 +33,7 @@ if (TOKEN) {
         bot.on('polling_error', (error) => {
             console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
         });
+
     } catch (err) {
         console.error('Telegram Bot initialization error:', err);
     }
@@ -66,6 +69,7 @@ app.post('/api/update-phone', async (req, res) => {
         await pool.query('UPDATE users SET phone = $1 WHERE identifier = $2', [phone, identifier]);
         res.json({ success: true });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ success: false });
     }
 });
@@ -309,8 +313,8 @@ function getOrCreateLobby(betAmount) {
             betAmount,
             status: 'waiting', 
             players: new Set(),
-            reservedNumbers: {}, 
-            selectedBoards: {},  
+            reservedNumbers: {}, // { number: socketId } -> የትኛው ቁጥር በማን እንደተያዘ
+            selectedBoards: {},  // { boardNumber: socketId }
             drawnNumbers: [],
             countdown: 30,
             timer: null,
@@ -379,7 +383,6 @@ io.on('connection', (socket) => {
         const betAmount = data && data.betAmount ? data.betAmount : '20';
         let room = getOrCreateLobby(betAmount);
 
-        // ጨዋታው ከተጀመረ አዲስ ተጫዋች እንዳይገባ መከልከል
         if (room.status === 'playing') {
             socket.emit('joinError', { message: 'ጨዋታው ተጀምሯል፤ እባክዎን ቀጣዩን ዙር ይጠብቁ!' });
             return;
@@ -389,6 +392,7 @@ io.on('connection', (socket) => {
         room.players.add(socket.id);
         socket.currentRoomId = room.roomId;
 
+        // አዲስ ገቢ ተጫዋች ሲገባ አስቀድመው የተያዙ ቁጥሮች በሙሉ ይላኩለት (Persistent State)
         socket.emit('assignedRoom', { 
             roomId: room.roomId, 
             betAmount: room.betAmount,
@@ -399,6 +403,7 @@ io.on('connection', (socket) => {
         });
     });
 
+    // ቦርድ ምርጫ 
     socket.on('selectBoard', (data) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
@@ -420,15 +425,16 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ቁጥርን መያዝ (Reserved) እና ለሌሎች በሰከንድ ውስጥ ማሳወቅ
+    // ተጫዋች ቁጥር ሲይዝ (Exclusive Lock & Real-time Update)
     socket.on('reserveNumber', (data) => {
         const { roomId, number } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'waiting') {
+            // ቁጥሩ በማንም አለመያዙን ማረጋገጥ
             if (!room.reservedNumbers[number]) {
                 room.reservedNumbers[number] = socket.id;
-                // ለሁሉም በክፍሉ ውስጥ ላሉ ተጫዋቾች ቁጥሩ መያዙን በሰከንድ እናሳውቃለን
+                // ለሁሉም በክፍሉ ውስጥ ለሚገኙ ተጫዋቾች በቅጽበት ማሳወቅ
                 io.to(roomId).emit('numberReserved', { number, socketId: socket.id });
             } else {
                 socket.emit('reservationError', { message: 'ይህ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
@@ -436,6 +442,20 @@ io.on('connection', (socket) => {
         }
     });
 
+    // ተጫዋች የያዘውን ቁጥር መልቀቅ ከፈለገ 
+    socket.on('unreserveNumber', (data) => {
+        const { roomId, number } = data;
+        let room = activeRooms[roomId];
+
+        if (room && room.status === 'waiting') {
+            if (room.reservedNumbers[number] === socket.id) {
+                delete room.reservedNumbers[number];
+                io.to(roomId).emit('numberReleased', { number });
+            }
+        }
+    });
+
+    // ተጫዋች ቢንጎ ሲል
     socket.on('claimBingo', async (data) => {
         const { identifier, winAmount, roomId } = data;
         let room = activeRooms[roomId];
@@ -466,6 +486,7 @@ io.on('connection', (socket) => {
             if (room.players.has(socket.id)) {
                 room.players.delete(socket.id);
                 
+                // የተያዙ ቁጥሮች ካሉ መልቀቅ እና ለሌሎች ማሳወቅ 
                 for (let num in room.reservedNumbers) {
                     if (room.reservedNumbers[num] === socket.id) {
                         delete room.reservedNumbers[num];
@@ -473,6 +494,7 @@ io.on('connection', (socket) => {
                     }
                 }
 
+                // የተመረጡ ቦርዶች ካሉ መልቀቅ
                 for (let bNum in room.selectedBoards) {
                     if (room.selectedBoards[bNum] === socket.id) {
                         delete room.selectedBoards[bNum];
