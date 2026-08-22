@@ -122,7 +122,7 @@
                 <div class="bottom-section">
                     <div class="preview-ticket" id="previewTicket"></div>
                     <div class="controls">
-                        <button class="btn" onclick="goToGame()">Start game (Join Lobby)</button>
+                        <button class="btn" onclick="goToGame()">Start game (Join)</button>
                     </div>
                 </div>
                 <button class="btn" style="width: 100%; margin-top: 8px; background: #2b3a4a;" onclick="goToBetStep()">‹ ተመለስ (Back)</button>
@@ -280,19 +280,19 @@
             updateBoardsUI();
         });
 
-        socket.on('boardSelectSuccess', (data) => {
+        // ስታርት ሲሉ ቦርዱ በትክክል ሲያዝ የሚመጣ ምላሽ
+        socket.on('lockSuccess', (data) => {
+            userWallet = data.newBalance;
             selectedCardId = data.boardNumber;
-            displayPreview(selectedCardId);
+            updateHeaderStats();
+            proceedToLiveGame();
+        });
+
+        // ቦርዱ አስቀድሞ በሌላ ሰው ከተያዘ የሚሰጥ ማስጠንቀቂያ
+        socket.on('lockError', (data) => {
+            alert(data.message);
+            // የቦርድ ስክሪኑን አድስ (Taken የተደረጉትን ለማሳየት)
             updateBoardsUI();
-        });
-
-        socket.on('boardSelectError', (data) => {
-            alert(data.message);
-        });
-
-        socket.on('joinError', (data) => {
-            alert(data.message);
-            showGameStep('gameStepBet');
         });
 
         socket.on('numberDrawn', (data) => {
@@ -386,12 +386,16 @@
                 btn.className = `card-btn ${i === selectedCardId ? 'active' : ''}`;
                 btn.id = `card-btn-${i}`;
                 btn.innerText = i;
+                
+                // እዚህ ላይ ቁጥሩን ሲጫኑ በቅጽበት ሳይቆለፍ በቀላሉ ፕሪቪው (Preview) ብቻ ያደርገዋል
                 btn.onclick = () => {
                     if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
                         alert('ይህ ቦርድ በሌላ ተጫዋች ተይዟል!');
                         return;
                     }
-                    socket.emit('selectBoard', { roomId: currentRoomId, boardNumber: i });
+                    selectedCardId = i;
+                    updateBoardsUI();
+                    displayPreview(selectedCardId);
                 };
                 cardsGrid.appendChild(btn);
             }
@@ -407,10 +411,12 @@
                     btn.classList.remove('active', 'taken');
                     if(roomSelectedBoards[i]) {
                         if(roomSelectedBoards[i] === socket.id) {
-                            btn.classList.add('active');
+                            if(i === selectedCardId) btn.classList.add('active');
                         } else {
                             btn.classList.add('taken');
                         }
+                    } else {
+                        if(i === selectedCardId) btn.classList.add('active');
                     }
                 }
             }
@@ -432,23 +438,24 @@
             }
         }
 
-        async function goToGame() {
+        // ተጠቃሚው "Start game" ሲጫን ሰርቨር በመላክ ቦርዱን ይቆልፋል፣ ብር ይቆርጣል
+        function goToGame() {
             if (userWallet < currentBet) return alert('በቂ ባላንስ የለዎትም!');
-            
-            try {
-                const res = await fetch('/api/place-bet', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, amount: currentBet })
-                });
-                const data = await res.json();
-                if (!data.success) return alert(data.message);
-                userWallet = data.newBalance;
-            } catch (e) { return alert('የኔትወርክ ስህተት።'); }
+            if (roomSelectedBoards[selectedCardId] && roomSelectedBoards[selectedCardId] !== socket.id) {
+                return alert('የመረጡት ቦርድ በሌላ ተጫዋች ተይዟል! እባክዎ ሌላ ይምረጡ።');
+            }
 
-            updateHeaderStats();
+            // ለሰርቨር ቦርዱን እንዲይዝ እና ጨዋታው እንዲጀምር መጠየቅ
+            socket.emit('lockBoardAndStart', {
+                roomId: currentRoomId,
+                boardNumber: selectedCardId,
+                identifier: currentUser.id,
+                betAmount: currentBet
+            });
+        }
 
-            // Setup Called Board UI
+        // ሰርቨሩ ሲፈቅድ ወደ ላይቭ ጨዋታ የሚገባ ተግባር
+        function proceedToLiveGame() {
             const calledGrid = document.getElementById('calledGrid');
             calledGrid.innerHTML = '';
             for (let row = 0; row < 15; row++) {
