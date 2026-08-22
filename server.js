@@ -429,6 +429,23 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- እዚህ ጋር ተጠቃሚው ቦርዱን መርጦ 'Start' ሲጫን የሚሰራው አዲስ ሎጂክ ተጨምሯል ---
+    socket.on('startBoard', (data) => {
+        const { roomId, boardNumber } = data;
+        let room = activeRooms[roomId];
+
+        if (room && room.status === 'waiting') {
+            // ቦርዱን ለዚህ ተጠቃሚ መያዙን እናረጋግጣለን
+            room.selectedBoards[boardNumber] = socket.id;
+            
+            // ለክፍሉ (room) ውስጥ ባሉ ሁሉም ተጠቃሚዎች ዘንድ ይህ ቦርድ ቁጥር ቀለም ተቀብቶ/ተይዞ እንዲታይ መልእክት እናስተላልፋለን
+            io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
+            socket.emit('boardStartSuccess', { message: 'ቦርዱ ተረጋግጧል!', boardNumber });
+        } else {
+            socket.emit('boardStartError', { message: 'ጨዋታው ስለተጀመረ ቦርድ መምረጥ አይቻልም!' });
+        }
+    });
+
     socket.on('reserveNumber', (data) => {
         const { roomId, number } = data;
         let room = activeRooms[roomId];
