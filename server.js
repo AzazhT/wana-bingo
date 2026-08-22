@@ -224,10 +224,10 @@ if (bot) {
 
             for (let tx of pendingRes.rows) {
                 let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
-                              `🆔 TxID: ${tx.tx_id}\n` +
-                              `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
-                              `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
-                              `💰 መጠን: ${tx.amount} ብር`;
+                            `🆔 TxID: ${tx.tx_id}\n` +
+                            `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
+                            `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
+                            `💰 መጠን: ${tx.amount} ብር`;
 
                 bot.sendMessage(chatId, msgText, {
                     reply_markup: {
@@ -403,18 +403,27 @@ io.on('connection', (socket) => {
         });
     });
 
-    // ቦርድ ምርጫ 
+    // ቦርድ ምርጫ (አንድ ተጠቃሚ 1 ቦርድ ብቻ እንዲይዝ ተስተካክሏል)
     socket.on('selectBoard', (data) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'waiting') {
+            // 1. ተጠቃሚው አስቀድሞ የያዘው ሌላ ቦርድ ካለ መጀመሪያ እናስወግደዋለን (እንለቀዋለን)
+            let previousBoard = null;
             for (let bNum in room.selectedBoards) {
                 if (room.selectedBoards[bNum] === socket.id) {
+                    previousBoard = bNum;
                     delete room.selectedBoards[bNum];
                 }
             }
 
+            // የድሮው ቦርድ መለቀቁን ለሁሉም እናሳውቃለን (ካለ)
+            if (previousBoard) {
+                io.to(roomId).emit('boardReleased', { boardNumber: previousBoard });
+            }
+
+            // 2. አዲሱ ቦርድ በሌላ ተጫዋች የተያዘ መሆኑን እንፈትሻለን
             if (!room.selectedBoards[boardNumber]) {
                 room.selectedBoards[boardNumber] = socket.id;
                 io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
@@ -466,7 +475,7 @@ io.on('connection', (socket) => {
             if (room.timer) clearInterval(room.timer);
 
             try {
-                const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                const userRes = and = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
                 if (userRes.rows.length > 0) {
                     let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(winAmount);
                     await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
