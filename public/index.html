@@ -129,7 +129,6 @@
             </div>
 
             <div id="gameStepLive" class="game-step">
-                <!-- እዚህ ጋር በ Derash እና Bet መሀከል Active ስታቲስቲክስ ካርድ ተጨምሯል -->
                 <div class="top-stats">
                     <div class="stat-card">Room<span id="gameIdDisplay">--</span></div>
                     <div class="stat-card">Derash<span id="derashDisplay">0.0</span></div>
@@ -257,11 +256,17 @@
 
         // --- SOCKET EVENT HANDLERS ---
 
-        // ከሰርቨር የሚመጣውን የንቁ ተጫዋቾች ብዛት መቀበያ
+        // የተስተካከለው የ Active ቆጣሪ መቀበያ (ሁሉንም የዳታ አይነቶች በመፈተሽ ዜሮ እንዳይሆን አድርጎታል)
         socket.on('activePlayersUpdate', (data) => {
-            if (data && typeof data.activeCount !== 'undefined') {
-                document.getElementById('activePlayersDisplay').innerText = data.activeCount;
+            let count = 0;
+            if (typeof data === 'number') {
+                count = data;
+            } else if (data && typeof data.activeCount !== 'undefined') {
+                count = data.activeCount;
+            } else if (data && typeof data.count !== 'undefined') {
+                count = data.count;
             }
+            document.getElementById('activePlayersDisplay').innerText = count;
         });
 
         socket.on('assignedRoom', (data) => {
@@ -332,9 +337,10 @@
             alert(data.message);
         });
 
+        // የቀድሞው ቁጥር መጥሪያ (Number Called) ስራ ሙሉ በሙሉ ተጠብቆ እንዲሰራ የተደረገበት ክፍል
         socket.on('numberDrawn', (data) => {
             let rand = data.number;
-            drawnNumbers = data.drawnHistory;
+            drawnNumbers = data.drawnHistory || [];
             document.getElementById('callCount').innerText = drawnNumbers.length;
 
             let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
