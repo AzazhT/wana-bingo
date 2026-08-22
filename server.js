@@ -165,7 +165,7 @@ if (bot) {
 
     bot.onText(/\/deposit/, (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ።`, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ。`, { parse_mode: 'Markdown' });
     });
 
     bot.onText(/\/withdraw/, (msg) => {
@@ -309,6 +309,12 @@ if (bot) {
 // --- GLOBAL LOBBY & ROOM SOCKET MANAGEMENT ---
 let activeRooms = {}; 
 
+function getActivePlayersCount(room) {
+    // በ selectedBoards ውስጥ የተመዘገቡ ልዩ ተጫዋቾች ብዛት (Active/Joined players)
+    let uniquePlayers = new Set(Object.values(room.selectedBoards));
+    return uniquePlayers.size;
+}
+
 function getOrCreateLobby(betAmount) {
     let roomId = `ROOM_${betAmount}`;
     
@@ -320,7 +326,7 @@ function getOrCreateLobby(betAmount) {
             players: new Set(),
             reservedNumbers: {}, 
             selectedBoards: {}, // በቋሚነት የተያዙ (Locked/Taken) ቦርዶች
-            tempSelections: {},  // አሁን የተጨመረው: ጊዜያዊ የተመረጡ (ለሌሎች የማይታዩ) ቦርዶች
+            tempSelections: {},  // ጊዜያዊ የተመረጡ ቦርዶች
             drawnNumbers: [],
             countdown: 30,
             startTime: Date.now() + 30000,
@@ -345,6 +351,7 @@ function startGlobalLobbyCountdown(roomId) {
         io.to(roomId).emit('countdownUpdate', { 
             countdown: room.countdown, 
             playersCount: room.players.size,
+            activePlayersCount: getActivePlayersCount(room),
             startTime: room.startTime 
         });
 
@@ -354,7 +361,7 @@ function startGlobalLobbyCountdown(roomId) {
             if (room.players.size < 1 || selectedBoardsCount < 1) {
                 room.countdown = 30;
                 room.startTime = Date.now() + 30000;
-                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
+                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረطة ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
             } else {
                 startRoomGame(roomId);
             }
@@ -414,45 +421,42 @@ io.on('connection', (socket) => {
                 startTime: room.startTime,
                 status: room.status,
                 reservedNumbers: room.reservedNumbers,
-                selectedBoards: room.selectedBoards 
+                selectedBoards: room.selectedBoards,
+                activePlayersCount: getActivePlayersCount(room)
             });
         }
         
-        io.to(room.roomId).emit('playersUpdate', { playersCount: room.players.size });
+        io.to(room.roomId).emit('playersUpdate', { 
+            playersCount: room.players.size,
+            activePlayersCount: getActivePlayersCount(room)
+        });
     });
 
-    // 1️⃣ ተጫዋቹ ቦርድ ሲነካ (ጊዜያዊ - Temporary Selection) -> ለሌሎች ቀይ ሆኖ አይታይም
     socket.on('selectBoardTemp', (data) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'waiting') {
-            // ቦርዱ በሌላ ተጫዋች በቋሚነት (Locked) ተይዞ ከሆነ
             if (room.selectedBoards[boardNumber]) {
                 return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
             }
 
-            // ለዚህ ተጫዋች ጊዜያዊ ምርጫውን እንመዝግብ
             if (!room.tempSelections) room.tempSelections = {};
             room.tempSelections[socket.id] = boardNumber;
 
-            // ለተጠቃሚው ብቻ ግሪን (Green) እንዲሆን እንልክለታለን
             socket.emit('boardTempSelected', { boardNumber });
         }
     });
 
-    // 2️⃣ ተጫዋቹ "Start game" ሲጫን (ቋሚ መያዝ - Locked/Taken) -> ለሌሎች በብርቱካናማ/ቀይ ይታያል
     socket.on('startPlayerGame', (data) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'waiting') {
-            // ቦርዱ አስቀድሞ በሌላ ተጫዋች ተይዞ ከሆነ
             if (room.selectedBoards[boardNumber]) {
                 return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
             }
 
-            // ተጫዋቹ አስቀድሞ ሌላ ቦርድ በቋሚነት ይዞ ከነበረ እንለቅለታለን
             let previousBoard = null;
             for (let bNum in room.selectedBoards) {
                 if (room.selectedBoards[bNum] === socket.id) {
@@ -465,18 +469,17 @@ io.on('connection', (socket) => {
                 io.to(roomId).emit('boardReleased', { boardNumber: previousBoard });
             }
 
-            // አዲሱን ቦርድ በቋሚነት (Locked) እንይዘዋለን
             room.selectedBoards[boardNumber] = socket.id;
 
-            // ከጊዜያዊ ዝርዝር ውስጥ እናጸዳዋለን
             if (room.tempSelections && room.tempSelections[socket.id]) {
                 delete room.tempSelections[socket.id];
             }
             
-            // ለሁሉም ተጫዋቾች ይህ ቦርድ መያዙን (እንደተያዘ/ቀይ/ብርቱካናማ ሆኖ እንዲታይ) እንልካለን
             io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
             
-            // ለራሱ ተጫዋቹ ስኬታማ መሆኑን እና ወደ ጨዋታው መግባቱን እናሳውቃለን
+            // የንቁ ተጫዋቾች ብዛት ሲቀየር ወይም ሲጨመር ለሁሉም እንልካለን
+            io.to(roomId).emit('activePlayersUpdate', { activePlayersCount: getActivePlayersCount(room) });
+
             socket.emit('gameJoinSuccess', { boardNumber });
         }
     });
@@ -511,19 +514,27 @@ io.on('connection', (socket) => {
             if (room.players.has(socket.id)) {
                 room.players.delete(socket.id);
                 
-                // ጊዜያዊ ምርጫውን ካለ እናጸዳለን
                 if (room.tempSelections && room.tempSelections[socket.id]) {
                     delete room.tempSelections[socket.id];
                 }
 
-                // ተጫዋቹ ሲወጣ በቋሚነት የያዛቸውን ቦርዶች መልቀቅ
+                let boardReleasedFlag = false;
                 for (let bNum in room.selectedBoards) {
                     if (room.selectedBoards[bNum] === socket.id) {
                         delete room.selectedBoards[bNum];
+                        boardReleasedFlag = true;
                         io.to(roomId).emit('boardReleased', { boardNumber: bNum });
                     }
                 }
-                io.to(roomId).emit('playersUpdate', { playersCount: room.players.size });
+
+                io.to(roomId).emit('playersUpdate', { 
+                    playersCount: room.players.size,
+                    activePlayersCount: getActivePlayersCount(room)
+                });
+
+                if (boardReleasedFlag) {
+                    io.to(roomId).emit('activePlayersUpdate', { activePlayersCount: getActivePlayersCount(room) });
+                }
             }
         }
     });
