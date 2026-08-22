@@ -223,6 +223,11 @@
 
         let userWallet = 0.00;
         let currentBet = 20;
+        
+        // አዲስ የታከሉ Variables
+        let currentActivePlayers = 0;
+        let currentDerashAmount = 0.0;
+        
         let allCardsData = {};
         let selectedCardId = 1;
         let currentRoomId = null;
@@ -254,20 +259,34 @@
             } catch (e) { console.error(e); }
         }
 
-        // --- SOCKET EVENT HANDLERS ---
-
-        socket.on('playersUpdate', (data) => {
-            if (data && typeof data.activePlayersCount !== 'undefined') {
-                document.getElementById('activePlayersDisplay').innerText = data.activePlayersCount;
-                document.getElementById('activePlayersDisplayLive').innerText = data.activePlayersCount;
+        // --- DERASH AND ACTIVE PLAYERS HELPER ---
+        function updateDerashUI(data) {
+            if (typeof data.activePlayersCount !== 'undefined') {
+                currentActivePlayers = data.activePlayersCount;
+                document.getElementById('activePlayersDisplay').innerText = currentActivePlayers;
+                document.getElementById('activePlayersDisplayLive').innerText = currentActivePlayers;
             }
+            
+            // ደራሽ መጠን ከ Server (data.derashAmount ወይም data.derash) ካለ እሱን እንጠቀማለን።
+            // ከሌለ በተጫዋቾች ብዛት እና በBet መጠን 85% ሂሳብ እንሰራለን።
+            if (typeof data.derashAmount !== 'undefined') {
+                currentDerashAmount = parseFloat(data.derashAmount);
+            } else if (typeof data.derash !== 'undefined') {
+                currentDerashAmount = parseFloat(data.derash);
+            } else {
+                currentDerashAmount = currentActivePlayers * currentBet * 0.85; 
+            }
+            
+            document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
+        }
+
+        // --- SOCKET EVENT HANDLERS ---
+        socket.on('playersUpdate', (data) => {
+            if (data) updateDerashUI(data);
         });
 
         socket.on('activePlayersUpdate', (data) => {
-            if (data && typeof data.activePlayersCount !== 'undefined') {
-                document.getElementById('activePlayersDisplay').innerText = data.activePlayersCount;
-                document.getElementById('activePlayersDisplayLive').innerText = data.activePlayersCount;
-            }
+            if (data) updateDerashUI(data);
         });
 
         socket.on('assignedRoom', (data) => {
@@ -275,10 +294,7 @@
             document.getElementById('gameIdDisplay').innerText = currentRoomId;
             globalStartTime = data.startTime;
             
-            if (typeof data.activePlayersCount !== 'undefined') {
-                document.getElementById('activePlayersDisplay').innerText = data.activePlayersCount;
-                document.getElementById('activePlayersDisplayLive').innerText = data.activePlayersCount;
-            }
+            updateDerashUI(data); // የደራሽ እና የተጫዋች ብዛት Update
 
             startClientCountdown();
 
@@ -290,23 +306,17 @@
 
         socket.on('countdownUpdate', (data) => {
             globalStartTime = data.startTime;
-            if (typeof data.activePlayersCount !== 'undefined') {
-                document.getElementById('activePlayersDisplay').innerText = data.activePlayersCount;
-                document.getElementById('activePlayersDisplayLive').innerText = data.activePlayersCount;
-            }
+            updateDerashUI(data);
         });
 
         function startClientCountdown() {
             if (clientTimerInterval) clearInterval(clientTimerInterval);
-
             clientTimerInterval = setInterval(() => {
                 if (!globalStartTime) return;
                 let remaining = Math.max(0, Math.floor((globalStartTime - Date.now()) / 1000));
                 document.getElementById('countdownText').innerText = `${remaining}s`;
 
-                if (remaining <= 0) {
-                    clearInterval(clientTimerInterval);
-                }
+                if (remaining <= 0) clearInterval(clientTimerInterval);
             }, 1000);
         }
 
@@ -398,7 +408,13 @@
             document.getElementById('walletDisplay').innerText = userWallet.toFixed(2);
             document.getElementById('betDisplay').innerText = currentBet;
             document.getElementById('liveBetDisplay').innerText = currentBet;
-            document.getElementById('derashDisplay').innerText = (currentBet * 15 * 0.85).toFixed(1);
+            
+            // የደራሽ መጠን አሁን በ static multiplier (15) ሳይሆን በ dynamic variable ነው የሚሰራው
+            if(currentActivePlayers === 0) {
+                document.getElementById('derashDisplay').innerText = "0.0";
+            } else {
+                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
+            }
         }
 
         function generateBingoCard() {
@@ -566,7 +582,8 @@
             if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) isBingo = true;
 
             if(isBingo) {
-                let winAmount = currentBet * 15 * 0.85;
+                // የደራሽ መጠኑን በተስተካከለው currentDerashAmount እንልካለን
+                let winAmount = currentDerashAmount > 0 ? currentDerashAmount : (currentBet * 15 * 0.85);
                 socket.emit('claimBingo', { identifier: currentUser.id, winAmount, roomId: currentRoomId });
             } else {
                 alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
