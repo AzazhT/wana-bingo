@@ -83,11 +83,9 @@
         .board-footer { text-align: center; font-size: 9px; color: #7f91a4; margin-top: 4px; font-weight: bold; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 2000; }
-        .modal-card { background: #1e2a38; width: 85%; max-width: 340px; padding: 20px; border-radius: 14px; text-align: center; border: 1px solid #3b4e62; color: white; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .winner-banner { background: #ffca28; color: #000; padding: 10px; border-radius: 8px; font-size: 22px; font-weight: 900; margin-bottom: 12px; }
-        .winner-details { font-size: 14px; color: #cfd8dc; margin-bottom: 14px; line-height: 1.6; }
-        .winner-details span { color: #ffca28; font-weight: bold; }
-        .play-again-btn { background: #4caf50; color: white; border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; }
+        .modal-card { background: #1e2a38; width: 85%; max-width: 340px; padding: 16px; border-radius: 12px; text-align: center; border: 1px solid #3b4e62; color: white; }
+        .winner-banner { background: #ffca28; color: #000; padding: 8px; border-radius: 8px; font-size: 20px; font-weight: 900; margin-bottom: 8px; }
+        .play-again-btn { background: #4caf50; color: white; border: none; width: 100%; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; margin-top: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -114,9 +112,9 @@
 
             <div id="gameStepCards" class="game-step">
                 <div class="top-stats">
-                    <div class="stat-card">Players<span id="activePlayersDisplay">0</span></div>
+                    <div class="stat-card">Wallet<span id="walletDisplay">0.00</span></div>
                     <div class="stat-card">Bet<span id="betDisplay">10</span></div>
-                    <div class="stat-card">Derash<span id="stakeDisplay">0.00</span></div>
+                    <div class="stat-card">Stake<span id="stakeDisplay">10.00</span></div>
                 </div>
 
                 <div class="cards-grid" id="cardsGrid"></div>
@@ -133,8 +131,9 @@
             <div id="gameStepLive" class="game-step">
                 <div class="top-stats">
                     <div class="stat-card">Room<span id="gameIdDisplay">--</span></div>
-                    <div class="stat-card">Players<span id="livePlayersDisplay">0</span></div>
                     <div class="stat-card">Derash<span id="derashDisplay">0.0</span></div>
+                    <div class="stat-card">Active<span id="activePlayersDisplay">0</span></div>
+                    <div class="stat-card">Bet<span id="liveBetDisplay">10</span></div>
                     <div class="stat-card">Call<span id="callCount">0</span></div>
                 </div>
 
@@ -195,15 +194,10 @@
         </div>
     </div>
 
-    <!-- የቢንጎ ድል ማሳያ ፕላትፎርም (Bingo Win Modal) -->
     <div class="modal-overlay" id="winnerModal">
         <div class="modal-card">
-            <div class="winner-banner">🎉 BINGO! WINNER</div>
-            <div class="winner-details" id="winnerDetailsText">
-                አሸናፊ: <span id="winnerNameDisplay">--</span><br>
-                ቦርድ ቁጥር: <span id="winnerBoardDisplay">--</span><br>
-                ያሸነፈው ሽልማት: <span id="winnerPrizeDisplay">0.00</span> ብር
-            </div>
+            <div class="winner-banner">🎉 BINGO!</div>
+            <p style="margin-bottom:8px; font-weight:bold; font-size:13px;" id="winnerText">እንኳን ደስ አለዎት! አሸንፈዋል።</p>
             <button class="play-again-btn" onclick="closeModal('winnerModal')">ቀጥል (Continue)</button>
         </div>
     </div>
@@ -262,6 +256,19 @@
 
         // --- SOCKET EVENT HANDLERS ---
 
+        // የተስተካከለው የ Active ቆጣሪ መቀበያ (ሁሉንም የዳታ አይነቶች በመፈተሽ ዜሮ እንዳይሆን አድርጎታል)
+        socket.on('activePlayersUpdate', (data) => {
+            let count = 0;
+            if (typeof data === 'number') {
+                count = data;
+            } else if (data && typeof data.activeCount !== 'undefined') {
+                count = data.activeCount;
+            } else if (data && typeof data.count !== 'undefined') {
+                count = data.count;
+            }
+            document.getElementById('activePlayersDisplay').innerText = count;
+        });
+
         socket.on('assignedRoom', (data) => {
             currentRoomId = data.roomId;
             document.getElementById('gameIdDisplay').innerText = currentRoomId;
@@ -273,7 +280,6 @@
                 roomSelectedBoards = data.selectedBoards;
                 updateBoardsUI();
             }
-            updateActivePlayersCount();
         });
 
         socket.on('countdownUpdate', (data) => {
@@ -314,29 +320,27 @@
         socket.on('boardSelected', (data) => {
             roomSelectedBoards[data.boardNumber] = data.socketId;
             updateBoardsUI();
-            updateActivePlayersCount();
         });
 
         socket.on('boardReleased', (data) => {
             delete roomSelectedBoards[data.boardNumber];
             updateBoardsUI();
-            updateActivePlayersCount();
         });
 
         socket.on('gameJoinSuccess', (data) => {
             selectedCardId = data.boardNumber;
             displayPreview(selectedCardId);
             updateBoardsUI();
-            updateActivePlayersCount();
         });
 
         socket.on('boardSelectError', (data) => {
             alert(data.message);
         });
 
+        // የቀድሞው ቁጥር መጥሪያ (Number Called) ስራ ሙሉ በሙሉ ተጠብቆ እንዲሰራ የተደረገበት ክፍል
         socket.on('numberDrawn', (data) => {
             let rand = data.number;
-            drawnNumbers = data.drawnHistory;
+            drawnNumbers = data.drawnHistory || [];
             document.getElementById('callCount').innerText = drawnNumbers.length;
 
             let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
@@ -352,11 +356,8 @@
             document.getElementById('recentCalls').prepend(ball);
         });
 
-        // የተስተካከለ የድል (Bingo Win) ማሳያ ፕላትፎርም
         socket.on('gameOver', (data) => {
-            document.getElementById('winnerNameDisplay').innerText = data.winnerName || "ተጫዋች";
-            document.getElementById('winnerBoardDisplay').innerText = data.boardNumber || "--";
-            document.getElementById('winnerPrizeDisplay').innerText = parseFloat(data.winAmount || (currentBet * Object.keys(roomSelectedBoards).length * 0.85)).toFixed(2);
+            document.getElementById('winnerText').innerText = data.message;
             document.getElementById('winnerModal').style.display = 'flex';
         });
 
@@ -383,24 +384,13 @@
             showGameStep('gameStepBet'); 
         }
 
-        // ንቁ ተጫዋቾችን እና ትክክለኛውን የዲራሽ (Derash) ስሌት የሚያስተካክል ተግባር
-        function updateActivePlayersCount() {
-            let activeCount = Object.keys(roomSelectedBoards).length;
-            document.getElementById('activePlayersDisplay').innerText = activeCount;
-            document.getElementById('livePlayersDisplay').innerText = activeCount;
-
-            // ሪል-ታይም ዲራሽ ስሌት፡ (Active Players × Bet Amount) - 15% ኮሚሽን (ወይም የቤት ድርሻ)
-            let totalPot = activeCount * currentBet;
-            let netDerash = totalPot * 0.85;
-            document.getElementById('stakeDisplay').innerText = netDerash.toFixed(2);
-            document.getElementById('derashDisplay').innerText = netDerash.toFixed(1);
-        }
-
         function updateHeaderStats() {
             document.getElementById('userBalanceDisplay').innerText = userWallet.toFixed(2);
             document.getElementById('walletDisplay').innerText = userWallet.toFixed(2);
             document.getElementById('betDisplay').innerText = currentBet;
-            updateActivePlayersCount();
+            document.getElementById('stakeDisplay').innerText = currentBet.toFixed(2);
+            document.getElementById('liveBetDisplay').innerText = currentBet;
+            document.getElementById('derashDisplay').innerText = (currentBet * 15 * 0.85).toFixed(1);
         }
 
         function generateBingoCard() {
@@ -469,7 +459,6 @@
                     }
                 }
             }
-            updateActivePlayersCount();
         }
 
         function displayPreview(id) {
@@ -569,15 +558,8 @@
             if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) isBingo = true;
 
             if(isBingo) {
-                let activeCount = Object.keys(roomSelectedBoards).length || 1;
-                let winAmount = currentBet * activeCount * 0.85;
-                socket.emit('claimBingo', { 
-                    identifier: currentUser.id, 
-                    winnerName: currentUser.first_name, 
-                    boardNumber: selectedCardId, 
-                    winAmount, 
-                    roomId: currentRoomId 
-                });
+                let winAmount = currentBet * 15 * 0.85;
+                socket.emit('claimBingo', { identifier: currentUser.id, winAmount, roomId: currentRoomId });
             } else {
                 alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
             }
