@@ -165,7 +165,7 @@ if (bot) {
 
     bot.onText(/\/deposit/, (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ。`, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ።`, { parse_mode: 'Markdown' });
     });
 
     bot.onText(/\/withdraw/, (msg) => {
@@ -310,7 +310,6 @@ if (bot) {
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
-    // በ selectedBoards ውስጥ የተመዘገቡ ልዩ ተጫዋቾች ብዛት (Active/Joined players)
     let uniquePlayers = new Set(Object.values(room.selectedBoards));
     return uniquePlayers.size;
 }
@@ -325,8 +324,8 @@ function getOrCreateLobby(betAmount) {
             status: 'waiting', 
             players: new Set(),
             reservedNumbers: {}, 
-            selectedBoards: {}, // በቋሚነት የተያዙ (Locked/Taken) ቦርዶች
-            tempSelections: {},  // ጊዜያዊ የተመረጡ ቦርዶች
+            selectedBoards: {}, 
+            tempSelections: {},  
             drawnNumbers: [],
             countdown: 30,
             startTime: Date.now() + 30000,
@@ -361,7 +360,7 @@ function startGlobalLobbyCountdown(roomId) {
             if (room.players.size < 1 || selectedBoardsCount < 1) {
                 room.countdown = 30;
                 room.startTime = Date.now() + 30000;
-                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረطة ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
+                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
             } else {
                 startRoomGame(roomId);
             }
@@ -476,8 +475,6 @@ io.on('connection', (socket) => {
             }
             
             io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
-            
-            // የንቁ ተጫዋቾች ብዛት ሲቀየር ወይም ሲጨመር ለሁሉም እንልካለን
             io.to(roomId).emit('activePlayersUpdate', { activePlayersCount: getActivePlayersCount(room) });
 
             socket.emit('gameJoinSuccess', { boardNumber });
@@ -485,7 +482,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('claimBingo', async (data) => {
-        const { identifier, winAmount, roomId } = data;
+        const { identifier, winnerName, boardNumber, winAmount, roomId } = data;
         let room = activeRooms[roomId];
         
         if (room && room.status === 'playing') {
@@ -499,7 +496,13 @@ io.on('connection', (socket) => {
                     let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(winAmount);
                     await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
                     
-                    io.to(roomId).emit('gameOver', { message: `🎉 ተጫዋች BINGO አሸንፏል! ${winAmount} ብር ተሸልሟል።` });
+                    // ለሁሉም ተጫዋቾች የተሟላ የአሸናፊ መረጃን ይልካል
+                    io.to(roomId).emit('gameOver', { 
+                        winnerName, 
+                        boardNumber, 
+                        winAmount, 
+                        message: `🎉 ተጫዋች ${winnerName} BINGO አሸንፏል! ${winAmount} ብር ተሸልሟል።` 
+                    });
                 }
             } catch (err) {
                 console.error('Bingo claim error:', err);
