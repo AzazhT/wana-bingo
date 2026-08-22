@@ -311,29 +311,24 @@ let activeRooms = {};
 function getActivePlayersCount(room) {
     let activeSocketIds = new Set();
     
+    // ቦርድ የያዙ ሁሉ እንደ አክቲቭ ተጫዋች ይቆጠራሉ (ተጫዋቹ ሊቭ ቢልም ቦርዱ እስካለ ድረስ ብሩ አይመለስም)
     for (let bNum in room.selectedBoards) {
         if (room.selectedBoards[bNum]) {
             activeSocketIds.add(room.selectedBoards[bNum]);
         }
     }
 
-    for (let socketId of room.players) {
-        activeSocketIds.add(socketId);
-    }
-
-    return activeSocketIds.size;
+    return activeSocketIds.size > 0 ? activeSocketIds.size : room.players.size;
 }
 
-// ** አዲስ የተጨመረ የደራሽ (Prize Pool) ማስያ የሂሳብ ሎጂክ **
+// የደራሽ (Prize Pool) ማስያ የሂሳብ ሎጂክ
 function calculatePrizePool(room) {
     let activeCount = getActivePlayersCount(room);
     let totalBet = activeCount * parseFloat(room.betAmount);
     
-    // ለምሳሌ 10% የቤቱ ኮሚሽን ተቀንሶ የሚቀረው ገንዘብ ለደራሽነት (Prize Pool) እንዲሆን ከፈለጉ:
     let commissionRate = 0.10; 
     let prizePool = totalBet * (1 - commissionRate);
     
-    // ሙሉ በሙሉ ያለ ኮሚሽን እንዲሆን ከፈለጉ ደግሞ prizePool = totalBet ማድረግ ይቻላል።
     return Math.floor(prizePool > 0 ? prizePool : parseFloat(room.betAmount));
 }
 
@@ -376,7 +371,7 @@ function startGlobalLobbyCountdown(roomId) {
             countdown: room.countdown, 
             playersCount: room.players.size,
             activePlayersCount: getActivePlayersCount(room),
-            prizePool: currentPrizePool, // 👈 የደራሽ መጠን ወደ ክላይንት ይላካል
+            prizePool: currentPrizePool,
             startTime: room.startTime 
         });
 
@@ -532,7 +527,6 @@ io.on('connection', (socket) => {
             if (room.gameInterval) clearInterval(room.gameInterval);
             if (room.timer) clearInterval(room.timer);
 
-            // ሰቨር በራሱ ካልኩሌት ያደረገውን ትክክለኛ የደራሽ (Prize Pool) መጠን መጠቀም እንዲቻል:
             let finalWinAmount = calculatePrizePool(room) || winAmount;
 
             try {
@@ -560,29 +554,10 @@ io.on('connection', (socket) => {
                     delete room.tempSelections[socket.id];
                 }
 
-                let boardReleasedFlag = false;
-                for (let bNum in room.selectedBoards) {
-                    if (room.selectedBoards[bNum] === socket.id) {
-                        delete room.selectedBoards[bNum];
-                        boardReleasedFlag = true;
-                        io.to(roomId).emit('boardReleased', { boardNumber: bNum });
-                    }
-                }
-
-                let currentPrizePool = calculatePrizePool(room);
-
-                io.to(roomId).emit('playersUpdate', { 
-                    playersCount: room.players.size,
-                    activePlayersCount: getActivePlayersCount(room),
-                    prizePool: currentPrizePool
-                });
-
-                if (boardReleasedFlag) {
-                    io.to(roomId).emit('activePlayersUpdate', { 
-                        activePlayersCount: getActivePlayersCount(room),
-                        prizePool: currentPrizePool 
-                    });
-                }
+                // ማስተካከያ፡ ተጫዋቹ ጀምሮ (Board ይዞ) ከገባ በኋላ ሊቭ ቢልም/ዲኮኔክት ቢልም 
+                // ቦርዱ ከ selectedBoards እንድናጠፋው አናደርግም። 
+                // ምክንያቱም ጨዋታው እስኪያልቅ ድረስ ተጫዋቹ በቦርዱ ተሳትፏልና ደራሹ እና አክቲቭ ተጫዋቹ መቀነስ የለበትም።
+                // ቦርዱ የሚሰረዘው ጨዋታው አልቆ (ended) አዲስ ዙር ሲጀምር ብቻ ነው።
             }
         }
     });
