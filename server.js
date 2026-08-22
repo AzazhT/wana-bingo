@@ -122,7 +122,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                             `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                             `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
                              `─────────────────────\n` +
                              `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                              `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -317,7 +317,7 @@ function getOrCreateLobby(betAmount) {
             selectedBoards: {},  
             drawnNumbers: [],
             countdown: 30,
-            startTime: Date.now() + 30000, // የግሎባል ሰዓት ማመሳከሪያ (Global Sync Time)
+            startTime: Date.now() + 30000,
             timer: null,
             gameInterval: null
         };
@@ -345,7 +345,7 @@ function startGlobalLobbyCountdown(roomId) {
         if (room.countdown <= 0) {
             let selectedBoardsCount = Object.keys(room.selectedBoards).length;
 
-            if (room.players.size < 1 || selectedBoardsCount < 1) { // እንደ አስፈላጊነቱ በቂ ተጫዋች ሲኖር
+            if (room.players.size < 1 || selectedBoardsCount < 1) {
                 room.countdown = 30;
                 room.startTime = Date.now() + 30000;
                 io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
@@ -393,7 +393,6 @@ io.on('connection', (socket) => {
         room.players.add(socket.id);
         socket.currentRoomId = room.roomId;
 
-        // ጨዋታው ተጀምሮ ከሆነ ዘግይቶ ለሚገባ ተጫዋች ማሳሰቢያ ይሰጣል
         if (room.status === 'playing') {
             socket.emit('gameAlreadyStarted', { 
                 message: 'ጨዋታው ቀደም ብሎ ተጀምሯል! እባክዎ ቀጣዩን ዙር ይጠብቁ።',
@@ -413,16 +412,16 @@ io.on('connection', (socket) => {
             });
         }
         
-        // አዲስ ተጫዋች ሲገባ የሰዎችን ብዛት ለሁሉም እናሳውቅ
         io.to(room.roomId).emit('playersUpdate', { playersCount: room.players.size });
     });
 
-    socket.on('selectBoard', (data) => {
+    // 🚀 ተጫዋቹ "Start game" ሲጫን ብቻ ቦርዱ የሚመዘገብበት እና ለሌሎች በከለር የሚታይበት ሎጂክ
+    socket.on('startPlayerGame', (data) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'waiting') {
-            // ተጫዋቹ አስቀድሞ ሌላ ቦርድመርጦ ከነበረ እንለቅለታለን
+            // ተጫዋቹ አስቀድሞ ሌላ ቦርድ ይዞ ከነበረ እንለቅለታለን
             let previousBoard = null;
             for (let bNum in room.selectedBoards) {
                 if (room.selectedBoards[bNum] === socket.id) {
@@ -438,9 +437,12 @@ io.on('connection', (socket) => {
             // አዲሱ ቦርድ የተያዘ መሆን አለመሆኑን ማረጋገጥ
             if (!room.selectedBoards[boardNumber]) {
                 room.selectedBoards[boardNumber] = socket.id;
-                // ለሁሉም ተጫዋቾች ይህ ቦርድ በሌላ ሰው መያዙን በከለር (በቀለም/በስቴት) እንዲታይ እንልክልን
+                
+                // ለሁሉም ተጫዋቾች ይህ ቦርድ በሌላ ሰው መያዙን በከለር እንዲታይ እንልክልን
                 io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
-                socket.emit('boardSelectSuccess', { boardNumber });
+                
+                // ለራሱ ተጫዋቹ ስኬታማ መሆኑን እና ወደ ጨዋታው መግባቱን እናሳውቃለን
+                socket.emit('gameJoinSuccess', { boardNumber });
             } else {
                 socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
             }
