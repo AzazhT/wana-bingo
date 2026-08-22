@@ -420,6 +420,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // ቁጥርን መያዝ (Reserved) እና ለሌሎች በሰከንድ ውስጥ ማሳወቅ
     socket.on('reserveNumber', (data) => {
         const { roomId, number } = data;
         let room = activeRooms[roomId];
@@ -427,6 +428,7 @@ io.on('connection', (socket) => {
         if (room && room.status === 'waiting') {
             if (!room.reservedNumbers[number]) {
                 room.reservedNumbers[number] = socket.id;
+                // ለሁሉም በክፍሉ ውስጥ ላሉ ተጫዋቾች ቁጥሩ መያዙን በሰከንድ እናሳውቃለን
                 io.to(roomId).emit('numberReserved', { number, socketId: socket.id });
             } else {
                 socket.emit('reservationError', { message: 'ይህ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
