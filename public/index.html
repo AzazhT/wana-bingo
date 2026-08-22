@@ -45,7 +45,7 @@
 
         .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: #121921; padding: 6px; border-radius: 10px; max-height: 280px; overflow-y: auto; border: 1px solid #2b3a4a; }
         .card-btn { background: #2b3a4a; color: #fff; border: none; padding: 8px 0; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; position: relative; }
-        .card-btn.active { background: #0088cc; color: #fff; box-shadow: 0 0 8px #0088cc; }
+        .card-btn.active { background: #4caf50; color: #fff; box-shadow: 0 0 8px #4caf50; } /* ለተጠቃሚው የተመረጠው በግሪን ይታያል */
         .card-btn.taken { background: #e53935; color: #fff; cursor: not-allowed; opacity: 0.7; }
 
         .bottom-section { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 10px; }
@@ -297,6 +297,12 @@
             showGameStep('gameStepBet');
         });
 
+        socket.on('boardTempSelected', (data) => {
+            selectedCardId = data.boardNumber;
+            updateBoardsUI();
+            displayPreview(selectedCardId);
+        });
+
         socket.on('boardSelected', (data) => {
             roomSelectedBoards[data.boardNumber] = data.socketId;
             updateBoardsUI();
@@ -413,7 +419,8 @@
                         alert('ይህ ቦርድ በሌላ ተጫዋች ተይዟል!');
                         return;
                     }
-                    socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: i });
+                    // ደረጃ 1፡ ቦርዱ ሲነካ ለጊዜው ይመረጣል (Temporary Selection)
+                    socket.emit('selectBoardTemp', { roomId: currentRoomId, boardNumber: i });
                 };
                 cardsGrid.appendChild(btn);
             }
@@ -433,6 +440,8 @@
                         } else {
                             btn.classList.add('taken');  
                         }
+                    } else if(i === selectedCardId) {
+                        btn.classList.add('active');
                     }
                 }
             }
@@ -467,6 +476,9 @@
                 if (!data.success) return alert(data.message);
                 userWallet = data.newBalance;
             } catch (e) { return alert('የኔትወርክ ስህተት።'); }
+
+            // ደረጃ 2፡ "Start game" ሲጫን በቋሚነት ሎክ ይደረጋል
+            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId });
 
             updateHeaderStats();
 
