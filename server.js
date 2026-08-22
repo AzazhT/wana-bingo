@@ -17,9 +17,8 @@ const ADMIN_CHAT_ID = '686733543'; // የአድሚን ቴሌግራም ID
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
-// የሁሉም ተጠቃሚዎች የባንክ ሂሳብ እና መረጃ ማከማቻ (Database)
+// የሁሉም ተጠቃሚዎች የባንክ ሂሳብ እና መረጃ ማከማቻ
 let usersDatabase = {};
-// የტრንዛክሽን ጥያቄዎች ማከማቻ
 let pendingTransactions = {};
 
 // 1. ተጠቃሚው ቦቱ ላይ /start ሲል የሚሰራ
@@ -89,7 +88,6 @@ app.post('/api/request-transaction', async (req, res) => {
     const identifier = String(req.body.identifier);
     const { type, amount, details } = req.body;
     
-    // ተጠቃሚው ከሌለ በአስቸኳይ መፍጠር (እንዳይጠፋ)
     if (!usersDatabase[identifier]) {
         usersDatabase[identifier] = {
             identifier: identifier,
@@ -105,7 +103,8 @@ app.post('/api/request-transaction', async (req, res) => {
         return res.json({ success: false, message: 'ያለዎት ባላንስ ከጠየቁት የብር መጠን ያንሳል!' });
     }
 
-    const txId = 'TX_' + Date.now();
+    // አጭር እና የተስተካከለ የትራንዛክሽን መለያ ID
+    const txId = Math.floor(100000 + Math.random() * 900000).toString();
     pendingTransactions[txId] = { identifier, type, amount: parseFloat(amount), handled: false };
 
     const message = `🚨 <b>አዲስ የ${type === 'DEPOSIT' ? 'ገቢ (Deposit)' : 'ወጪ (Withdraw)'} ጥያቄ!</b>\n\n` +
@@ -119,8 +118,8 @@ app.post('/api/request-transaction', async (req, res) => {
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '✅ Approve (አረጋግጥ)', callback_data: `approve_${txId}` },
-                    { text: '❌ Reject (ሰርዝ)', callback_data: `reject_${txId}` }
+                    { text: '✅ Approve (አረጋግጥ)', callback_data: `app_${txId}` },
+                    { text: '❌ Reject (ሰርዝ)', callback_data: `rej_${txId}` }
                 ]
             ]
         }
@@ -162,11 +161,11 @@ bot.onText(/\/users/, async (msg) => {
     await bot.sendMessage(ADMIN_CHAT_ID, message, { parse_mode: 'HTML' });
 });
 
-// 5. አድሚኑ Approve ሲል የሚሰራ ትክክለኛ ሎጂክ
+// 5. አድሚኑ አዝራር ሲጫን የሚሰራ ሎጂክ
 bot.on('callback_query', async (query) => {
     const action = query.data;
     const msg = query.message;
-    const [status, txId] = action.split('_');
+    const [actionType, txId] = action.split('_');
 
     const tx = pendingTransactions[txId];
 
@@ -180,7 +179,6 @@ bot.on('callback_query', async (query) => {
         return;
     }
 
-    // ተጠቃሚው ከሌለ መፍጠር
     if (!usersDatabase[tx.identifier]) {
         usersDatabase[tx.identifier] = {
             identifier: tx.identifier,
@@ -192,7 +190,7 @@ bot.on('callback_query', async (query) => {
 
     const user = usersDatabase[tx.identifier];
 
-    if (status === 'approve') {
+    if (actionType === 'app') {
         if (tx.type === 'DEPOSIT') {
             user.balance += tx.amount;
             await bot.sendMessage(ADMIN_CHAT_ID, `✅ ዲፖዚቱ ተረጋግጧል! ለተጠቃሚው ${tx.amount} ETB ተጨምሯል።\nአሁን ያለው ባላንስ: ${user.balance} ETB`, { parse_mode: 'HTML' });
