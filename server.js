@@ -124,7 +124,8 @@ if (bot) {
                              `/balance - ቀሪ ገንዘብዎን ለማየት\n` +
                              `/deposit - የዲፖዚት መመሪያዎችን ለማየት`;
 
-        if (chatId.toString() === ADMIN_CHAT_ID.toString()) {
+        // የአድሚን መለያ ማረጋገጫ (ከተጠቃሚው ቻት ID ጋር የሚመሳሰል መሆኑን ለማረጋገጥ)
+        if (chatId == ADMIN_CHAT_ID) {
             welcomeMessage += `\n\n👑 **የአድሚን ትዕዛዞች:**\n` +
                               `/admin - የተጫዋቾች ស្ថቲስቲክስ ለማየት\n` +
                               `/pending - ያልተረጋገጡ ጥያቄዎችን ለማየት`;
@@ -158,7 +159,9 @@ if (bot) {
 
     bot.onText(/\/admin/, async (msg) => {
         const chatId = msg.chat.id;
-        if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
+        if (chatId != ADMIN_CHAT_ID) {
+            return bot.sendMessage(chatId, 'ይህንን ትዕዛዝ መጠቀም የሚችሉት አድሚኖች ብቻ ናቸው!');
+        }
 
         try {
             const usersRes = await pool.query('SELECT COUNT(*) FROM users');
@@ -175,7 +178,7 @@ if (bot) {
 
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
-        if (chatId.toString() !== ADMIN_CHAT_ID.toString()) {
+        if (chatId != ADMIN_CHAT_ID) {
             return bot.sendMessage(chatId, 'ይህንን ትዕዛዝ መጠቀም የሚችሉት አድሚኖች ብቻ ናቸው!');
         }
 
