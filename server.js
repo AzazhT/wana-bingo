@@ -1,64 +1,73 @@
-const express = require('http');
+const express = require('express');
+const http = require('http');
 const { Server } = require('socket.io');
+
 const app = express();
-const http = require('http').createServer(app);
-const io = new Server(http);
+const server = http.createServer(app);
+const io = new Server(server);
 
 app.use(express.json());
 
-// የጨዋታ ክፍሎች (Rooms) እና ተጠቃሚዎች ማከማቻ
-let rooms = {}; // roomId -> { betAmount, startTime, status, selectedBoards: {}, drawnNumbers: [], players: Set }
-let users = {}; // identifier -> { id, name, balance, phone }
+let rooms = {}; 
+let users = {}; 
 
-// ዩዘርን የማግኘት ወይም የመፍጠር API
 app.post('/api/get-user', (req, res) => {
-    const { identifier, name, username } = req.body;
+    const reqBody = req.body || {};
+    const identifier = reqBody.identifier;
+    const name = reqBody.name || reqBody.username;
+
+    if (!identifier) {
+        return res.json({ success: false, message: 'Identifier is required' });
+    }
+
     if (!users[identifier]) {
-        users[identifier] = { identifier, name: name || username, balance: 1000.00, phone: '' }; // ለፈተና 1000 ብር ቦነስ ተሰጥቷል
+        users[identifier] = { identifier: identifier, name: name || 'Player', balance: 1000.00, phone: '' };
     }
     res.json({ success: true, user: users[identifier] });
 });
 
-// ውርርድ የመቀበል API
 app.post('/api/place-bet', (req, res) => {
-    const { identifier, amount } = req.body;
+    const reqBody = req.body || {};
+    const identifier = reqBody.identifier;
+    const amount = parseFloat(reqBody.amount || 0);
+
     let user = users[identifier];
     if (!user || user.balance < amount) {
         return res.json({ success: false, message: 'በቂ ባላንስ የለዎትም!' });
     }
-    user.balance -= parseFloat(amount);
+    user.balance -= amount;
     res.json({ success: true, newBalance: user.balance });
 });
 
-// የገንዘብ ግብይት ጥያቄ
 app.post('/api/request-transaction', (req, res) => {
     res.json({ success: true, tx_id: 'TXN-' + Math.floor(Math.random() * 1000000) });
 });
 
-// ስልክ ቁጥር ማሻሻያ
 app.post('/api/update-phone', (req, res) => {
-    const { identifier, phone } = req.body;
-    if (users[identifier]) {
+    const reqBody = req.body || {};
+    const identifier = reqBody.identifier;
+    const phone = reqBody.phone;
+
+    if (identifier && users[identifier]) {
         users[identifier].phone = phone;
     }
     res.json({ success: true });
 });
 
-// Socket.io ግንኙነት
 io.on('connection', (socket) => {
     let currentJoinedRoom = null;
 
-    // ተጫዋቹ የውርርድ መጠን መርጦ ወደ ሎቢ ሲገባ
     socket.on('joinLobby', (data) => {
-        let betAmount = data.betAmount;
-        let roomId = `room_${betAmount}`;
+        data = data || {};
+        let betAmount = data.betAmount || 20;
+        let roomId = 'room_' + betAmount;
 
         if (!rooms[roomId]) {
             rooms[roomId] = {
                 betAmount: betAmount,
-                startTime: Date.now() + 30000, // 30 ሰከንድ ቆይታ
-                status: 'waiting', // waiting, playing
-                selectedBoards: {}, // boardNumber -> socket.id
+                startTime: Date.now() + 30000, 
+                status: 'waiting', 
+                selectedBoards: {}, 
                 drawnNumbers: [],
                 players: new Set(),
                 timer: null
@@ -70,7 +79,6 @@ io.on('connection', (socket) => {
         socket.join(roomId);
         rooms[roomId].players.add(socket.id);
 
-        // አዳዲስ መረጃዎችን ለተጫዋቹ መላክ
         socket.emit('assignedRoom', {
             roomId: roomId,
             startTime: rooms[roomId].startTime,
@@ -80,12 +88,11 @@ io.on('connection', (socket) => {
         updateRoomStats(roomId);
     });
 
-    // ቦርድ በጊዜያዊነት መምረጥ (Temporary Select)
     socket.on('selectBoardTemp', (data) => {
+        data = data || {};
         let room = rooms[data.roomId];
         if (!room) return;
 
-        // የራሱን ძველი ቦርድ መልቀቅ
         for (let b in room.selectedBoards) {
             if (room.selectedBoards[b] === socket.id) {
                 delete room.selectedBoards[b];
@@ -93,37 +100,35 @@ io.on('connection', (socket) => {
         }
 
         room.selectedBoards[data.boardNumber] = socket.id;
-        io.to(data.roomId).emit('boardSelected', { boardNumber: data.boardNumber, socket.id: socket.id });
+        io.to(data.roomId).emit('boardSelected', { boardNumber: data.boardNumber, socketId: socket.id });
         updateRoomStats(data.roomId);
     });
 
-    // ጨዋታው ሲጀመር ቦርዱን በቋሚነት መያዝ
     socket.on('startPlayerGame', (data) => {
+        data = data || {};
         let room = rooms[data.roomId];
         if (!room) return;
         room.selectedBoards[data.boardNumber] = socket.id;
-        io.to(data.roomId).emit('boardSelected', { boardNumber: data.boardNumber, socket.id: socket.id });
+        io.to(data.roomId).emit('boardSelected', { boardNumber: data.boardNumber, socketId: socket.id });
         updateRoomStats(data.roomId);
     });
 
-    // ቢንጎ ማሸነፉን ማረጋገጥ
     socket.on('claimBingo', (data) => {
+        data = data || {};
         let room = rooms[data.roomId];
         if (!room || room.status !== 'playing') return;
 
         room.status = 'finished';
         let winnerUser = users[data.identifier];
         let winnerName = winnerUser ? winnerUser.name : 'ተጫዋች';
-        let prize = data.winAmount;
+        let prize = parseFloat(data.winAmount || 0);
 
-        // አሸናፊውን ባላንስ መጨመር
         if (winnerUser) {
             winnerUser.balance += prize;
         }
 
-        // ለሁሉም ተጫዋቾች ማሳወቂያ መላክ (የአሸናፊው ስም፣ ቦርድ እና ሽልማት)
         io.to(data.roomId).emit('gameOver', {
-            message: `🎉 እንኳን ደስ አለዎት! ${winnerName} በቦርድ ቁጥር ${data.boardNumber || '--'} አሸንፈዋል! (ሽልማት: ${prize.toFixed(2)} ብር)`
+            message: '🎉 እንኳን ደስ አለዎት! ' + winnerName + ' በቦርድ ቁጥር ' + (data.boardNumber || '--') + ' አሸንፈዋል! (ሽልማት: ' + prize.toFixed(2) + ' ብር)'
         });
     });
 
@@ -142,9 +147,10 @@ io.on('connection', (socket) => {
     });
 });
 
-// የክፍል ሰከንድ ቆጣሪ እና የቁጥር መጥሪያ
 function startRoomCountdown(roomId) {
     let room = rooms[roomId];
+    if (!room) return;
+
     room.timer = setInterval(() => {
         let timeLeft = Math.floor((room.startTime - Date.now()) / 1000);
         
@@ -157,11 +163,14 @@ function startRoomCountdown(roomId) {
     }, 1000);
 }
 
-// ኳሶችን በየቅደም ተከተሉ መጥራት
 function startCallingNumbers(roomId) {
     let room = rooms[roomId];
-    let availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
-    // ቁጥሮችን መቀላቀል
+    if (!room) return;
+
+    let availableNumbers = [];
+    for (let i = 1; i <= 75; i++) {
+        availableNumbers.push(i);
+    }
     availableNumbers.sort(() => Math.random() - 0.5);
 
     let callInterval = setInterval(() => {
@@ -176,15 +185,14 @@ function startCallingNumbers(roomId) {
             number: num,
             drawnHistory: room.drawnNumbers
         });
-    }, 3000); // በግልጽ በልዩ ሶስት ሰከንድ ልዩነት ይጠራል
+    }, 3000);
 }
 
-// የስታቲስቲክስ እና የደርሽ (Pot) ማሻሻያ ለሁሉም መላክ
 function updateRoomStats(roomId) {
     let room = rooms[roomId];
     if (!room) return;
     let activeBoardsCount = Object.keys(room.selectedBoards).length;
-    let currentDerash = activeBoardsCount * room.betAmount * 0.85; // 85% ለደርሽ
+    let currentDerash = activeBoardsCount * room.betAmount * 0.85;
 
     io.to(roomId).emit('roomStatsUpdate', {
         activePlayers: room.players.size,
@@ -193,6 +201,7 @@ function updateRoomStats(roomId) {
     });
 }
 
-http.listen(3000, () => {
-    console.log('Server is running on port 3000');
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log('Server is running on port ' + PORT);
 });
