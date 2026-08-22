@@ -46,7 +46,7 @@
         .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: #121921; padding: 6px; border-radius: 10px; max-height: 280px; overflow-y: auto; border: 1px solid #2b3a4a; }
         .card-btn { background: #2b3a4a; color: #fff; border: none; padding: 8px 0; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; position: relative; }
         .card-btn.active { background: #0088cc; color: #fff; box-shadow: 0 0 8px #0088cc; }
-        .card-btn.taken { background: #555; color: #aaa; cursor: not-allowed; text-decoration: line-through; }
+        .card-btn.taken { background: #e53935; color: #fff; cursor: not-allowed; opacity: 0.8; }
 
         .bottom-section { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 10px; }
         .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; background: #121921; padding: 4px; border-radius: 6px; width: 160px; border: 1px solid #2b3a4a; }
@@ -228,7 +228,7 @@
         let drawnNumbers = [];
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
         let roomSelectedBoards = {};
-        let gameHasStarted = false; // ጨዋታው መጀመሩን (Start መሆኑን) ለመቆጣጠር
+        let gameHasStarted = false;
 
         window.addEventListener('DOMContentLoaded', async () => {
             await fetchUserData();
@@ -254,7 +254,7 @@
 
         socket.on('assignedRoom', (data) => {
             currentRoomId = data.roomId;
-            gameHasStarted = false; // በሎቢ ሰዓት ገና ጨዋታው አልጀመረም
+            gameHasStarted = false;
             document.getElementById('gameIdDisplay').innerText = currentRoomId;
             document.getElementById('countdownText').innerText = `${data.countdown}s`;
             
@@ -269,9 +269,9 @@
         });
 
         socket.on('gameStarted', (data) => {
-            gameHasStarted = true; // ጨዋታው በይፋ ተጀምሯል (Start ሆኗል)
+            gameHasStarted = true;
             document.getElementById('countdownText').innerText = "Started!";
-            updateBoardsUI(); // ጨዋታው ሲጀምር የተያዙት ቦርዶች በግልጽ እንዲታዩ እና እንዲቆለፉ እናደርጋለን
+            updateBoardsUI();
         });
 
         socket.on('boardSelected', (data) => {
@@ -337,6 +337,7 @@
         function selectBet(amount) {
             currentBet = amount;
             gameHasStarted = false;
+            roomSelectedBoards = {}; // የድሮ ክፍል ምርጫ እንዳይቀላቀል ማጽዳት
             showGameStep('gameStepCards');
             initPage1();
             socket.emit('joinLobby', { betAmount: amount });
@@ -392,8 +393,7 @@
                 btn.id = `card-btn-${i}`;
                 btn.innerText = i;
                 btn.onclick = () => {
-                    // ጨዋታው ገና ካልጀመረ (በሎቢ ሰዓት ከሆነ) ማንም ሰው የሚፈልገውን ቦርድ መምረጥ ይችላል (ምንም ክልከላ የለም)
-                    // ነገር ግን ጨዋታው Start ብሎ ከጀመረ በኋላ (gameHasStarted == true) ለሌላ ሰው የተያዘውን መምረጥ አይቻልም
+                    // ጨዋታው ከጀመረ (Start ከሆነ) እና ቦርዱ በሌላ ሰው ከተያዘ መምረጥ አይቻልም
                     if (gameHasStarted && roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
                         alert('ይህ ቦርድ በሌላ ተጫዋች ተይዟል!');
                         return;
@@ -407,6 +407,7 @@
             updateHeaderStats();
         }
 
+        // ቦርዶች በሪል-ታይም በቀለም እንዲለዩ (የራሱ ሰማያዊ፣ የሌሎች ቀይ/taken) ማድረግ
         function updateBoardsUI() {
             for(let i = 1; i <= 100; i++) {
                 const btn = document.getElementById(`card-btn-${i}`);
@@ -414,12 +415,9 @@
                     btn.classList.remove('active', 'taken');
                     if(roomSelectedBoards[i]) {
                         if(roomSelectedBoards[i] === socket.id) {
-                            btn.classList.add('active');
+                            btn.classList.add('active'); // የራስህ ቦርድ ሲሆን ሰማያዊ ይሆናል
                         } else {
-                            // የተያዘው ቦርድ የሚታየው እና 'taken' የሚሆነው ጨዋታው Start ብሎ ሲጀምር ብቻ ነው
-                            if (gameHasStarted) {
-                                btn.classList.add('taken');
-                            }
+                            btn.classList.add('taken');  // የሌላ ሰው ቦርድ ሲሆን ቀይ ሆኖ ይታያል
                         }
                     }
                 }
@@ -530,6 +528,7 @@
 
         function leaveGame() {
             gameHasStarted = false;
+            roomSelectedBoards = {};
             document.getElementById('winnerModal').style.display = 'none';
             showGameStep('gameStepBet');
             fetchUserData();
