@@ -39,7 +39,6 @@
         
         .bet-selection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
         .bet-grid-btn { padding: 22px 10px; font-size: 20px; font-weight: bold; background: #2b3a4a; color: #ffca28; border: 2px solid #3b4e62; border-radius: 12px; cursor: pointer; transition: 0.2s; text-align: center; }
-        .bet-grid-btn:active { transform: scale(0.96); background: #0088cc; color: #fff; border-color: #0088cc; }
 
         .top-stats { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 10px; }
         .stat-card { background: #1e2a38; border: 1px solid #2b3a4a; color: #7f91a4; padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; }
@@ -109,13 +108,11 @@
     <div class="container">
         
         <div id="gameTab" class="tab-content active">
-            
             <div id="gameStepBet" class="game-step active">
                 <div class="header-box">
                     <h2>እንኳን ወደ Wana Bingo በደህና መጡ!</h2>
                     <p>ለመጀመር የሚፈልጉትን የጨዋታ ዋጋ ይምረጡ፡</p>
                 </div>
-
                 <div class="bet-selection-grid">
                     <button class="bet-grid-btn" onclick="selectBet(20)">20 ብር</button>
                     <button class="bet-grid-btn" onclick="selectBet(50)">50 ብር</button>
@@ -195,7 +192,6 @@
                     <button class="btn-leave" onclick="leaveGame()">Leave</button>
                 </div>
             </div>
-
         </div>
 
         <div id="walletTab" class="tab-content">
@@ -221,9 +217,9 @@
                 <p style="margin-top: 12px;">ስም: <b id="profName">--</b></p>
                 <p style="margin-top: 6px;">ID: <b id="profId">--</b></p>
                 <p style="margin-top: 6px;">ስልክ: <b id="profPhone">--</b></p>
+                <button class="btn" style="margin-top: 12px; background: #0088cc; font-size: 13px; padding: 8px;" onclick="requestPhoneNumber()">ስልክ ቁጥር አጋራ (Share Phone)</button>
             </div>
         </div>
-
     </div>
 
     <div class="modal-overlay" id="winnerModal">
@@ -255,10 +251,19 @@
 
     <script>
         const tg = window.Telegram.WebApp;
+        tg.ready();
         tg.expand();
 
         const socket = io(); 
-        let currentUser = tg.initDataUnsafe?.user || { id: "test_user_123", first_name: "Bingo Player", username: "test_user" };
+        
+        // ከቴሌግራም መረጃውን በትክክል ማንበብ
+        const telegramUser = tg.initDataUnsafe?.user;
+        let currentUser = {
+            id: telegramUser ? String(telegramUser.id) : "test_user_123",
+            first_name: telegramUser ? (telegramUser.first_name + (telegramUser.last_name ? ' ' + telegramUser.last_name : '')) : "Bingo Player",
+            username: telegramUser ? telegramUser.username : "test_user"
+        };
+
         let userWallet = 0.00;
         let currentBet = 10;
         let selectedCardsCount = 1;
@@ -271,7 +276,7 @@
         let countdownTimer = null;
 
         window.addEventListener('DOMContentLoaded', async () => {
-            fetchUserData();
+            await fetchUserData();
         });
 
         async function fetchUserData() {
@@ -280,9 +285,9 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        identifier: String(currentUser.id), 
+                        identifier: currentUser.id, 
                         name: currentUser.first_name,
-                        username: currentUser.username || ''
+                        username: currentUser.username
                     })
                 });
                 const data = await res.json();
@@ -291,10 +296,35 @@
                     updateHeaderStats();
                     document.getElementById('profName').innerText = data.user.name;
                     document.getElementById('profId').innerText = data.user.identifier;
-                    document.getElementById('profPhone').innerText = data.user.phone || 'ያልተረጋገጠ';
+                    document.getElementById('profPhone').innerText = data.user.phone || 'አልተጋራም';
                 }
             } catch (e) {
                 console.warn('የተጠቃሚ መረጃ የማምጣት ስህተት:', e);
+            }
+        }
+
+        function requestPhoneNumber() {
+            if (tg.requestContact) {
+                tg.requestContact(async (shared, contact) => {
+                    if (shared && contact) {
+                        try {
+                            const res = await fetch('/api/update-phone', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ identifier: currentUser.id, phone: contact.phone_number })
+                            });
+                            const data = await res.json();
+                            if(data.success) {
+                                alert('ስልክ ቁጥርዎ በትክክል ተመዝግቧል!');
+                                fetchUserData();
+                            }
+                        } catch(e) {
+                            alert('ስልክ ቁጥር መመዝገብ አልተቻለም።');
+                        }
+                    }
+                });
+            } else {
+                alert('ይህ አፕሊኬሽን ስልክ ቁጥር ለመጠየቅ ከቴሌግራም ጋር መገናኘት አለበት።');
             }
         }
 
@@ -438,7 +468,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        identifier: String(currentUser.id), 
+                        identifier: currentUser.id, 
                         amount: totalStake 
                     })
                 });
@@ -551,7 +581,7 @@
                 let winAmount = parseFloat(calculateDerash());
                 showWinnerModal(winAmount);
                 socket.emit('claimBingo', { 
-                    identifier: String(currentUser.id),
+                    identifier: currentUser.id,
                     card, 
                     winAmount 
                 });
@@ -588,7 +618,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        identifier: String(currentUser.id), 
+                        identifier: currentUser.id, 
                         type: 'DEPOSIT', 
                         amount: parseFloat(amount), 
                         details: smsText 
@@ -615,7 +645,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        identifier: String(currentUser.id), 
+                        identifier: currentUser.id, 
                         type: 'WITHDRAW', 
                         amount: parseFloat(amount), 
                         details: accountInfo 
