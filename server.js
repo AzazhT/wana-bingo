@@ -308,9 +308,26 @@ if (bot) {
 // --- GLOBAL LOBBY & ROOM SOCKET MANAGEMENT ---
 let activeRooms = {}; 
 
+// በሎቢ (Lobby) እና በቢት/ቦርድ መምረጥ (Bet) መካከል አክቲቪቲ ያላቸውን ተጫዋቾች በትክክል የሚቆጥር
 function getActivePlayersCount(room) {
-    let uniquePlayers = new Set(Object.values(room.selectedBoards));
-    return uniquePlayers.size;
+    let activeSocketIds = new Set();
+    
+    // 1. ቦርድ መርጠው በጨዋታው ውስጥ ንቁ (Active) የሆኑ ተጫዋቾች
+    for (let bNum in room.selectedBoards) {
+        if (room.selectedBoards[bNum]) {
+            activeSocketIds.add(room.selectedBoards[bNum]);
+        }
+    }
+
+    // 2. ቦርድ ገና ሳይመርጡ በሎቢ (Lobby/Waiting) ውስጥ ግን አክቲቭ ሆኖ ቆጠራውን እየጠበቁ ያሉ ተጫዋቾች
+    for (let socketId of room.players) {
+        // በ selectedBoards ውስጥ ያልተመዘገቡትን ነገር ግን ሎቢውን የተቀላቀሉትን ማካተት ይቻላል 
+        // ወይም ሙሉ በሙሉ በ bet/active መካከል ያሉትን ብቻ ለመቁጠር የ selectedBoards ተጫዋቾችን ብቻ መያዝ ከፈለጉ:
+        // (እዚህ ጋር በሎቢ እና በቢት መሃከል ያሉትን ቶታል ለማሳየት ሁለቱንም እንይዛለን)
+        activeSocketIds.add(socketId);
+    }
+
+    return activeSocketIds.size;
 }
 
 function getOrCreateLobby(betAmount) {
