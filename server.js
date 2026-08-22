@@ -11,10 +11,10 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static('public'));
 
-// እርስዎ የሰጡዋቸው ቋሚ መረጃዎች
+// ቋሚ መረጃዎች (በ .env መጠቀም ቢቻል ይመረጣል)
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_CHAT_ID = '686733543';
-const WEB_APP_URL = 'https://wana-bingo.onrender.com'; // የድር ጣቢያዎ ዩአርኤል
+const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 
 let bot = null;
 if (TOKEN) {
@@ -313,8 +313,8 @@ function getOrCreateLobby(betAmount) {
             betAmount,
             status: 'waiting', 
             players: new Set(),
-            reservedNumbers: {}, // { number: socketId } -> የትኛው ቁጥር በማን እንደተያዘ
-            selectedBoards: {},  // { boardNumber: socketId }
+            reservedNumbers: {}, 
+            selectedBoards: {},  
             drawnNumbers: [],
             countdown: 30,
             timer: null,
@@ -465,7 +465,6 @@ io.on('connection', (socket) => {
             if (room.timer) clearInterval(room.timer);
 
             try {
-                // እዚህ ላይ የነበረው ስህተት ተስተካክሏል
                 const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
                 if (userRes.rows.length > 0) {
                     let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(winAmount);
