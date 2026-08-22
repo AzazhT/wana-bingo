@@ -22,50 +22,44 @@ let usersDatabase = {};
 // የტრንዛክሽን ጥያቄዎች ማከማቻ
 let pendingTransactions = {};
 
-// 1. ተጠቃሚው ቦቱ ላይ /start ሲል የሚሰራ (መመዝገቢያ እና አቀባበል)
+// 1. ተጠቃሚው ቦቱ ላይ /start ሲል የሚሰራ
 bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
+    const chatId = msg.chat.id.toString();
     const name = msg.from.first_name || 'Bingo Player';
     const username = msg.from.username || '';
 
-    // ተጠቃሚው ከዚህ ቀደም ካልተመዘገበ መመዝገብ
     if (!usersDatabase[chatId]) {
         usersDatabase[chatId] = {
-            identifier: String(chatId),
+            identifier: chatId,
             name: name,
             username: username,
             balance: 0.00,
             phone: 'አልተጋራም'
         };
-        console.log(`አዲስ ተጠቃሚ በ /start ተመዝግቧል: ID: ${chatId}, ስም: ${name}`);
     }
 
-    const welcomeMessage = `👋 ሰላም <b>${name}</b>!\n\nወደ <b>ቢንጎ ጨዋታ (Bingo Game)</b> እንኳን ደህና መጡ። ጨዋታውን ለመጀመር እና ባላንስዎን ለማየት ከታች ያለውን ቁልፍ ይጫኑ!`;
-
-    // ተጠቃሚው አፑን የሚከፍትበት አዝራር
-    // (ማስታወሻ: የ 'https://your-app.onrender.com' የሚለውን በእርስዎ Render ሊንክ መቀየር ይችላሉ)
+    const welcomeMessage = `👋 ሰላም <b>${name}</b>!\n\nወደ <b>ቢንጎ ጨዋታ</b> እንኳን ደህና መጡ። ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ!`;
     const webAppUrl = process.env.RENDER_EXTERNAL_URL || 'https://your-app.onrender.com';
 
     await bot.sendMessage(chatId, welcomeMessage, {
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [
-                    { text: '🎮 ቢንጎ ጨዋታውን ክፈት (Play Bingo)', web_app: { url: webAppUrl } }
-                ]
+                [{ text: '🎮 ቢንጎ ጨዋታውን ክፈት', web_app: { url: webAppUrl } }]
             ]
         }
     });
 });
 
-// 2. የተጠቃሚውን መረጃ እና ባላንስ ማምጫ API (አፑ ሲከፈት ራሱ ይጠራል)
+// 2. የተጠቃሚውን መረጃ ማምጫ API
 app.post('/api/get-user', (req, res) => {
-    const { identifier, name, username } = req.body;
+    const identifier = String(req.body.identifier);
+    const { name, username } = req.body;
     if (!identifier) return res.status(400).json({ success: false, message: 'Invalid ID' });
 
     if (!usersDatabase[identifier]) {
         usersDatabase[identifier] = {
-            identifier: String(identifier),
+            identifier: identifier,
             name: name || 'Bingo Player',
             username: username || '',
             balance: 0.00,
@@ -76,13 +70,13 @@ app.post('/api/get-user', (req, res) => {
             usersDatabase[identifier].name = name;
         }
     }
-    
     res.json({ success: true, user: usersDatabase[identifier] });
 });
 
 // ስልክ ቁጥር ማሻሻያ API
 app.post('/api/update-phone', (req, res) => {
-    const { identifier, phone } = req.body;
+    const identifier = String(req.body.identifier);
+    const { phone } = req.body;
     if (usersDatabase[identifier]) {
         usersDatabase[identifier].phone = phone;
         return res.json({ success: true, message: 'ስልክ ቁጥር ተመዝግቧል' });
@@ -90,26 +84,22 @@ app.post('/api/update-phone', (req, res) => {
     res.status(404).json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
 });
 
-// 3. ጨዋታ ሲጀመር ብር መቀነሻ API
-app.post('/api/place-bet', (req, res) => {
-    const { identifier, amount } = req.body;
-    const user = usersDatabase[identifier];
-
-    if (!user) return res.status(404).json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
-    if (user.balance < amount) {
-        return res.json({ success: false, message: 'በቂ ባላንስ የለዎትም! እባክዎን አስቀድመው ዲፖዚት ያድርጉ።' });
+// 3. የዲፖዚት እና ዊዝድሮው ጥያቄ API
+app.post('/api/request-transaction', async (req, res) => {
+    const identifier = String(req.body.identifier);
+    const { type, amount, details } = req.body;
+    
+    // ተጠቃሚው ከሌለ በአስቸኳይ መፍጠር (እንዳይጠፋ)
+    if (!usersDatabase[identifier]) {
+        usersDatabase[identifier] = {
+            identifier: identifier,
+            name: 'Bingo Player',
+            balance: 0.00,
+            phone: 'አልተጋራም'
+        };
     }
 
-    user.balance -= amount;
-    res.json({ success: true, newBalance: user.balance });
-});
-
-// 4. የዲፖዚት እና ዊዝድሮው ጥያቄ በቀጥታ ወደ አድሚን ቴሌግራም መላኪያ API
-app.post('/api/request-transaction', async (req, res) => {
-    const { identifier, type, amount, details } = req.body;
     const user = usersDatabase[identifier];
-
-    if (!user) return res.status(404).json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
 
     if (type === 'WITHDRAW' && user.balance < amount) {
         return res.json({ success: false, message: 'ያለዎት ባላንስ ከጠየቁት የብር መጠን ያንሳል!' });
@@ -138,27 +128,26 @@ app.post('/api/request-transaction', async (req, res) => {
 
     try {
         await bot.sendMessage(ADMIN_CHAT_ID, message, { parse_mode: 'HTML', ...inlineKeyboard });
-        res.json({ success: true, message: 'ጥያቄዎ ለአድሚን በቴሌግራም ተልኳል! እባክዎ ትንሽ ይጠብቁ።' });
+        res.json({ success: true, message: 'ጥያቄዎ ለአድሚን በቴሌግራም ተልኳል!' });
     } catch (error) {
         console.error('Telegram Send Error:', error);
         res.status(500).json({ success: false, message: 'አድሚኑን ማግኘት አልተቻለም።' });
     }
 });
 
-// 5. አድሚኑ በቴሌግራም /users ብሎ ሲልክ የተመዘገቡትን ዝርዝር የሚልክበት ትእዛዝ
+// 4. /users ትእዛዝ
 bot.onText(/\/users/, async (msg) => {
-    const chatId = msg.chat.id;
-
-    if (chatId.toString() !== ADMIN_CHAT_ID.toString()) {
-        return bot.sendMessage(chatId, "⚠️ ይህን ትእዛዝ ለመጠቀም ፈቃድ የለዎትም!");
+    const chatId = msg.chat.id.toString();
+    if (chatId !== ADMIN_CHAT_ID.toString()) {
+        return bot.sendMessage(chatId, "⚠️ ፈቃድ የለዎትም!");
     }
 
     const userKeys = Object.keys(usersDatabase);
     if (userKeys.length === 0) {
-        return bot.sendMessage(chatId, "📭 እስካሁን የተመዘገበ ተጠቃሚ የለም።", { parse_mode: 'HTML' });
+        return bot.sendMessage(chatId, "📭 እስካሁን የተመዘገበ ተጠቃሚ የለም።");
     }
 
-    let message = `📋 <b>የተመዘገቡ ተጠቃሚዎች ዝርዝር (${userKeys.length}):</b>\n\n`;
+    let message = `📋 <b>የተመዘገቡ ተጠቃሚዎች (${userKeys.length}):</b>\n\n`;
     let index = 1;
 
     for (let key of userKeys) {
@@ -168,19 +157,12 @@ bot.onText(/\/users/, async (msg) => {
                    `   <b>ስልክ:</b> ${u.phone}\n` +
                    `   <b>ባላንስ:</b> ${u.balance.toFixed(2)} ETB\n\n`;
         index++;
-
-        if (message.length > 3500) {
-            await bot.sendMessage(ADMIN_CHAT_ID, message, { parse_mode: 'HTML' });
-            message = '';
-        }
     }
 
-    if (message.trim().length > 0) {
-        await bot.sendMessage(ADMIN_CHAT_ID, message, { parse_mode: 'HTML' });
-    }
+    await bot.sendMessage(ADMIN_CHAT_ID, message, { parse_mode: 'HTML' });
 });
 
-// 6. አድሚኑ በቴሌግራም አዝራሮቹን ሲጫጫን የሚሰራ logic
+// 5. አድሚኑ Approve ሲል የሚሰራ ትክክለኛ ሎጂክ
 bot.on('callback_query', async (query) => {
     const action = query.data;
     const msg = query.message;
@@ -189,7 +171,7 @@ bot.on('callback_query', async (query) => {
     const tx = pendingTransactions[txId];
 
     if (!tx) {
-        await bot.answerCallbackQuery(query.id, { text: '⚠️ ይህ ጥያቄ ሰርቨሩ ስለተቀየረ ወይም ቀደም ብሎ ስለተሰራበት ማግኘት አልተቻለም!' });
+        await bot.answerCallbackQuery(query.id, { text: '⚠️ ይህ ጥያቄ ሰርቨሩ ስለተቀየረ አልተገኘም! አዲስ ጥያቄ ይላኩ።' });
         return;
     }
 
@@ -198,24 +180,32 @@ bot.on('callback_query', async (query) => {
         return;
     }
 
+    // ተጠቃሚው ከሌለ መፍጠር
+    if (!usersDatabase[tx.identifier]) {
+        usersDatabase[tx.identifier] = {
+            identifier: tx.identifier,
+            name: 'Bingo Player',
+            balance: 0.00,
+            phone: 'አልተጋራም'
+        };
+    }
+
     const user = usersDatabase[tx.identifier];
 
     if (status === 'approve') {
         if (tx.type === 'DEPOSIT') {
-            if (user) user.balance += tx.amount;
-            await bot.sendMessage(ADMIN_CHAT_ID, `✅ ዲፖዚቱ <b>ተረጋግጧል (Approved)</b>!\nለተጠቃሚው ${tx.amount} ETB ተጨምሯል።`, { parse_mode: 'HTML' });
+            user.balance += tx.amount;
+            await bot.sendMessage(ADMIN_CHAT_ID, `✅ ዲፖዚቱ ተረጋግጧል! ለተጠቃሚው ${tx.amount} ETB ተጨምሯል።\nአሁን ያለው ባላንስ: ${user.balance} ETB`, { parse_mode: 'HTML' });
         } else if (tx.type === 'WITHDRAW') {
-            if (user) {
-                if (user.balance >= tx.amount) {
-                    user.balance -= tx.amount;
-                    await bot.sendMessage(ADMIN_CHAT_ID, `✅ የውጪ ጥያቄው <b>ተረጋግጧል (Approved)</b>!\nከባላንሱ ${tx.amount} ETB ተቀንሷል።`, { parse_mode: 'HTML' });
-                } else {
-                    await bot.sendMessage(ADMIN_CHAT_ID, `⚠️ ተጠቃሚው በቂ ባላንስ ስለሌለው ዊዝድሮውን ማስተናገድ አልተቻለም።`);
-                }
+            if (user.balance >= tx.amount) {
+                user.balance -= tx.amount;
+                await bot.sendMessage(ADMIN_CHAT_ID, `✅ ዊዝድሮው ተረጋግጧል! ከባላንሱ ${tx.amount} ETB ተቀንሷል።`, { parse_mode: 'HTML' });
+            } else {
+                await bot.sendMessage(ADMIN_CHAT_ID, `⚠️ ተጠቃሚው በቂ ባላንስ የለውም!`);
             }
         }
     } else {
-        await bot.sendMessage(ADMIN_CHAT_ID, `❌ የ${tx.type} ጥያቄው <b>ተሰርዟል (Rejected)</b>።`, { parse_mode: 'HTML' });
+        await bot.sendMessage(ADMIN_CHAT_ID, `❌ የ${tx.type} ጥያቄ ተሰርዟል (Rejected)።`, { parse_mode: 'HTML' });
     }
 
     tx.handled = true;
@@ -226,7 +216,7 @@ bot.on('callback_query', async (query) => {
     await bot.answerCallbackQuery(query.id, { text: 'ተከናውኗል!' });
 });
 
-// Real-time Socket.io Game Logic
+// Socket.io Game Logic
 io.on('connection', (socket) => {
     socket.on('startGame', () => {
         let drawnNumbers = [];
