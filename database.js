@@ -26,6 +26,12 @@ const initDb = async () => {
                 handled BOOLEAN DEFAULT FALSE
             );
         `);
+
+        // id የሚባል ኮሎም ከሌለ በራሱ እንዲጨምር (ALTER TABLE) ማድረግ
+        await pool.query(`
+            ALTER TABLE transactions ADD COLUMN IF NOT EXISTS id SERIAL;
+        `);
+
         console.log("Database & Tables connected/created successfully!");
     } catch (err) {
         console.error("Database connection error:", err);
