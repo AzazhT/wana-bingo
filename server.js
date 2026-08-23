@@ -25,14 +25,19 @@ if (TOKEN) {
     try {
         bot = new TelegramBot(TOKEN, {  
             polling: {
-                interval: 300,
+                interval: 1000,
                 autoStart: true,
-                params: { timeout: 10 }
+                params: { timeout: 30 }
             } 
         });
         console.log('Telegram Bot started successfully!');
+        
         bot.on('polling_error', (error) => {
-            console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
+            if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
+                console.log('ማሳሰቢያ፡ ቦቱ በሌላ ቦታ እየተሠራ ስለሆነ ይህኛው ለጊዜው ጠብቆ እንደገና ይሞክራል...');
+            } else {
+                console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
+            }
         });
     } catch (err) {
         console.error('Telegram Bot initialization error:', err);
@@ -108,10 +113,9 @@ app.post('/api/request-transaction', async (req, res) => {
             }
         }
 
-        // 'details' መረጃውን ወደ ዳታቤዝ በትክክል ለማስገባት
         await pool.query(
-            'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
-            [tx_id, identifier, type, amount, details || 'N/A']
+            'INSERT INTO transactions (tx_id, identifier, type, amount, handled) VALUES ($1, $2, $3, $4, FALSE)',
+            [tx_id, identifier, type, amount]
         );
         res.json({ success: true, tx_id });
     } catch (err) {
@@ -135,7 +139,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
                             `─────────────────────\n` +
                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -240,11 +244,9 @@ if (bot) {
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
                             `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
-                            `💳 መረጃ (Details/SMS): *${tx.details || 'N/A'}*\n` +
                             `💰 መጠን: ${tx.amount} ብር`;
 
                 bot.sendMessage(chatId, msgText, {
-                    parse_mode: 'Markdown',
                     reply_markup: {
                         inline_keyboard: [
                             [
