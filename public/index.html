@@ -550,7 +550,7 @@
             selectedCardId = null;
             updateBoardsUI();
             displayPreview(null);
-            alert(msg || 'ጨዋታው አሁንም ጀምሯል!');
+            alert(msg || 'ጨዋታው ኦሬዲ ጀምሯል!');
             showGameStep('gameStepBet');
         }
 
@@ -584,18 +584,6 @@
             }, 1000);
         }
 
-        // ለቀጣዩ ዙር ሲዘጋጅ (Reset for Next Round)
-        socket.on('roomResetForNextRound', (data) => {
-            selectedCardId = null;
-            roomSelectedBoards = data.selectedBoards || {};
-            globalStartTime = data.startTime;
-            updateRoundUI(data.currentRound, data.maxRounds);
-            startClientCountdown();
-            updateBoardsUI();
-            displayPreview(null);
-            showGameStep('gameStepCards');
-        });
-
         socket.on('gameStarted', (data) => {
             document.getElementById('countdownText').innerText = "Started!";
             if (clientTimerInterval) clearInterval(clientTimerInterval);
@@ -610,7 +598,7 @@
 
             const liveStepActive = document.getElementById('gameStepLive').classList.contains('active');
             if (!liveStepActive && selectedCardId !== null) {
-                autoClearAndRedirect('ጨዋታው አሁንም ጀምሯል!');
+                autoClearAndRedirect('ጨዋታው ኦሬዲ ጀምሯል!');
             }
         });
 
