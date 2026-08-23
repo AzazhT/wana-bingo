@@ -138,7 +138,7 @@
         }
         .bet-grid-btn:active { transform: scale(0.97); background: rgba(245, 158, 11, 0.15); }
 
-        .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+        .top-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
         .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; transition: transform 0.2s; }
         .stat-card span { display: block; font-size: 13px; color: #fff; margin-top: 2px; font-weight: 900; }
 
@@ -339,10 +339,9 @@
             </div>
 
             <div id="gameStepCards" class="game-step">
-                <div class="top-stats">
+                <div class="top-stats" style="grid-template-columns: repeat(3, 1fr);">
                     <div class="stat-card">Wallet<span id="walletDisplay">0.00</span></div>
                     <div class="stat-card">Bet<span id="betDisplay">20</span></div>
-                    <div class="stat-card">Round<span id="roundDisplay" style="color: var(--accent-amber);">1/3</span></div>
                     <div class="stat-card">Active<span id="activePlayersDisplay">0</span></div>
                 </div>
 
@@ -360,11 +359,10 @@
             </div>
 
             <div id="gameStepLive" class="game-step">
-                <div class="top-stats" style="grid-template-columns: repeat(5, 1fr); gap: 4px;">
+                <div class="top-stats" style="grid-template-columns: repeat(4, 1fr); gap: 4px;">
                     <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Room<span id="gameIdDisplay" style="font-size: 11px;">--</span></div>
                     <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Derash<span id="derashDisplay" style="font-size: 11px; color: var(--accent-green);">0.0</span></div>
                     <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Active<span id="activePlayersDisplayLive" style="font-size: 11px;">0</span></div>
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Round<span id="liveRoundDisplay" style="font-size: 11px; color: var(--accent-amber);">1/3</span></div>
                     <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Call<span id="callCount" style="font-size: 11px; color: var(--accent-amber);">0</span></div>
                 </div>
 
@@ -486,7 +484,7 @@
         let currentDerashAmount = 0.0;
         
         let allCardsData = {};
-        let selectedCardId = null; 
+        let selectedCardId = null;
         let currentRoomId = null;
         let drawnNumbers = [];
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
@@ -516,12 +514,6 @@
             } catch (e) { console.error(e); }
         }
 
-        function updateRoundUI(currentRound, maxRounds) {
-            let roundText = `${currentRound || 1}/${maxRounds || 3}`;
-            document.getElementById('roundDisplay').innerText = roundText;
-            document.getElementById('liveRoundDisplay').innerText = roundText;
-        }
-
         function updateDerashUI(data) {
             if (typeof data.activePlayersCount !== 'undefined') {
                 currentActivePlayers = data.activePlayersCount;
@@ -540,10 +532,6 @@
             }
             
             document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-
-            if (data.currentRound && data.maxRounds) {
-                updateRoundUI(data.currentRound, data.maxRounds);
-            }
         }
 
         function autoClearAndRedirect(msg) {
@@ -591,10 +579,12 @@
                 currentDerashAmount = parseFloat(data.prizePool);
                 document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
             }
-            if (data.currentRound) {
-                updateRoundUI(data.currentRound, data.maxRounds);
-            }
+            
+            // ቆጠራው አልቆ ጨዋታው ስታርት ሲል ቦርዶቹን ሙሉ በሙሉ ማጽዳት (Clear)
+            selectedCardId = null;
+            roomSelectedBoards = {};
             updateBoardsUI();
+            displayPreview(null);
 
             const liveStepActive = document.getElementById('gameStepLive').classList.contains('active');
             if (!liveStepActive && selectedCardId !== null) {
@@ -607,7 +597,7 @@
         });
 
         socket.on('roomFinished', (data) => {
-            alert(data.message || '3ቱም ራውንዶች ተጠናቀዋል!');
+            alert(data.message || 'ጨዋታው ተጠናቀዋል!');
             showGameStep('gameStepBet');
         });
 
@@ -741,7 +731,7 @@
 
         function selectBet(amount) {
             currentBet = amount;
-            selectedCardId = null; 
+            selectedCardId = null;
             showGameStep('gameStepCards');
             initPage1();
             socket.emit('joinLobby', { betAmount: amount });
