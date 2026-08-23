@@ -550,7 +550,7 @@
             selectedCardId = null;
             updateBoardsUI();
             displayPreview(null);
-            alert(msg || 'ጨዋታው ኦሬዲ ጀምሯል!');
+            alert(msg || 'ጨዋታው ተጀምሯል! እባክዎ ቀጣዩን ጨዋታ ይጠብቁ።');
             showGameStep('gameStepBet');
         }
 
@@ -598,7 +598,7 @@
 
             const liveStepActive = document.getElementById('gameStepLive').classList.contains('active');
             if (!liveStepActive && selectedCardId !== null) {
-                autoClearAndRedirect('ጨዋታው ኦሬዲ ጀምሯል!');
+                autoClearAndRedirect('ጨዋታው ተጀምሯል! እባክዎ ቀጣዩን ጨዋታ ይጠብቁ።');
             }
         });
 
