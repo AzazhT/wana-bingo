@@ -30,7 +30,7 @@
         .btn { background: #0088cc; color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 15px; cursor: pointer; font-weight: bold; }
         .btn-bingo { background: #e53935; font-size: 18px; padding: 14px; border-radius: 25px; box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4); }
         
-        input, textarea { width: 100%; padding: 12px; margin-top: 8px; background: #121921; border: 1px solid #3b4e62; color: #fff; border-radius: 8px; outline: none; }
+        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; background: #121921; border: 1px solid #3b4e62; color: #fff; border-radius: 8px; outline: none; }
 
         .header-box { text-align: center; padding: 10px 0; color: #fff; }
         .header-box h2 { font-size: 18px; margin-bottom: 5px; color: #ffca28; }
@@ -96,6 +96,7 @@
     </div>
 
     <div class="container">
+        <!-- 1. GAME TAB -->
         <div id="gameTab" class="tab-content active">
             <div id="gameStepBet" class="game-step active">
                 <div class="header-box">
@@ -173,6 +174,7 @@
             </div>
         </div>
 
+        <!-- 2. WALLET & WITHDRAW TAB -->
         <div id="walletTab" class="tab-content">
             <div class="card">
                 <h3>💳 ብር ገቢ ማድረግ (Deposit)</h3>
@@ -181,8 +183,21 @@
                 <textarea id="depSMS" rows="3" placeholder="የቴሌብር SMS እዚህ ይልጠፉ"></textarea>
                 <button class="btn" style="margin-top: 10px; background: #4caf50;" onclick="submitDeposit()">ገቢ አድርግ</button>
             </div>
+
+            <div class="card" style="margin-top: 16px;">
+                <h3>💸 ገንዘብ ማውጣት (Withdraw)</h3>
+                <p style="font-size: 12px; color: #7f91a4; margin: 6px 0;">ያሸነፉትን ገንዘብ ወደ አካውንትዎ ያስተላልፉ።</p>
+                <select id="withdrawMethod">
+                    <option value="Telebirr">ቴሌብር (Telebirr)</option>
+                    <option value="CBE">የኢትዮጵያ ንግድ ባንክ (CBE)</option>
+                </select>
+                <input type="number" id="withdrawAmount" placeholder="የሚወጣው የብር መጠን (ETB)">
+                <input type="text" id="withdrawAccountDetails" placeholder="የባንክ አካውንት ቁጥር ወይም ስልክ ቁጥር">
+                <button class="btn" style="margin-top: 10px; background: #e53935;" onclick="submitWithdraw()">ወጪ አድርግ (Withdraw)</button>
+            </div>
         </div>
 
+        <!-- 3. PROFILE TAB -->
         <div id="profileTab" class="tab-content">
             <div class="card">
                 <h3>👤 የተጫዋች መረጃ</h3>
@@ -194,6 +209,7 @@
         </div>
     </div>
 
+    <!-- WINNER MODAL -->
     <div class="modal-overlay" id="winnerModal">
         <div class="modal-card">
             <div class="winner-banner">🎉 BINGO!</div>
@@ -202,6 +218,7 @@
         </div>
     </div>
 
+    <!-- BOTTOM NAVBAR -->
     <div class="navbar">
         <div class="nav-item active" onclick="switchTab('gameTab', this)"><div class="nav-icon">🎮</div>ጨዋታ</div>
         <div class="nav-item" onclick="switchTab('walletTab', this)"><div class="nav-icon">💳</div>ዋሌት</div>
@@ -620,6 +637,34 @@
                     document.getElementById('depSMS').value = '';
                 }
             } catch(e) { alert('ስህተት ተፈጥሯል።'); }
+        }
+
+        async function submitWithdraw() {
+            const amount = document.getElementById('withdrawAmount').value;
+            const method = document.getElementById('withdrawMethod').value;
+            const details = document.getElementById('withdrawAccountDetails').value;
+
+            if (!amount || !details) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
+            
+            if (parseFloat(amount) > userWallet) {
+                return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
+            }
+
+            try {
+                const res = await fetch('/api/request-transaction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    alert(`የዊዝድሮው (Withdraw) ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
+                    document.getElementById('withdrawAmount').value = '';
+                    document.getElementById('withdrawAccountDetails').value = '';
+                } else {
+                    alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
+                }
+            } catch(e) { alert('ሰርቨር ላይ ስህተት ተፈጥሯል።'); }
         }
 
         function requestPhoneNumber() {
