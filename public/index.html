@@ -8,7 +8,7 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0f172a; color: #ffffff; padding-bottom: 75px; user-select: none; }
+        body { background-color: #0b1329; color: #ffffff; padding-bottom: 75px; user-select: none; }
         
         .header { background: #1e293b; padding: 8px 12px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
         .header.hidden { display: none !important; }
@@ -23,13 +23,58 @@
         .game-step { display: none; }
         .game-step.active { display: block; }
 
-        .navbar { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; display: flex; justify-content: space-around; padding: 8px 0; border-top: 1px solid #334155; z-index: 1000; }
+        .navbar { position: fixed; bottom: 0; left: 0; right: 0; background: #0b1329; display: flex; justify-content: space-around; padding: 8px 0; border-top: 1px solid #1e293b; z-index: 1000; }
         .nav-item { color: #64748b; text-decoration: none; font-size: 11px; text-align: center; cursor: pointer; flex: 1; }
         .nav-item.active { color: #38bdf8; font-weight: bold; }
         .nav-icon { font-size: 18px; margin-bottom: 2px; }
 
         .card { background: #1e293b; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #334155; }
         .btn { background: #0284c7; color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 15px; cursor: pointer; font-weight: bold; }
+        
+        /* በአዲሱ ዲዛይን መሠረት ከታች የተስተካከሉ BINGO እና LEAVE በተኖች */
+        .bottom-actions-wrapper { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            margin-top: 25px; 
+            margin-bottom: 15px;
+            align-items: center; 
+            width: 100%; 
+        }
+        .btn-bingo-large { 
+            background: linear-gradient(180deg, #ff8c00 0%, #e65100 100%); 
+            font-size: 20px; 
+            padding: 16px; 
+            border-radius: 30px; 
+            box-shadow: 0 4px 15px rgba(230, 81, 0, 0.5); 
+            cursor: pointer; 
+            color: #ffffff; 
+            font-weight: 900; 
+            border: none; 
+            text-align: center; 
+            width: 100%; 
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .btn-bingo-large:active {
+            transform: scale(0.98);
+        }
+        .btn-leave-large { 
+            background: linear-gradient(180deg, #d32f2f 0%, #b71c1c 100%); 
+            font-size: 16px; 
+            padding: 14px; 
+            border-radius: 30px; 
+            box-shadow: 0 4px 10px rgba(183, 28, 28, 0.4);
+            cursor: pointer; 
+            color: #ffffff; 
+            font-weight: bold; 
+            border: none; 
+            text-align: center; 
+            width: 100%; 
+        }
+        .btn-leave-large:active {
+            transform: scale(0.98);
+        }
         
         input, textarea, select { width: 100%; padding: 10px; margin-top: 6px; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 8px; outline: none; }
 
@@ -40,10 +85,9 @@
         .bet-selection-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
         .bet-grid-btn { padding: 14px 10px; font-size: 17px; font-weight: bold; background: #1e293b; color: #fbbf24; border: 2px solid #334155; border-radius: 10px; cursor: pointer; text-align: center; width: 100%; }
 
-        /* የላይኛዎቹ 6ቱ ስታትስ ሳጥኖች */
-        .top-stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; margin-bottom: 8px; }
-        .stat-card { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 6px 2px; border-radius: 6px; text-align: center; font-size: 9px; font-weight: bold; }
-        .stat-card span { display: block; font-size: 11px; color: #fbbf24; margin-top: 2px; }
+        .top-stats { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 8px; }
+        .stat-card { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 6px 4px; border-radius: 6px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; }
+        .stat-card span { display: block; font-size: 12px; color: #fbbf24; margin-top: 2px; }
 
         .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: #0f172a; padding: 6px; border-radius: 8px; max-height: 280px; overflow-y: auto; border: 1px solid #334155; }
         .card-btn { background: #1e293b; color: #fff; border: none; padding: 8px 0; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; }
@@ -53,50 +97,43 @@
         .bottom-section { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 10px; background: linear-gradient(135deg, #311042, #1e1b4b, #0f172a); padding: 12px; border-radius: 14px; border: 2px solid #a855f7; box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
         .preview-label { font-size: 12px; font-weight: bold; color: #f472b6; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
         .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: #18082c; padding: 8px; border-radius: 10px; width: 100%; border: 1px solid #c084fc; box-shadow: inset 0 0 10px rgba(192, 132, 252, 0.2); }
-        .preview-cell { background: #4c1d95; color: #fae8ff; font-size: 13px; font-weight: bold; text-align: center; padding: 8px 0; border-radius: 6px; border: 1px solid #7c3aed; }
+        .preview-cell { background: #4c1d95; color: #fae8ff; font-size: 13px; font-weight: bold; text-align: center; padding: 8px 0; border-radius: 6px; border: 1px solid #7c3aed; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         .preview-cell.free { background: #10b981; color: #fff; border-color: #34d399; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
 
         .action-column { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
         .btn-start-game { width: 100%; background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: none; padding: 12px; border-radius: 10px; font-size: 15px; cursor: pointer; font-weight: bold; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4); }
         .btn-back-small { width: 100%; background: #1e293b; color: #fbbf24; border: 1px solid #334155; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: bold; text-align: center; }
 
-        /* የግራ እና ቀኝ ዋና አቀማመጥ */
-        .game-layout { display: flex; gap: 6px; justify-content: space-between; align-items: stretch; }
+        .game-layout { display: flex; gap: 6px; justify-content: space-between; }
         
-        /* የግራ በኩል 1-75 የቁጥር ሰንጠረዥ */
-        .called-grid-container { background: #1e293b; padding: 6px; border-radius: 8px; width: 44%; border: 1px solid #334155; display: flex; flex-direction: column; }
-        .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 4px; text-align: center; font-weight: bold; font-size: 11px; }
+        /* የኮል ቦርድ (1 እስከ 75 ያሉት ቁጥሮች የሚጠሩበት) */
+        .called-grid-container { background: #1e293b; padding: 8px; border-radius: 8px; width: 48%; border: 1px solid #334155; max-height: 400px; overflow-y: auto; margin-top: 4px; }
+        .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-bottom: 6px; text-align: center; font-weight: bold; font-size: 12px; }
         
-        .b-header { background: #fbbf24; color: #000; border-radius: 3px; padding: 2px 0; }
-        .i-header { background: #10b981; color: #fff; border-radius: 3px; padding: 2px 0; }
-        .n-header { background: #0284c7; color: #fff; border-radius: 3px; padding: 2px 0; }
-        .g-header { background: #dc2626; color: #fff; border-radius: 3px; padding: 2px 0; }
-        .o-header { background: #a855f7; color: #fff; border-radius: 3px; padding: 2px 0; }
+        .b-header { background: #fbbf24; color: #000; border-radius: 4px; padding: 3px 0; }
+        .i-header { background: #10b981; color: #fff; border-radius: 4px; padding: 3px 0; }
+        .n-header { background: #0284c7; color: #fff; border-radius: 4px; padding: 3px 0; }
+        .g-header { background: #dc2626; color: #fff; border-radius: 4px; padding: 3px 0; }
+        .o-header { background: #a855f7; color: #fff; border-radius: 4px; padding: 3px 0; }
 
-        .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; flex-grow: 1; }
-        .grid-num { background: #0f172a; color: #64748b; font-size: 9px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 2px; font-weight: bold; }
-        .grid-num.called { background: #fbbf24; color: #000; font-size: 10px; }
+        .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+        .grid-num { background: #0f172a; color: #64748b; font-size: 12px; text-align: center; padding: 7px 0; border-radius: 4px; font-weight: bold; }
+        .grid-num.called { background: #fbbf24; color: #000; font-size: 13px; box-shadow: 0 0 6px rgba(251, 191, 36, 0.5); }
 
-        /* የቀኝ በኩል ፓነል */
-        .right-panel { width: 54%; display: flex; flex-direction: column; gap: 6px; }
-        
-        .countdown-box { background: #1e293b; color: #fff; padding: 6px 8px; border-radius: 8px; display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; border: 1px solid #334155; align-items: center; }
-        
-        .current-call-box { background: #1e293b; padding: 8px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; height: 56px; }
-        .call-text { font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase; }
-        
-        .call-circle { background: #f97316; color: #fff; font-weight: 900; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 18px; box-shadow: 0 2px 8px rgba(249, 115, 22, 0.5); }
+        .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; }
+        .countdown-box { background: #1e293b; color: #fff; padding: 6px 8px; border-radius: 8px; display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; border: 1px solid #334155; }
+        .current-call-box { background: #1e293b; padding: 6px 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #0284c7; }
+        .call-text { font-size: 11px; font-weight: bold; color: #94a3b8; }
+        .call-circle { background: #fbbf24; color: #000; font-weight: 900; padding: 5px 9px; border-radius: 50%; font-size: 13px; }
+
+        .recent-calls { display: flex; gap: 3px; overflow-x: auto; background: #0f172a; padding: 4px; border-radius: 6px; min-height: 30px; align-items: center; border: 1px solid #334155; }
+        .recent-ball { background: #0284c7; color: white; font-size: 9px; font-weight: bold; padding: 3px 6px; border-radius: 50%; white-space: nowrap; }
 
         .user-board { background: #1e293b; padding: 6px; border-radius: 8px; border: 1px solid #334155; }
         .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 3px; }
-        .board-cell { background: #0f172a; color: #fff; font-size: 10px; font-weight: bold; text-align: center; padding: 6px 0; border-radius: 3px; cursor: pointer; }
+        .board-cell { background: #0f172a; color: #fff; font-size: 11px; font-weight: bold; text-align: center; padding: 6px 0; border-radius: 3px; cursor: pointer; }
         .board-cell.free, .board-cell.marked { background: #10b981; color: white; }
         .board-footer { text-align: center; font-size: 9px; color: #94a3b8; margin-top: 4px; font-weight: bold; }
-
-        /* አሁን ወደ ታችኛው ባዶ ቦታ የተዛወሩት የ BINGO እና Leave አዝራሮች */
-        .bottom-action-container { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; width: 100%; }
-        .btn-bingo-main { background: linear-gradient(135deg, #f59e0b, #ea580c); color: #fff; border: none; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: 900; cursor: pointer; text-align: center; width: 100%; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4); text-transform: uppercase; letter-spacing: 1px; }
-        .btn-leave-main { background: #dc2626; color: #fff; border: none; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; width: 100%; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 2000; padding: 12px; }
         .modal-card { background: #311042; width: 100%; max-width: 360px; padding: 16px; border-radius: 16px; text-align: center; border: 2px solid #a855f7; color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
@@ -141,10 +178,10 @@
             </div>
 
             <div id="gameStepCards" class="game-step">
-                <div class="top-stats-grid">
+                <div class="top-stats">
                     <div class="stat-card">Wallet<span id="walletDisplay">0.00</span></div>
                     <div class="stat-card">Bet<span id="betDisplay">20</span></div>
-                    <div class="stat-card" style="grid-column: span 4;">Active Players<span id="activePlayersDisplay">0</span></div>
+                    <div class="stat-card">Active<span id="activePlayersDisplay">0</span></div>
                 </div>
 
                 <div class="cards-grid" id="cardsGrid"></div>
@@ -163,29 +200,26 @@
             </div>
 
             <div id="gameStepLive" class="game-step">
-                <div class="top-stats-grid">
-                    <div class="stat-card">Game<span id="gameIdDisplay">--</span></div>
+                <div class="top-stats">
+                    <div class="stat-card">Room<span id="gameIdDisplay">--</span></div>
                     <div class="stat-card">Derash<span id="derashDisplay">0.0</span></div>
-                    <div class="stat-card">Bonus<span>On</span></div>
-                    <div class="stat-card">Players<span id="activePlayersDisplayLive">0</span></div>
+                    <div class="stat-card">Active<span id="activePlayersDisplayLive">0</span></div>
                     <div class="stat-card">Bet<span id="liveBetDisplay">20</span></div>
                     <div class="stat-card">Call<span id="callCount">0</span></div>
                 </div>
 
                 <div class="game-layout">
-                    <!-- የግራ በኩል 1-75 ሰንጠረዥ -->
-                    <div class="called-grid-container" id="calledGridContainer">
+                    <div class="called-grid-container">
                         <div class="bingo-header-row">
                             <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
                         </div>
                         <div class="called-grid" id="calledGrid"></div>
                     </div>
 
-                    <!-- የቀኝ በኩል ፓነል -->
-                    <div class="right-panel" id="rightPanel">
+                    <div class="right-panel">
                         <div class="countdown-box">
-                            <span>Count Down</span>
-                            <span id="countdownText" style="color:#fbbf24; font-size: 13px;">12</span>
+                            <span>Lobby Timer</span>
+                            <span id="countdownText" style="color:#fbbf24;">30s</span>
                         </div>
 
                         <div class="current-call-box">
@@ -193,20 +227,22 @@
                             <div class="call-circle" id="currentCallCircle">-</div>
                         </div>
 
+                        <div class="recent-calls" id="recentCalls"></div>
+
                         <div class="user-board">
                             <div class="bingo-header-row">
                                 <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
                             </div>
                             <div class="board-grid" id="userBoardGrid"></div>
-                            <div class="board-footer" id="boardFooterText">Board number 23</div>
+                            <div class="board-footer" id="boardFooterText">Board number 1</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- አዝራሮቹ አሁን በምስሉ ላይ ወደ ጠቆሙበት ታችኛው ባዶ ቦታ ተዛውረዋል -->
-                <div class="bottom-action-container">
-                    <button class="btn-bingo-main" onclick="checkPlayerBingo()">BINGO!</button>
-                    <button class="btn-leave-main" onclick="leaveGame()">Leave</button>
+                <!-- በምስሉ መሠረት ከታች የተስተካከሉት አዝራሮች (BINGO! እና Leave) -->
+                <div class="bottom-actions-wrapper">
+                    <button class="btn-bingo-large" onclick="checkPlayerBingo()">BINGO!</button>
+                    <button class="btn-leave-large" onclick="leaveGame()">Leave</button>
                 </div>
             </div>
         </div>
@@ -222,6 +258,7 @@
 
             <div class="card" style="margin-top: 14px;">
                 <h3>💸 ገንዘብ ማውጣት (Withdraw)</h3>
+                <p style="font-size: 12px; color: #94a3b8; margin: 6px 0;">ያሸነፉትን ገንዘብ ወደ አካውንትዎ ያስተላልፉ።</p>
                 <select id="withdrawMethod">
                     <option value="Telebirr">ቴሌብር (Telebirr)</option>
                     <option value="CBE">የኢትዮጵያ ንግድ ባንክ (CBE)</option>
@@ -365,13 +402,13 @@
             clientTimerInterval = setInterval(() => {
                 if (!globalStartTime) return;
                 let remaining = Math.max(0, Math.floor((globalStartTime - Date.now()) / 1000));
-                document.getElementById('countdownText').innerText = remaining;
+                document.getElementById('countdownText').innerText = `${remaining}s`;
                 if (remaining <= 0) clearInterval(clientTimerInterval);
             }, 1000);
         }
 
         socket.on('gameStarted', (data) => {
-            document.getElementById('countdownText').innerText = "0";
+            document.getElementById('countdownText').innerText = "Started!";
             if (clientTimerInterval) clearInterval(clientTimerInterval);
             if (data && data.prizePool) {
                 currentDerashAmount = parseFloat(data.prizePool);
@@ -418,10 +455,17 @@
             drawnNumbers = data.drawnHistory || [];
             document.getElementById('callCount').innerText = drawnNumbers.length;
 
-            document.getElementById('currentCallCircle').innerText = rand;
+            let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
+            let callText = `${letter}-${rand}`;
+            document.getElementById('currentCallCircle').innerText = callText;
 
             let gridCell = document.getElementById(`grid-num-${rand}`);
             if(gridCell) gridCell.classList.add('called');
+
+            let ball = document.createElement('div');
+            ball.className = 'recent-ball';
+            ball.innerText = callText;
+            document.getElementById('recentCalls').prepend(ball);
         });
 
         socket.on('gameOver', (data) => {
@@ -629,6 +673,7 @@
             renderInteractiveBoard();
 
             drawnNumbers = [];
+            document.getElementById('recentCalls').innerHTML = '';
             document.getElementById('currentCallCircle').innerText = '-';
             document.getElementById('callCount').innerText = '0';
             document.getElementById('boardFooterText').innerText = `Board number ${selectedCardId}`;
