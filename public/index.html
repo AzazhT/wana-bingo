@@ -94,10 +94,10 @@
         .board-cell.free, .board-cell.marked { background: #10b981; color: white; }
         .board-footer { text-align: center; font-size: 9px; color: #94a3b8; margin-top: 4px; font-weight: bold; }
 
-        /* ከታች ያሉት የ BINGO እና Leave አዝራሮች */
-        .bottom-action-container { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; width: 100%; }
-        .btn-bingo-main { background: linear-gradient(135deg, #f59e0b, #ea580c); color: #fff; border: none; padding: 12px; border-radius: 20px; font-size: 16px; font-weight: 900; cursor: pointer; text-align: center; width: 100%; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4); text-transform: uppercase; letter-spacing: 1px; }
-        .btn-leave-main { background: #dc2626; color: #fff; border: none; padding: 8px 14px; border-radius: 16px; font-size: 11px; font-weight: bold; cursor: pointer; text-align: center; width: 100%; }
+        /* ከታች ያሉት የ BINGO እና Leave አዝራሮች (አሁን ታችኛው ባዶ ቦታ ላይ ተቀምጠዋል) */
+        .bottom-action-container { margin-top: 8px; display: flex; gap: 8px; width: 100%; align-items: center; }
+        .btn-bingo-main { background: linear-gradient(135deg, #f59e0b, #ea580c); color: #fff; border: none; padding: 12px; border-radius: 12px; font-size: 16px; font-weight: 900; cursor: pointer; text-align: center; flex: 2; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4); text-transform: uppercase; letter-spacing: 1px; }
+        .btn-leave-main { background: #dc2626; color: #fff; border: none; padding: 12px 14px; border-radius: 12px; font-size: 13px; font-weight: bold; cursor: pointer; text-align: center; flex: 1; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 2000; padding: 12px; }
         .modal-card { background: #311042; width: 100%; max-width: 360px; padding: 16px; border-radius: 16px; text-align: center; border: 2px solid #a855f7; color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
@@ -174,7 +174,7 @@
                 </div>
 
                 <div class="game-layout">
-                    <!-- የግራ በኩል 1-75 ሰንጠረዥ (ቁመቱ ልክ እስከ አረንጓዴው መስመር እንዲረዝም ተደርጓል) -->
+                    <!-- የግራ በኩል 1-75 ሰንጠረዥ -->
                     <div class="called-grid-container" id="calledGridContainer">
                         <div class="bingo-header-row">
                             <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
@@ -204,6 +204,7 @@
                     </div>
                 </div>
 
+                <!-- የ BINGO እና Leave አዝራሮች አሁን ታችኛው ባዶ ቦታ ላይ ተቀምጠዋል -->
                 <div class="bottom-action-container">
                     <button class="btn-bingo-main" onclick="checkPlayerBingo()">BINGO!</button>
                     <button class="btn-leave-main" onclick="leaveGame()">Leave</button>
