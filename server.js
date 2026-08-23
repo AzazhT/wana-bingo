@@ -58,7 +58,6 @@ async function initializeDatabase() {
 }
 initializeDatabase();
 
-// REST APIs for User & Wallet
 app.post('/api/get-user', async (req, res) => {
     const { identifier, name, username } = req.body;
     try {
@@ -165,7 +164,6 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
-// --- TELEGRAM BOT COMMANDS & ADMIN PANEL ---
 if (bot) {
     bot.setMyCommands([
         { command: 'start', description: 'ቦቱን ለመጀመር' },
@@ -361,7 +359,7 @@ if (bot) {
     });
 }
 
-// --- SINGLE CONTINUOUS GAME ROOM MANAGEMENT (NO ROUNDS) ---
+// --- SINGLE CONTINUOUS GAME MANAGEMENT ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
@@ -405,7 +403,7 @@ function getOrCreateLobby(betAmount) {
             players: new Set(),
             playerNames: {},
             reservedNumbers: {}, 
-            selectedBoards: {}, // ሙሉ ለሙሉ ፍሪ/ክሊር ሆኖ ይጀምራል
+            selectedBoards: {}, 
             tempSelections: {},  
             drawnNumbers: [],
             countdown: 30,
@@ -418,23 +416,23 @@ function getOrCreateLobby(betAmount) {
     return activeRooms[roomId];
 }
 
-// ጨዋታው ሲያልቅ ሰዓቱ ወደ 30 ተመልሶ ቦርዶቹ ሙሉ በሙሉ ክሊር/ነፃ (Free) እንዲሆኑ የሚደረግበት
+// አንድ ጨዋታ ሲያልቅ ወይም ሲጠናቀቅ አዲስ ነጠላ ጨዋታ ከቶ አዲስ ቆጠራ እንዲጀምር የሚያደርግ ሎጂክ
 function resetRoomForNextGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
 
     room.drawnNumbers = [];
     room.reservedNumbers = {};
-    room.selectedBoards = {}; // ቦርዶቹ ሙሉ በሙሉ ከንጽህና ጋር ክሊር/ፍሪ ይደረጋሉ
+    room.selectedBoards = {}; 
     room.tempSelections = {};
     room.status = 'waiting';
     room.countdown = 30;
     room.startTime = Date.now() + 30000;
 
-    io.to(roomId).emit('roomResetForNextGame', {
+    io.to(roomId).emit('roomResetForNextRound', {
         countdown: room.countdown,
         startTime: room.startTime,
-        selectedBoards: {} // ክሊር የሆነውን ባዶ ቦርድ እንልካለን
+        selectedBoards: room.selectedBoards
     });
 
     startGlobalLobbyCountdown(roomId);
@@ -488,7 +486,7 @@ function startGlobalLobbyCountdown(roomId) {
             if (room.players.size < 1 || selectedBoardsCount < 1) {
                 room.countdown = 30;
                 room.startTime = Date.now() + 30000;
-                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረطة ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
+                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
             } else {
                 startRoomGame(roomId);
             }
@@ -554,6 +552,11 @@ function startRoomGame(roomId) {
     if (room.timer) clearInterval(room.timer);
     
     let finalPrizePool = calculatePrizePool(room);
+    
+    // ቆጠራው አልቆ ጨዋታው ስታርት ሲል ቦርዶቹን ሙሉ በሙሉ ማጽዳት (Clear)
+    room.selectedBoards = {};
+    room.tempSelections = {};
+
     io.to(roomId).emit('gameStarted', { 
         message: 'ጨዋታው ተጀምሯል!',
         prizePool: finalPrizePool
@@ -621,6 +624,11 @@ io.on('connection', (socket) => {
         const betAmount = data && data.betAmount ? data.betAmount : '20';
         let room = getOrCreateLobby(betAmount);
 
+        // አዲስ ተጫዋች ሲገባ ጨዋታው በሂደት ላይ ከሆነ "ጨዋታው ተጀምሯል" በማለት ማሳወቂያ መስጠት
+        if (room.status === 'playing') {
+            return socket.emit('gameAlreadyStarted', { message: 'ጨዋታው በሂደት ላይ ነው! እባክዎ ቀጣዩን ጨዋታ ይጠብቁ።' });
+        }
+
         socket.join(room.roomId);
         room.players.add(socket.id);
         socket.currentRoomId = room.roomId;
@@ -660,25 +668,15 @@ io.on('connection', (socket) => {
 
             socket.emit('boardTempSelected', { boardNumber });
         } else if (room && room.status === 'playing') {
-            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ተጀምሯል! እባክዎ ለቀጣይ ጨዋታ ይጠብቁ።' });
+            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው በሂደት ላይ ነው!' });
         }
     });
 
-    // ተጫዋቹ ቦርድ መርጦ ስታርት አድርጎ ለመግባት ሲሞክር
     socket.on('startPlayerGame', (data) => {
         const { roomId, boardNumber, name } = data;
         let room = activeRooms[roomId];
 
-        if (!room) return;
-
-        // ጨዋታው ኦሬዲ እየተጫወተ ከሆነ (playing) ተጫዋቹ እንዳይገባና ይህንን መልእክት እንዲያይ ይደረጋል
-        if (room.status === 'playing' || room.status === 'ended') {
-            return socket.emit('gameAlreadyStarted', { 
-                message: 'ጨዋታው ተጀምሯል! እባክዎ ለቀጣይ ጨዋታ ይጠብቁ።' 
-            });
-        }
-
-        if (room.status === 'waiting') {
+        if (room && room.status === 'waiting') {
             if (room.selectedBoards[boardNumber]) {
                 return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
             }
@@ -711,6 +709,8 @@ io.on('connection', (socket) => {
             });
 
             socket.emit('gameJoinSuccess', { boardNumber, prizePool: currentPrizePool });
+        } else if (room && room.status === 'playing') {
+            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው በሂደት ላይ ነው!' });
         }
     });
 
@@ -773,7 +773,7 @@ io.on('connection', (socket) => {
                 }
 
                 let currentPrizePool = calculatePrizePool(room);
-                io.to(roomId).emit('playersUpdate', { 
+                io.to(room.players.has(socket.id) ? roomId : roomId).emit('playersUpdate', { 
                     playersCount: room.players.size,
                     activePlayersCount: getActivePlayersCount(room),
                     prizePool: currentPrizePool
