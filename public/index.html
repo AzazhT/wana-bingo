@@ -963,7 +963,6 @@
             leaveGame(); 
         }
 
-        // 🟢 የዲፖዚት መረጃዎችን እና SMS በትክክል ወደ ሰርቨር የሚልክ ፊደክስ
         async function submitDeposit() {
             const amount = document.getElementById('depAmount').value;
             const smsText = document.getElementById('depSMS').value;
@@ -973,46 +972,33 @@
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        identifier: currentUser.id, 
-                        type: 'DEPOSIT', 
-                        amount, 
-                        details: smsText // የቴሌብር ኤስኤምኤስ ጽሁፍ እዚህ ተካቷል
-                    })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount })
                 });
                 const data = await res.json();
                 if(data.success) {
                     alert(`የዲፖዚት ጥያቄዎ ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('depAmount').value = '';
                     document.getElementById('depSMS').value = '';
-                } else {
-                    alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
                 }
             } catch(e) { alert('ስህተት ተፈጥሯል።'); }
         }
 
-        // 🟢 የዊዝድሮው አካውንት/ስልክ ቁጥር በትክክል ወደ ሰርቨር የሚልክ ፊደክስ
+        // [የተስተካከለ] ተጠቃሚው ያስገባውን የባንክ ዓይነት እና አካውንት ቁጥር (details) ወደ ሰርቨር የሚልክበት ፈንክሽን
         async function submitWithdraw() {
             const amount = document.getElementById('withdrawAmount').value;
             const method = document.getElementById('withdrawMethod').value;
-            const accountDetails = document.getElementById('withdrawAccountDetails').value;
+            const details = document.getElementById('withdrawAccountDetails').value;
 
-            if (!amount || !accountDetails) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
+            if (!amount || !details) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
             if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
 
-            // የባንክ አይነቱን እና የገባውን አካውንት/ስልክ ቁጥር አንድ ላይ ማቀናጀት (ለምሳሌ: Telebirr - 0912345678)
-            const fullDetails = `${method}: ${accountDetails}`;
-
             try {
+                const fullDetails = `${method}: ${details}`;
+
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        identifier: currentUser.id, 
-                        type: 'WITHDRAW', 
-                        amount, 
-                        details: fullDetails // የተጠቃሚው አካውንት/ስልክ ቁጥር እዚህ ተካቷል
-                    })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details: fullDetails })
                 });
                 const data = await res.json();
                 if(data.success) {
@@ -1020,7 +1006,7 @@
                     document.getElementById('withdrawAmount').value = '';
                     document.getElementById('withdrawAccountDetails').value = '';
                 } else {
-                    alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
+                    (data.message || 'ጥያቄውን መላክ አልተቻለም።');
                 }
             } catch(e) { alert('ሰርቨር ላይ ስህተት ተፈጥሯል።'); }
         }
