@@ -341,6 +341,7 @@ function calculatePrizePool(room) {
 function getOrCreateLobby(betAmount) {
     let roomId = null;
     for (let id in activeRooms) {
+        // ክፍሉ ክፍት (waiting) እና የራውንድ መጠኑ ካልሞላ ብቻ አዲስ ተጫዋች ይመድባል
         if (activeRooms[id].betAmount === betAmount && activeRooms[id].status === 'waiting' && activeRooms[id].currentRound <= 3) {
             roomId = id;
             break;
@@ -504,7 +505,7 @@ function handleNextRoundOrFinish(roomId) {
         room.currentRound++;
         resetRoomForNextRound(roomId);
     } else {
-        // 3ቱ ራውንዶች አልቀዋል
+        // 3ቱም ራውንዶች ተጠናቀዋል
         io.to(roomId).emit('roomFinished', { message: '3ቱም ራውንዶች ተጠናቀዋል! ክፍሉ ተዘግቷል።' });
         delete activeRooms[roomId];
     }
@@ -514,7 +515,7 @@ function startRoomGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
 
-    room.status = 'playing';
+    room.status = 'playing'; // ክፍሉን መቆለፍ
     if (room.timer) clearInterval(room.timer);
     
     let finalPrizePool = calculatePrizePool(room);
@@ -587,8 +588,9 @@ io.on('connection', (socket) => {
         const betAmount = data && data.betAmount ? data.betAmount : '20';
         let room = getOrCreateLobby(betAmount);
 
-        if (room.status === 'playing') {
-            return socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል! እባክዎ ቀጣዩን ጨዋታ ይበቁ።' });
+        // ጨዋታው ከተጀመረ አዲስ ተጫዋች እንዳይገባ መከልከል
+        if (room.status !== 'waiting') {
+            return socket.emit('gameAlreadyStarted', { message: 'ጨዋታው በሂደት ላይ ነው ትንሽ ጠብቁ' });
         }
 
         socket.join(room.roomId);
@@ -631,8 +633,8 @@ io.on('connection', (socket) => {
             room.tempSelections[socket.id] = boardNumber;
 
             socket.emit('boardTempSelected', { boardNumber });
-        } else if (room && room.status === 'playing') {
-            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል!' });
+        } else if (room && room.status !== 'waiting') {
+            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው በሂደት ላይ ነው ትንሽ ጠብቁ' });
         }
     });
 
@@ -673,8 +675,8 @@ io.on('connection', (socket) => {
             });
 
             socket.emit('gameJoinSuccess', { boardNumber, prizePool: currentPrizePool });
-        } else if (room && room.status === 'playing') {
-            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል!' });
+        } else if (room && room.status !== 'waiting') {
+            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው በሂደት ላይ ነው ትንሽ ጠብቁ' });
         }
     });
 
