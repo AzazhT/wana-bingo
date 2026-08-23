@@ -25,19 +25,14 @@ if (TOKEN) {
     try {
         bot = new TelegramBot(TOKEN, {  
             polling: {
-                interval: 1000,
+                interval: 300,
                 autoStart: true,
-                params: { timeout: 30 }
+                params: { timeout: 10 }
             } 
         });
         console.log('Telegram Bot started successfully!');
-        
         bot.on('polling_error', (error) => {
-            if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
-                console.log('ማሳሰቢያ፡ ቦቱ በሌላ ቦታ እየተሠራ ስለሆነ ይህኛው ለጊዜው ጠብቆ እንደገና ይሞክራል...');
-            } else {
-                console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
-            }
+            console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
         });
     } catch (err) {
         console.error('Telegram Bot initialization error:', err);
@@ -97,7 +92,7 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
-// -- የገንዘብ ጥያቄ መቀበያ (Withdraw / Deposit) --
+// [የተስተካከለ] ዊዝድሮ እና ዲፖዚት መረጃዎችን (details) ጨምሮ የሚይዝበት API
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
@@ -114,10 +109,9 @@ app.post('/api/request-transaction', async (req, res) => {
             }
         }
 
-        // ዌብሳይቱ የላከውን የባንክ/ስልክ አካውንት (details) እዚህ ጋር እናስገባለን
         await pool.query(
             'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
-            [tx_id, identifier, type, amount, details || 'N/A']
+            [tx_id, identifier, type, amount, details || '']
         );
         res.json({ success: true, tx_id });
     } catch (err) {
@@ -141,7 +135,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
                             `─────────────────────\n` +
                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -222,7 +216,7 @@ if (bot) {
         }
     });
 
-    // --- የሚጠብቁ ጥያቄዎችን ከአካውንት/ስልክ ቁጥር ጋር ማሳየት ---
+    // [የተስተካከለ] አድሚኑ የሚጠብቁ ጥያቄዎችን ሲያይ የባንክ አካውንት እና ስልክ ቁጥሩን (tx.details) ጨምሮ እንዲያሳይ የተደረገበት ክፍል
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID) return;
@@ -243,17 +237,17 @@ if (bot) {
             bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`, { parse_mode: 'Markdown' });
 
             for (let tx of pendingRes.rows) {
-                // ተጠቃሚው ያስገባውን የባንክ አካውንት ወይም ስልክ ቁጥር እዚህ ጋር እንወስዳለን
-                let userEnteredDetails = tx.details ? tx.details : (tx.phone || 'አልተገኘም');
-
                 let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
-                            `📞 አካውንት/ስልክ: <b>${userEnteredDetails}</b>\n` +
+                            `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
                             `💰 መጠን: ${tx.amount} ብር`;
 
+                if (tx.type === 'WITHDRAW' && tx.details) {
+                    msgText += `\n🏦 የባንክ/ስልክ አካውንት: ${tx.details}`;
+                }
+
                 bot.sendMessage(chatId, msgText, {
-                    parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [
                             [
@@ -326,7 +320,7 @@ if (bot) {
     });
 }
 
-// --- MULTI-ROOM & GAME SOCKET LOGIC ---
+// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT (MAX 3 ROUNDS) ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
