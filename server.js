@@ -97,6 +97,7 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
+// -- የገንዘብ ጥያቄ መቀበያ (Withdraw / Deposit) --
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
@@ -113,9 +114,10 @@ app.post('/api/request-transaction', async (req, res) => {
             }
         }
 
+        // ዌብሳይቱ የላከውን የባንክ/ስልክ አካውንት (details) እዚህ ጋር እናስገባለን
         await pool.query(
-            'INSERT INTO transactions (tx_id, identifier, type, amount, handled) VALUES ($1, $2, $3, $4, FALSE)',
-            [tx_id, identifier, type, amount]
+            'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
+            [tx_id, identifier, type, amount, details || 'N/A']
         );
         res.json({ success: true, tx_id });
     } catch (err) {
@@ -220,6 +222,7 @@ if (bot) {
         }
     });
 
+    // --- የሚጠብቁ ጥያቄዎችን ከአካውንት/ስልክ ቁጥር ጋር ማሳየት ---
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID) return;
@@ -240,13 +243,17 @@ if (bot) {
             bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`, { parse_mode: 'Markdown' });
 
             for (let tx of pendingRes.rows) {
+                // ተጠቃሚው ያስገባውን የባንክ አካውንት ወይም ስልክ ቁጥር እዚህ ጋር እንወስዳለን
+                let userEnteredDetails = tx.details ? tx.details : (tx.phone || 'አልተገኘም');
+
                 let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
-                            `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
+                            `📞 አካውንት/ስልክ: <b>${userEnteredDetails}</b>\n` +
                             `💰 መጠን: ${tx.amount} ብር`;
 
                 bot.sendMessage(chatId, msgText, {
+                    parse_mode: 'HTML',
                     reply_markup: {
                         inline_keyboard: [
                             [
@@ -319,7 +326,7 @@ if (bot) {
     });
 }
 
-// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT (MAX 3 ROUNDS) ---
+// --- MULTI-ROOM & GAME SOCKET LOGIC ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
