@@ -131,6 +131,36 @@ app.post('/api/request-transaction', async (req, res) => {
             'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
             [tx_id, identifier, type, amount, details || 'N/A']
         );
+
+        // አድሚኑ ጋር ቀጥታ ሜሴጅ እንዲደርስ መረጃውን ከኢዘር (user) ሰንጠረዥ እናመጣለን
+        if (bot && ADMIN_CHAT_ID) {
+            try {
+                const userRes = await pool.query('SELECT name, username, phone FROM users WHERE identifier = $1', [identifier]);
+                let userInfo = userRes.rows[0] || {};
+                
+                let msgText = `🔔 አዲስ የ ${type} ጥያቄ ገብቷል!\n` +
+                              `🆔 TxID: ${tx_id}\n` +
+                              `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
+                              `📱 ስልክ: ${userInfo.phone || 'N/A'}\n` +
+                              `💰 መጠን: ${amount} ብር\n` +
+                              `🏦 ባንክ/አካውንት: ${details || 'N/A'}`;
+
+                await bot.sendMessage(ADMIN_CHAT_ID, msgText, {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}` },
+                                { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}` }
+                            ]
+                        ]
+                    }
+                });
+            } catch (notifyErr) {
+                console.error('Failed to send instant admin notification:', notifyErr);
+            }
+        }
+
         res.json({ success: true, tx_id });
     } catch (err) {
         console.error(err);
@@ -254,7 +284,6 @@ if (bot) {
             bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`, { parse_mode: 'Markdown' });
 
             for (let tx of pendingRes.rows) {
-                // የባንክ አካውንት/ዲቴልስ (details) ከታች እንዲታይ ተደርጓል
                 let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
