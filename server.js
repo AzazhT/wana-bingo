@@ -108,9 +108,10 @@ app.post('/api/request-transaction', async (req, res) => {
             }
         }
 
+        // 'details' መረጃውን ወደ ዳታቤዝ በትክክል ለማስገባት
         await pool.query(
-            'INSERT INTO transactions (tx_id, identifier, type, amount, handled) VALUES ($1, $2, $3, $4, FALSE)',
-            [tx_id, identifier, type, amount]
+            'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
+            [tx_id, identifier, type, amount, details || 'N/A']
         );
         res.json({ success: true, tx_id });
     } catch (err) {
@@ -239,9 +240,11 @@ if (bot) {
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
                             `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
+                            `💳 መረጃ (Details/SMS): *${tx.details || 'N/A'}*\n` +
                             `💰 መጠን: ${tx.amount} ብር`;
 
                 bot.sendMessage(chatId, msgText, {
+                    parse_mode: 'Markdown',
                     reply_markup: {
                         inline_keyboard: [
                             [
@@ -341,7 +344,6 @@ function calculatePrizePool(room) {
 function getOrCreateLobby(betAmount) {
     let roomId = null;
     for (let id in activeRooms) {
-        // ጨዋታው በመጠባበቅ ላይ ያለ (waiting) እና ከ 3 ራውንድ ያልበለጠ ክፍል ካለ
         if (activeRooms[id].betAmount === betAmount && activeRooms[id].status === 'waiting' && activeRooms[id].currentRound <= 3) {
             roomId = id;
             break;
@@ -356,7 +358,7 @@ function getOrCreateLobby(betAmount) {
             roomId,
             betAmount,
             status: 'waiting', 
-            currentRound: 1, // Round 1, 2, 3
+            currentRound: 1, 
             maxRounds: 3,
             players: new Set(),
             playerNames: {},
@@ -374,20 +376,18 @@ function getOrCreateLobby(betAmount) {
     return activeRooms[roomId];
 }
 
-// ለቀጣይ ራውንድ ስንዘጋጅ (Selection board-ውን ሙሉ በሙሉ Clear በማድረግ ለአዲስ ምርጫ ክፍት እናደርጋለን)
 function resetRoomForNextRound(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
 
     room.drawnNumbers = [];
     room.reservedNumbers = {};
-    room.selectedBoards = {}; // ቦርዶቹን ሙሉ በሙሉ clear እናደርጋለን
+    room.selectedBoards = {}; 
     room.tempSelections = {};
     room.status = 'waiting';
     room.countdown = 30;
     room.startTime = Date.now() + 30000;
 
-    // በክፍሉ ውስጥ ላሉ ተጫዋቾች ቦርዶቹ እንደጸዱ እና ቆጠራው እንደተጀመረ እናሳውቃለን
     io.to(roomId).emit('roomResetForNextRound', {
         currentRound: room.currentRound,
         maxRounds: room.maxRounds,
@@ -446,7 +446,6 @@ function startGlobalLobbyCountdown(roomId) {
         if (room.countdown <= 0) {
             let selectedBoardsCount = Object.keys(room.selectedBoards).length;
 
-            // ሶስቱም ራውንዶች ወይም ጨዋታዎች እየጠሩ ከሆነ ሶስቱም ከተያዙ (ቦርዶች ከተመረጡ) ብቻ ጨዋታው ይጀምራል
             if (room.players.size < 1 || selectedBoardsCount < 1) {
                 room.countdown = 30;
                 room.startTime = Date.now() + 30000;
@@ -508,16 +507,14 @@ function generateServerBingoCard() {
     return card;
 }
 
-// አንዱ ጨዋታ/ራውንድ ሲያልቅ በቀጥታ ወደ ቀጣዩ ራውንድ (ወደ round 2 እና round 3) እንዲገባ ማድረግ
 function handleNextRoundOrFinish(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
 
     if (room.currentRound < room.maxRounds) {
-        room.currentRound++; // ወደ ቀጣዩ ራውንድ (ለምሳሌ ወደ Round 2) ማሸጋገር
+        room.currentRound++; 
         resetRoomForNextRound(roomId);
     } else {
-        // 3ቱ ራውንዶች ሙሉ በሙሉ ሲጠናቀቁ
         io.to(roomId).emit('roomFinished', { message: '3ቱም ራውንዶች ተጠናቀዋል! ክፍሉ ተዘግቷል።' });
         delete activeRooms[roomId];
     }
