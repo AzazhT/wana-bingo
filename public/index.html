@@ -486,7 +486,7 @@
         let currentDerashAmount = 0.0;
         
         let allCardsData = {};
-        let selectedCardId = null; // No default selection in Page 2
+        let selectedCardId = null; 
         let currentRoomId = null;
         let drawnNumbers = [];
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
@@ -596,10 +596,12 @@
             }
             updateBoardsUI();
 
-            // ገና ቁጥር ሳይመርጥ ወይም በቀጥታ ሲጀምር ጨዋታው ከጀመረ Auto Clear ተደርጎ Redirect ይሆናል
             const liveStepActive = document.getElementById('gameStepLive').classList.contains('active');
-            if (!liveStepActive && selectedCardId !== null) {
-                autoClearAndRedirect('ጨዋታው ኦሬዲ ጀምሯል!');
+            const cardsStepActive = document.getElementById('gameStepCards').classList.contains('active');
+            
+            // ጨዋታው ሲጀምር ቦርድ ገና ሳይመርጥ ካርዶች ስክሪን ላይ የነበረ ተጫዋች ወደ መጀመሪያው (Bet Step) ይመለሳል
+            if (cardsStepActive && selectedCardId === null) {
+                autoClearAndRedirect('ጨዋታው ጀምሯል! እባክዎ ቀጣዩን ራውንድ ይጠብቁ።');
             }
         });
 
@@ -742,7 +744,7 @@
 
         function selectBet(amount) {
             currentBet = amount;
-            selectedCardId = null; // Reset selection per bet
+            selectedCardId = null; 
             showGameStep('gameStepCards');
             initPage1();
             socket.emit('joinLobby', { betAmount: amount });
