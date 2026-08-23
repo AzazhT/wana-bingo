@@ -47,19 +47,19 @@
         .stat-card { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 6px 4px; border-radius: 6px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; }
         .stat-card span { display: block; font-size: 12px; color: #fbbf24; margin-top: 2px; }
 
-        .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: #0f172a; padding: 6px; border-radius: 8px; max-height: 280px; overflow-y: auto; border: 1px solid #334155; }
-        .card-btn { background: #1e293b; color: #fff; border: none; padding: 8px 0; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; }
+        /* ሳይዙ እንዲጨምር የተደረገው የቁጥሮች ሰንጠረዥ (ማክስ-ሃイト 370px ተደርጓል) */
+        .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; background: #0f172a; padding: 8px; border-radius: 8px; max-height: 370px; overflow-y: auto; border: 1px solid #334155; }
+        .card-btn { background: #1e293b; color: #fff; border: none; padding: 10px 0; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; }
         .card-btn.active { background: #10b981; color: #fff; box-shadow: 0 0 8px #10b981; border: 1px solid #6ee7b7; }
         .card-btn.taken { background: #dc2626; color: #fff; cursor: not-allowed; opacity: 0.7; }
 
-        /* የተጠቃሚው የሚመርጣት የካርታ ፕሪቪው ዲዛይን (በጣም ማራኪ እና የተለየ ከለር ያለው) */
-        .bottom-section { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 10px; background: linear-gradient(135deg, #311042, #1e1b4b, #0f172a); padding: 12px; border-radius: 14px; border: 2px solid #a855f7; box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
-        .preview-label { font-size: 12px; font-weight: bold; color: #f472b6; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: #18082c; padding: 8px; border-radius: 10px; width: 100%; border: 1px solid #c084fc; box-shadow: inset 0 0 10px rgba(192, 132, 252, 0.2); }
-        .preview-cell { background: #4c1d95; color: #fae8ff; font-size: 13px; font-weight: bold; text-align: center; padding: 8px 0; border-radius: 6px; border: 1px solid #7c3aed; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        /* ሳይዙ እንዲጨምር የተደረገው የፕሪቪው ክፍል (Padding እና የፊደል መጠን ጨምሯል) */
+        .bottom-section { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 10px; background: linear-gradient(135deg, #311042, #1e1b4b, #0f172a); padding: 14px; border-radius: 14px; border: 2px solid #a855f7; box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
+        .preview-label { font-size: 12px; font-weight: bold; color: #f472b6; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: #18082c; padding: 10px; border-radius: 10px; width: 100%; border: 1px solid #c084fc; box-shadow: inset 0 0 10px rgba(192, 132, 252, 0.2); }
+        .preview-cell { background: #4c1d95; color: #fae8ff; font-size: 14px; font-weight: bold; text-align: center; padding: 10px 0; border-radius: 6px; border: 1px solid #7c3aed; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         .preview-cell.free { background: #10b981; color: #fff; border-color: #34d399; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
 
-        /* Start እና Back አዝራሮች ከላይ ወደ ታች (Vertical Stack) */
         .action-column { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
         .btn-start-game { width: 100%; background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: none; padding: 12px; border-radius: 10px; font-size: 15px; cursor: pointer; font-weight: bold; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4); }
         .btn-back-small { width: 100%; background: #1e293b; color: #fbbf24; border: 1px solid #334155; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: bold; text-align: center; }
@@ -144,7 +144,6 @@
 
                 <div class="cards-grid" id="cardsGrid"></div>
 
-                <!-- የሰዎች መረጣ ፕሪቪው ካርታ (በጣም ማራኪ እና የተለየ ዲዛይን ያለው) -->
                 <div class="bottom-section">
                     <div style="width: 100%;">
                         <div class="preview-label">የተመረጠው ቦርድ ፕሪቪው</div>
@@ -152,7 +151,6 @@
                     </div>
                 </div>
 
-                <!-- Start እና Back አዝራሮች ከላይ ወደ ታች ተደርድረዋል -->
                 <div class="action-column">
                     <button class="btn-start-game" onclick="goToGame()">Start game (Join)</button>
                     <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ (Back)</button>
