@@ -983,11 +983,10 @@
             } catch(e) { alert('ስህተት ተፈጥሯል።'); }
         }
 
-        // [ተስተካክሏል] - ዊዝድሮ ሲጠየቅ withdrawAccountDetails (የባንክ/ስልክ ቁጥር) ወደ ሰርቨር እንዲላክ ተደርጓል
         async function submitWithdraw() {
             const amount = document.getElementById('withdrawAmount').value;
             const method = document.getElementById('withdrawMethod').value;
-            const details = document.getElementById('withdrawAccountDetails').value; // የሚወጣበት አካውንት ቁጥር ወይም ስልክ
+            const details = document.getElementById('withdrawAccountDetails').value;
 
             if (!amount || !details) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
             if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
