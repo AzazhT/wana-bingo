@@ -82,7 +82,6 @@
         .board-cell.free, .board-cell.marked { background: #4caf50; color: white; }
         .board-footer { text-align: center; font-size: 9px; color: #7f91a4; margin-top: 4px; font-weight: bold; }
 
-        /* WINNER MODAL STYLING (እንደ ምስሉ ዲዛይን የተስተካከለ) */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 2000; padding: 12px; }
         .modal-card { background: #c598e8; width: 100%; max-width: 360px; padding: 16px; border-radius: 16px; text-align: center; border: 2px solid #e1bee7; color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .winner-title-box { background: linear-gradient(135deg, #ff9800, #ff5722); color: #fff; padding: 12px; border-radius: 10px; font-size: 24px; font-weight: 900; margin-bottom: 6px; letter-spacing: 1px; box-shadow: 0 4px 10px rgba(255,87,34,0.4); }
@@ -92,7 +91,6 @@
         .modal-bingo-header { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-bottom: 4px; font-weight: bold; font-size: 12px; }
         .modal-board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
         
-        /* አሸናፊው መስመር የያዛቸው ሴሎች በምስሉ ላይ እንዳሉት ከለሮች (ብርቱካናማ እና አረንጓዴ) ይደምቃሉ */
         .modal-cell { background: #ede7f6; color: #333; font-size: 12px; font-weight: bold; text-align: center; padding: 9px 0; border-radius: 4px; }
         .modal-cell.win-orange { background: #ff9800 !important; color: #fff !important; }
         .modal-cell.win-green { background: #4caf50 !important; color: #fff !important; }
@@ -218,13 +216,13 @@
                 <h3>👤 የተጫዋች መረጃ</h3>
                 <p style="margin-top: 12px;">ስም: <b id="profName">--</b></p>
                 <p style="margin-top: 6px;">ID: <b id="profId">--</b></p>
-                <p style="margin-top: 6px;">ስልክ: <b id="profPhone">--</b></p>
+                <p style="margin-top: 6px;">ስልክ: <b id="profPhone">አልተጋራም</b></p>
                 <button class="btn" style="margin-top: 12px; background: #0088cc;" onclick="requestPhoneNumber()">ስልክ ቁጥር አጋራ (Share Phone)</button>
             </div>
         </div>
     </div>
 
-    <!-- WINNER MODAL (እንደ አዲሱ የዲዛይን ምስል የተስተካከለ) -->
+    <!-- WINNER MODAL -->
     <div class="modal-overlay" id="winnerModal">
         <div class="modal-card">
             <div class="winner-title-box">BINGO!</div>
@@ -298,7 +296,8 @@
                     updateHeaderStats();
                     document.getElementById('profName').innerText = data.user.name;
                     document.getElementById('profId').innerText = data.user.identifier;
-                    document.getElementById('profPhone').innerText = data.user.phone || 'አልተጋራም';
+                    // ስልክ ቁጥሩ ከዳታቤዝ ሲመጣ በፕሮፋይል ላይ በትክክል እንዲታይ ተደርጓል[cite: 8]
+                    document.getElementById('profPhone').innerText = (data.user.phone && data.user.phone !== 'null' && data.user.phone !== '') ? data.user.phone : 'አልተጋራም';
                 }
             } catch (e) { console.error(e); }
         }
@@ -424,7 +423,6 @@
             document.getElementById('recentCalls').prepend(ball);
         });
 
-        // አሸናፊ ሲኖር ሞዳሉን ከነ አሸናፊው መስመር ንድፍ ማሳየት
         socket.on('gameOver', (data) => {
             document.getElementById('winnerSubText').innerText = data.subtitle || "1 player has won the game";
             document.getElementById('modalWinnerName').innerText = data.winnerName || "Kenbo-Winner";
@@ -447,7 +445,6 @@
                         cell.className = 'modal-cell';
                         cell.innerText = val;
                         
-                        // ያሸነፈበት መስመር (ረድፍ፣ አምድ ወይም ሰያፍ) ከሆነ እንደ ምስሉ በብርቱካናማ እና አረንጓዴ ከለር እናደምቀዋለን
                         if (winningLine) {
                             if (winningLine.type === 'row' && winningLine.index === r) {
                                 cell.classList.add(r % 2 === 0 ? 'win-orange' : 'win-green');
@@ -459,7 +456,6 @@
                                 cell.classList.add('win-green');
                             }
                         } else {
-                            // ነባሪ ማሳያ (ዲហ្វልት የሞሉትን)
                             if (val === '*' || drawnNumbers.includes(val)) {
                                 cell.classList.add('win-orange');
                             }
@@ -742,21 +738,44 @@
             } catch(e) { alert('ሰርቨር ላይ ስህተት ተፈጥሯል።'); }
         }
 
+        // ስልክ ቁጥር የማካፈል እና የማስቀመጥ ተግባር (Request Contact)
         function requestPhoneNumber() {
             if (tg.requestContact) {
                 tg.requestContact(async (shared, contact) => {
                     if (shared && contact) {
-                        await fetch('/api/update-phone', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ identifier: currentUser.id, phone: contact.phone_number })
-                        });
-                        alert('ስልክ ቁጥርዎ ተመዝግቧል!');
-                        fetchUserData();
+                        try {
+                            const res = await fetch('/api/update-phone', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ identifier: currentUser.id, phone: contact.phone_number })
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                                alert('ስልክ ቁጥርዎ በအောင်မြင်ነት ተመዝግቧል!');
+                                fetchUserData();
+                            } else {
+                                alert('ስልክ ቁጥሩን ማስቀመጥ አልተቻለም።');
+                            }
+                        } catch (err) {
+                            alert('የኔትወርክ ስህተት ተፈጥሯል።');
+                        }
                     }
                 });
             } else {
-                alert('የቴሌግራም አፕሊኬሽን ድጋፍ አያስፈልግም።');
+                // Telegram WebApp በሌለበት ወይም ብሮውዘር ላይ ሲሞከር በ prompt መቀበል የሚያስችል አማራጭ
+                let phoneInput = prompt("እባክዎን ስልክ ቁጥርዎን ያስገቡ (ለምሳሌ፦ 09xxxxxxxx):");
+                if (phoneInput) {
+                    fetch('/api/update-phone', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ identifier: currentUser.id, phone: phoneInput })
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) {
+                            alert('ስልክ ቁጥርዎ በအောင်မြင်ነት ተመዝግቧል!');
+                            fetchUserData();
+                        }
+                    });
+                }
             }
         }
     </script>
