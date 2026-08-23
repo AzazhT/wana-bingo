@@ -96,13 +96,11 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
-// የዲፖዚት እና የዊዝድሮው (Withdraw/Deposit) ጥያቄዎችን በአንድ ላይ የሚያስተናግድ API
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
     
     try {
-        // ዊዝድሮው (WITHDRAW) ሲሆን ተጠቃሚው በቂ ባላንስ እንዳለው ማረጋገጥ
         if (type === 'WITHDRAW') {
             const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
             if (userRes.rows.length === 0) {
@@ -112,9 +110,6 @@ app.post('/api/request-transaction', async (req, res) => {
             if (currentBalance < parseFloat(amount)) {
                 return res.json({ success: false, message: 'በዋሌትዎ ውስጥ ያለው ብር በቂ አይደለም!' });
             }
-
-            // ጥያቄው እስኪጸድቅ ድረስ ገንዘቡን ከባላንሱ ወዲያውኑ መቀነስ ከፈለጉ እዚህ ጋር ማስተካከል ይቻላል፣ 
-            // አሁን ባለው አሰራር ግን አድሚኑ 'Approve' ሲያደርገው እንዲቀነስ ተደርጎ ተዋቅሯል።
         }
 
         await pool.query(
@@ -323,7 +318,7 @@ if (bot) {
     });
 }
 
-// --- GLOBAL LOBBY & ROOM SOCKET MANAGEMENT ---
+// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
@@ -339,7 +334,9 @@ function getActivePlayersCount(room) {
         activeSocketIds.add(socketId);
     }
 
-    return activeSocketIds.size;
+    let realCount = activeSocketIds.size;
+    // ቢያንስ 50 ተጫዋቾች እንዲታዩ (እውነተኛው ከ 50 በታች ከሆነ በዘፈቀደ ወይም በቋሚነት 45-50 ተጭኖ እንዲታይ)
+    return realCount < 50 ? realCount + 45 : realCount;
 }
 
 function calculatePrizePool(room) {
@@ -352,10 +349,22 @@ function calculatePrizePool(room) {
     return Math.floor(prizePool > 0 ? prizePool : parseFloat(room.betAmount));
 }
 
+// አሁን እየጠበቀ ያለ (waiting) ሎቢ መፈለግ ወይም አዲስ መፍጠር (ለብዙ ራውንድ እንዲመች)
 function getOrCreateLobby(betAmount) {
-    let roomId = `ROOM_${betAmount}`;
+    let roomId = null;
     
-    if (!activeRooms[roomId] || activeRooms[roomId].status === 'ended') {
+    // አሁን ያለው ክፍል waiting ከሆነ እና ጨዋታው ካልጀመረ እሱን መጠቀም፣ ካለበለዚያ አዲስ መፍጠር
+    for (let id in activeRooms) {
+        if (activeRooms[id].betAmount === betAmount && activeRooms[id].status === 'waiting') {
+            roomId = id;
+            break;
+        }
+    }
+
+    if (!roomId) {
+        let uniqueId = Math.floor(1000 + Math.random() * 9000);
+        roomId = `ROOM_${betAmount}_${uniqueId}`;
+        
         activeRooms[roomId] = {
             roomId,
             betAmount,
@@ -422,11 +431,19 @@ function startRoomGame(roomId) {
         prizePool: finalPrizePool
     });
 
+    // ጨዋታው ሲጀምር፣ ሌሎቹ አዲስ የሚገቡ ተጫዋቾች ወዲያውኑ ሌላ ራውንድ (Waiting Room) እንዲያገኙ እናስተካክላለን
+    // (getOrCreateLobby ሲጠራ አዲስ ሩም ይፈጥራል)
+
     room.gameInterval = setInterval(() => {
         if (room.drawnNumbers.length >= 75) {
             clearInterval(room.gameInterval);
             room.status = 'ended';
             io.to(roomId).emit('gameOver', { message: 'ጨዋታው አልቋል! 75ቱ ቁጥሮች ተጠርተዋል አሸናፊ አልተገኘም።' });
+            
+            // 75 ቁጥሮች ተጠርተው ካለቀ በኋላ አዲስ ራውንድ በራስሰር ለመክፈት
+            setTimeout(() => {
+                getOrCreateLobby(room.betAmount);
+            }, 3000);
             return;
         }
 
@@ -453,28 +470,19 @@ io.on('connection', (socket) => {
 
         let currentPrizePool = calculatePrizePool(room);
 
-        if (room.status === 'playing') {
-            socket.emit('gameAlreadyStarted', { 
-                message: 'ጨዋታው ቀደም ብሎ ተጀምሯል! እባክዎ ቀጣዩን ዙር ይጠብቁ።',
-                drawnHistory: room.drawnNumbers,
-                selectedBoards: room.selectedBoards,
-                status: room.status,
-                activePlayersCount: getActivePlayersCount(room),
-                prizePool: currentPrizePool
-            });
-        } else {
-            socket.emit('assignedRoom', { 
-                roomId: room.roomId, 
-                betAmount: room.betAmount,
-                countdown: room.countdown,
-                startTime: room.startTime,
-                status: room.status,
-                reservedNumbers: room.reservedNumbers,
-                selectedBoards: room.selectedBoards,
-                activePlayersCount: getActivePlayersCount(room),
-                prizePool: currentPrizePool
-            });
-        }
+        // ተጫዋቹ ሲገባ ጨዋታው የጀመረ ከሆነ አሁን ላለው ጨዋታ አባላት እንዲሆን ወይም
+        // አዲሱ ራውንድ (Waiting) ውስጥ እንዲገባ ይደረጋል
+        socket.emit('assignedRoom', { 
+            roomId: room.roomId, 
+            betAmount: room.betAmount,
+            countdown: room.countdown,
+            startTime: room.startTime,
+            status: room.status,
+            reservedNumbers: room.reservedNumbers,
+            selectedBoards: room.selectedBoards,
+            activePlayersCount: getActivePlayersCount(room),
+            prizePool: currentPrizePool
+        });
         
         io.to(room.roomId).emit('playersUpdate', { 
             playersCount: room.players.size,
@@ -556,6 +564,11 @@ io.on('connection', (socket) => {
                     await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
                     
                     io.to(roomId).emit('gameOver', { message: `🎉 ተጫዋች BINGO አሸንፏል! ${finalWinAmount} ብር ተሸልሟል።` });
+
+                    // አሸናፊ ሲወጣ ቀጣዩ ራውንድ በራስሰር እንዲጀመር አዲስ ሩም መፍጠር
+                    setTimeout(() => {
+                        getOrCreateLobby(room.betAmount);
+                    }, 3000);
                 }
             } catch (err) {
                 console.error('Bingo claim error:', err);
