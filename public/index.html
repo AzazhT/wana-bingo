@@ -216,7 +216,7 @@
                 <h3>👤 የተጫዋች መረጃ</h3>
                 <p style="margin-top: 12px;">ስም: <b id="profName">--</b></p>
                 <p style="margin-top: 6px;">ID: <b id="profId">--</b></p>
-                <p style="margin-top: 6px;">ስልክ: <b id="profPhone">አልተጋራም</b></p>
+                <p style="margin-top: 6px;">ስልክ: <b id="profPhone">--</b></p>
                 <button class="btn" style="margin-top: 12px; background: #0088cc;" onclick="requestPhoneNumber()">ስልክ ቁጥር አጋራ (Share Phone)</button>
             </div>
         </div>
@@ -296,8 +296,7 @@
                     updateHeaderStats();
                     document.getElementById('profName').innerText = data.user.name;
                     document.getElementById('profId').innerText = data.user.identifier;
-                    // ስልክ ቁጥሩ ከዳታቤዝ ሲመጣ በፕሮፋይል ላይ በትክክል እንዲታይ ተደርጓል[cite: 8]
-                    document.getElementById('profPhone').innerText = (data.user.phone && data.user.phone !== 'null' && data.user.phone !== '') ? data.user.phone : 'አልተጋራም';
+                    document.getElementById('profPhone').innerText = data.user.phone || 'አልተጋራም';
                 }
             } catch (e) { console.error(e); }
         }
@@ -699,13 +698,15 @@
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount, details: smsText })
                 });
                 const data = await res.json();
                 if(data.success) {
                     alert(`የዲፖዚት ጥያቄዎ ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('depAmount').value = '';
                     document.getElementById('depSMS').value = '';
+                } else {
+                    alert(data.message || 'ማስተላለፍ አልተቻለም');
                 }
             } catch(e) { alert('ስህተት ተፈጥሯል።'); }
         }
@@ -738,44 +739,21 @@
             } catch(e) { alert('ሰርቨር ላይ ስህተት ተፈጥሯል።'); }
         }
 
-        // ስልክ ቁጥር የማካፈል እና የማስቀመጥ ተግባር (Request Contact)
         function requestPhoneNumber() {
             if (tg.requestContact) {
                 tg.requestContact(async (shared, contact) => {
                     if (shared && contact) {
-                        try {
-                            const res = await fetch('/api/update-phone', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ identifier: currentUser.id, phone: contact.phone_number })
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                                alert('ስልክ ቁጥርዎ በအောင်မြင်ነት ተመዝግቧል!');
-                                fetchUserData();
-                            } else {
-                                alert('ስልክ ቁጥሩን ማስቀመጥ አልተቻለም።');
-                            }
-                        } catch (err) {
-                            alert('የኔትወርክ ስህተት ተፈጥሯል።');
-                        }
+                        await fetch('/api/update-phone', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ identifier: currentUser.id, phone: contact.phone_number })
+                        });
+                        alert('ስልክ ቁጥርዎ ተመዝግቧል!');
+                        fetchUserData();
                     }
                 });
             } else {
-                // Telegram WebApp በሌለበት ወይም ብሮውዘር ላይ ሲሞከር በ prompt መቀበል የሚያስችል አማራጭ
-                let phoneInput = prompt("እባክዎን ስልክ ቁጥርዎን ያስገቡ (ለምሳሌ፦ 09xxxxxxxx):");
-                if (phoneInput) {
-                    fetch('/api/update-phone', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ identifier: currentUser.id, phone: phoneInput })
-                    }).then(res => res.json()).then(data => {
-                        if (data.success) {
-                            alert('ስልክ ቁጥርዎ በအောင်မြင်ነት ተመዝግቧል!');
-                            fetchUserData();
-                        }
-                    });
-                }
+                alert('የቴሌግራም አፕሊኬሽን ድጋፍ አያስፈልግም።');
             }
         }
     </script>
