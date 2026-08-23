@@ -31,15 +31,8 @@ if (TOKEN) {
             } 
         });
         console.log('Telegram Bot started successfully!');
-        
-        bot.stopPolling().then(() => {
-            bot.startPolling();
-        });
-
         bot.on('polling_error', (error) => {
-            if (error.code !== 'ETELEGRAM' || error.message.indexOf('409 Conflict') === -1) {
-                console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
-            }
+            console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
         });
     } catch (err) {
         console.error('Telegram Bot initialization error:', err);
@@ -48,6 +41,7 @@ if (TOKEN) {
     console.error('ERROR: Telegram Bot Token not provided!');
 }
 
+// REST APIs for User & Wallet
 app.post('/api/get-user', async (req, res) => {
     const { identifier, name, username } = req.body;
     try {
@@ -98,6 +92,7 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
+// አስተካክሎ የባንክ/ስልክ አካውንት (details) እንዲይዝ የተደረገው የትራንዛክሽን API
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
@@ -114,10 +109,19 @@ app.post('/api/request-transaction', async (req, res) => {
             }
         }
 
-        await pool.query(
-            'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
-            [tx_id, identifier, type, amount, details || '']
-        );
+        try {
+            await pool.query(
+                'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
+                [tx_id, identifier, type, amount, details || 'N/A']
+            );
+        } catch (dbErr) {
+            // details ኮልም ከሌለ በሌላ መልኩ ማስቀመጫ
+            await pool.query(
+                'INSERT INTO transactions (tx_id, identifier, type, amount, handled) VALUES ($1, $2, $3, $4, FALSE)',
+                [tx_id, identifier, type, amount]
+            );
+        }
+
         res.json({ success: true, tx_id });
     } catch (err) {
         console.error(err);
@@ -125,6 +129,7 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
+// --- TELEGRAM BOT COMMANDS & ADMIN PANEL ---
 if (bot) {
     bot.setMyCommands([
         { command: 'start', description: 'ቦቱን ለመጀመር' },
@@ -220,6 +225,7 @@ if (bot) {
         }
     });
 
+    // አድሚን ጋር የባንክ አካውንት እና ስልክ ቁጥር (details) በግልጽ እንዲታይ የተደረገበት ክፍል
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID) return;
@@ -244,8 +250,8 @@ if (bot) {
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
                             `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
-                            `💰 መጠን: ${tx.amount} ብር\n` +
-                            `📝 መረጃ/SMS: ${tx.details || 'N/A'}`;
+                            `💳 አካውንት/ዝርዝር: ${tx.details || 'N/A'}\n` +
+                            `💰 መጠን: ${tx.amount} ብር`;
 
                 bot.sendMessage(chatId, msgText, {
                     reply_markup: {
@@ -320,6 +326,7 @@ if (bot) {
     });
 }
 
+// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
@@ -332,7 +339,8 @@ function getActivePlayersCount(room) {
     for (let socketId of room.players) {
         activeSocketIds.add(socketId);
     }
-    return activeSocketIds.size;
+    let realCount = activeSocketIds.size;
+    return realCount;
 }
 
 function calculatePrizePool(room) {
@@ -424,7 +432,7 @@ function startGlobalLobbyCountdown(roomId) {
             if (room.players.size < 1 || selectedBoardsCount < 1) {
                 room.countdown = 30;
                 room.startTime = Date.now() + 30000;
-                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
+                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረطة ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
             } else {
                 startRoomGame(roomId);
             }
