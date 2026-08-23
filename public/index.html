@@ -3,197 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Wana Bingo</title>
+    <title>Wana Bingo Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #0f172a;
-            color: #ffffff;
-            user-select: none;
+        :root {
+            --bg-dark: #070a12;
+            --card-bg: rgba(22, 30, 49, 0.75);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary-cyan: #00f2fe;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --accent-purple: #a855f7;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
         }
 
-        body {
-            display: flex;
-            flex-direction: column;
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; }
+        
+        body { 
+            background: radial-gradient(circle at top, #111827 0%, #070a12 100%); 
+            color: var(--text-main); 
+            padding-bottom: 65px; 
+            user-select: none; 
+            min-height: 100vh;
         }
         
+        /* Fixed Top Header */
         .header { 
-            background: #1e293b; 
-            padding: 8px 12px; 
-            border-bottom: 1px solid #334155; 
+            background: rgba(15, 23, 42, 0.85); 
+            backdrop-filter: blur(12px);
+            padding: 10px 16px; 
+            border-bottom: 1px solid var(--card-border); 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            flex-shrink: 0;
+            position: sticky; 
+            top: 0; 
             z-index: 100; 
         }
         .header.hidden { display: none !important; }
 
-        .logo { font-size: 16px; font-weight: bold; color: #38bdf8; display: flex; align-items: center; gap: 6px; }
-        .balance-badge { background: #0f172a; padding: 4px 10px; border-radius: 15px; font-weight: bold; color: #4ade80; font-size: 13px; border: 1px solid #334155; }
+        .logo { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #00f2fe, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 6px; }
+        .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.3); }
         
-        .container { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            padding: 8px; 
-            max-width: 600px; 
-            width: 100%; 
-            margin: 0 auto; 
-            height: calc(100vh - 60px);
-            overflow: hidden;
-        }
-
-        .tab-content { display: none; height: 100%; width: 100%; }
-        .tab-content.active { display: flex; flex-direction: column; }
+        .container { padding: 8px; max-width: 500px; margin: 0 auto; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         
-        .game-step { display: none; height: 100%; width: 100%; flex-direction: column; }
-        .game-step.active { display: flex; flex-direction: column; }
+        .game-step { display: none; }
+        .game-step.active { display: block; }
 
+        /* Navigation Bar */
         .navbar { 
-            position: fixed; 
-            bottom: 0; 
-            left: 0; 
-            right: 0; 
-            background: #1e293b; 
-            display: flex; 
-            justify-content: space-around; 
-            padding: 8px 0; 
-            border-top: 1px solid #334155; 
-            z-index: 1000; 
-            height: 55px;
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px);
+            display: flex; justify-content: space-around; padding: 8px 0; 
+            border-top: 1px solid var(--card-border); z-index: 1000; 
         }
-        .nav-item { color: #64748b; text-decoration: none; font-size: 11px; text-align: center; cursor: pointer; flex: 1; }
-        .nav-item.active { color: #38bdf8; font-weight: bold; }
+        .nav-item { color: var(--text-sub); text-decoration: none; font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; flex: 1; transition: all 0.2s; }
+        .nav-item.active { color: var(--primary-cyan); }
         .nav-icon { font-size: 18px; margin-bottom: 2px; }
 
-        .card { background: #1e293b; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #334155; }
-        .btn { background: #0284c7; color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 15px; cursor: pointer; font-weight: bold; }
+        .card { background: var(--card-bg); backdrop-filter: blur(8px); padding: 16px; border-radius: 16px; margin-bottom: 12px; border: 1px solid var(--card-border); }
+        .btn { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 800; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3); }
         
-        .bottom-actions-wrapper { display: flex; flex-direction: column; gap: 4px; margin-top: auto; align-items: flex-end; width: 100%; padding-bottom: 5px; }
-        .btn-bingo-small { background: #dc2626; font-size: 13px; padding: 6px 12px; border-radius: 12px; box-shadow: 0 3px 8px rgba(220, 38, 38, 0.4); cursor: pointer; color: #fff; font-weight: bold; border: none; text-align: center; width: 100%; }
-        .btn-leave-small { background: #1e293b; font-size: 8px; padding: 3px 6px; border-radius: 5px; cursor: pointer; color: #fca5a5; font-weight: normal; border: 1px solid #dc2626; text-align: center; width: auto; align-self: flex-end; }
+        /* Action Buttons Wrapper */
+        .bottom-actions-wrapper { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; width: 100%; }
+        .btn-bingo-small { 
+            background: linear-gradient(135deg, #f43f5e, #e11d48); 
+            font-size: 16px; padding: 12px; border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(244, 63, 94, 0.4); 
+            cursor: pointer; color: #fff; font-weight: 900; border: none; text-align: center; width: 100%; 
+            letter-spacing: 1px; transition: transform 0.1s;
+        }
+        .btn-bingo-small:active { transform: scale(0.98); }
+        .btn-leave-small { 
+            background: rgba(244, 63, 94, 0.1); 
+            font-size: 11px; padding: 6px 12px; border-radius: 8px; 
+            cursor: pointer; color: #fda4af; font-weight: 700; 
+            border: 1px solid rgba(244, 63, 94, 0.3); text-align: center; align-self: flex-end; 
+        }
         
-        input, textarea, select { width: 100%; padding: 10px; margin-top: 6px; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 8px; outline: none; }
+        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); color: #fff; border-radius: 10px; outline: none; font-weight: 600; }
 
-        .header-box { text-align: center; padding: 8px 0; color: #fff; }
-        .header-box h2 { font-size: 17px; margin-bottom: 4px; color: #fbbf24; }
-        .header-box p { font-size: 12px; color: #94a3b8; }
+        .header-box { text-align: center; padding: 16px 0; }
+        .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
+        .header-box p { font-size: 13px; color: var(--text-sub); }
         
-        .bet-selection-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
-        .bet-grid-btn { padding: 14px 10px; font-size: 17px; font-weight: bold; background: #1e293b; color: #fbbf24; border: 2px solid #334155; border-radius: 10px; cursor: pointer; text-align: center; width: 100%; }
+        .bet-selection-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+        .bet-grid-btn { padding: 16px; font-size: 18px; font-weight: 800; background: var(--card-bg); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; cursor: pointer; text-align: center; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 
-        .top-stats { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 6px; flex-shrink: 0; }
-        .stat-card { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 4px; border-radius: 6px; text-align: center; font-size: 9px; font-weight: bold; flex: 1; }
-        .stat-card span { display: block; font-size: 11px; color: #fbbf24; margin-top: 2px; }
+        /* Top Dashboard Stats Bar */
+        .top-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .stat-card span { display: block; font-size: 13px; color: #fff; margin-top: 2px; font-weight: 900; }
 
-        /* የሁለተኛው ገጽ Responsive layout ማስተካከያ */
+        /* PAGE 2 OPTIMIZED LAYOUT */
         .cards-grid { 
             display: grid; 
             grid-template-columns: repeat(10, 1fr); 
-            gap: 2px; 
-            background: #0f172a; 
-            padding: 4px; 
-            border-radius: 8px; 
-            border: 1px solid #334155; 
-            flex: 1; 
-            overflow-y: auto;
-            align-content: start;
+            gap: 3px; 
+            background: rgba(0, 0, 0, 0.4); 
+            padding: 6px; 
+            border-radius: 10px; 
+            border: 1px solid var(--card-border); 
         }
-        .card-btn { background: #1e293b; color: #fff; border: none; padding: 6px 0; border-radius: 3px; font-weight: bold; font-size: 10px; cursor: pointer; }
-        .card-btn.active { background: #10b981; color: #fff; box-shadow: 0 0 6px #10b981; border: 1px solid #6ee7b7; }
-        .card-btn.taken { background: #dc2626; color: #fff; cursor: not-allowed; opacity: 0.7; }
+        .card-btn { 
+            background: rgba(255, 255, 255, 0.05); 
+            color: var(--text-main); 
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+            padding: 6px 0; 
+            border-radius: 4px; 
+            font-weight: 800; 
+            font-size: 11px; 
+            cursor: pointer; 
+            transition: all 0.15s;
+        }
+        .card-btn.active { background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); border: 1px solid #34d399; }
+        .card-btn.taken { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); cursor: not-allowed; opacity: 0.5; border: 1px solid rgba(244, 63, 94, 0.2); }
 
-        /* የ Preview እና አዝራሮቹ መያዣ - በአንድ ላይ ጎን ለጎን */
-        .page2-bottom-container {
+        /* Compact 5x5 Card Preview Box */
+        .bottom-section { 
+            margin-top: 8px; 
+            background: linear-gradient(135deg, rgba(88, 28, 135, 0.3), rgba(15, 23, 42, 0.7)); 
+            padding: 8px 10px; 
+            border-radius: 10px; 
+            border: 1px solid rgba(168, 85, 247, 0.3); 
             display: flex;
-            gap: 10px;
+            flex-direction: column;
             align-items: center;
-            justify-content: space-between;
-            margin-top: 8px;
-            padding: 6px;
-            background: #1e293b;
-            border-radius: 10px;
-            border: 1px solid #334155;
-            flex-shrink: 0;
         }
-
-        /* ቦርዱ ወደ ጎን በትንሹ የተቀነሰና በግራ በኩል የተቀመጠ */
-        .preview-box {
-            width: 48%;
-            background: linear-gradient(135deg, #311042, #1e1b4b);
-            padding: 6px;
-            border-radius: 8px;
-            border: 1.5px solid #a855f7;
+        .preview-label { font-size: 10px; font-weight: 800; color: #c084fc; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .preview-ticket { 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 3px; 
+            background: rgba(0, 0, 0, 0.4); 
+            padding: 5px; 
+            border-radius: 6px; 
+            width: 100%; 
+            max-width: 240px; 
         }
-        .preview-label { font-size: 9px; font-weight: bold; color: #f472b6; margin-bottom: 3px; text-transform: uppercase; text-align: center; }
-        .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; background: #18082c; padding: 4px; border-radius: 5px; border: 1px solid #c084fc; }
-        .preview-cell { background: #4c1d95; color: #fae8ff; font-size: 9px; font-weight: bold; text-align: center; padding: 3px 0; border-radius: 2px; }
-        .preview-cell.free { background: #10b981; color: #fff; }
-
-        /* የአዝራሮቹ ክፍል በቀኝ በኩል የተቀመጠ */
-        .action-column { 
-            width: 48%;
-            display: flex; 
-            flex-direction: column; 
-            gap: 6px; 
-            justify-content: center;
+        .preview-cell { 
+            background: rgba(126, 34, 206, 0.25); 
+            color: #f3e8ff; 
+            font-size: 11px; 
+            font-weight: 800; 
+            text-align: center; 
+            padding: 4px 0; 
+            border-radius: 3px; 
+            border: 1px solid rgba(168, 85, 247, 0.2); 
         }
-        .btn-start-game { width: 100%; background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: none; padding: 8px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: bold; text-align: center; }
-        .btn-back-small { width: 100%; background: #0f172a; color: #fbbf24; border: 1px solid #334155; padding: 6px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold; text-align: center; }
+        .preview-cell.free { background: var(--accent-green); color: #fff; border-color: #34d399; font-weight: 900; }
 
-        .game-layout { display: flex; gap: 6px; justify-content: space-between; flex: 1; overflow: hidden; }
-        .called-grid-container { background: #1e293b; padding: 6px; border-radius: 8px; width: 48%; border: 1px solid #334155; display: flex; flex-direction: column; overflow: hidden; }
-        .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 4px; text-align: center; font-weight: bold; font-size: 10px; }
+        .action-column { display: flex; gap: 8px; margin-top: 8px; width: 100%; }
+        .btn-start-game { flex: 2; background: linear-gradient(135deg, var(--primary-cyan), #0284c7); color: #070a12; border: none; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 900; text-align: center; box-shadow: 0 4px 12px rgba(0, 242, 254, 0.3); }
+        .btn-back-small { flex: 1; background: rgba(255, 255, 255, 0.05); color: var(--accent-amber); border: 1px solid var(--card-border); padding: 10px; border-radius: 10px; font-size: 12px; cursor: pointer; font-weight: 700; text-align: center; }
+
+        /* Game Layout (Live Step) */
+        .game-layout { display: flex; gap: 8px; justify-content: space-between; height: calc(100vh - 210px); min-height: 420px; }
         
-        .b-header { background: #fbbf24; color: #000; border-radius: 3px; padding: 2px 0; }
-        .i-header { background: #10b981; color: #fff; border-radius: 3px; padding: 2px 0; }
-        .n-header { background: #0284c7; color: #fff; border-radius: 3px; padding: 2px 0; }
-        .g-header { background: #dc2626; color: #fff; border-radius: 3px; padding: 2px 0; }
-        .o-header { background: #a855f7; color: #fff; border-radius: 3px; padding: 2px 0; }
-
-        .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; flex: 1; overflow-y: auto; }
-        .grid-num { background: #0f172a; color: #64748b; font-size: 10px; text-align: center; padding: 5px 0; border-radius: 3px; font-weight: bold; }
-        .grid-num.called { background: #fbbf24; color: #000; font-size: 11px; box-shadow: 0 0 4px rgba(251, 191, 36, 0.5); }
-
-        .right-panel { width: 50%; display: flex; flex-direction: column; gap: 4px; }
-        .countdown-box { background: #1e293b; color: #fff; padding: 4px 6px; border-radius: 6px; display: flex; justify-content: space-between; font-weight: bold; font-size: 10px; border: 1px solid #334155; }
-        .current-call-box { background: #1e293b; padding: 4px 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #0284c7; }
-        .call-text { font-size: 10px; font-weight: bold; color: #94a3b8; }
-        .call-circle { background: #fbbf24; color: #000; font-weight: 900; padding: 3px 7px; border-radius: 50%; font-size: 11px; }
-
-        .recent-calls { display: flex; gap: 2px; overflow-x: auto; background: #0f172a; padding: 3px; border-radius: 4px; min-height: 25px; align-items: center; border: 1px solid #334155; }
-        .recent-ball { background: #0284c7; color: white; font-size: 8px; font-weight: bold; padding: 2px 4px; border-radius: 50%; white-space: nowrap; }
-
-        .user-board { background: #1e293b; padding: 4px; border-radius: 6px; border: 1px solid #334155; }
-        .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 2px; }
-        .board-cell { background: #0f172a; color: #fff; font-size: 10px; font-weight: bold; text-align: center; padding: 4px 0; border-radius: 2px; cursor: pointer; }
-        .board-cell.free, .board-cell.marked { background: #10b981; color: white; }
-        .board-footer { text-align: center; font-size: 8px; color: #94a3b8; margin-top: 2px; font-weight: bold; }
-
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 2000; padding: 12px; }
-        .modal-card { background: #311042; width: 100%; max-width: 340px; padding: 14px; border-radius: 14px; text-align: center; border: 2px solid #a855f7; color: #fff; }
-        .winner-title-box { background: linear-gradient(135deg, #fbbf24, #f97316); color: #000; padding: 8px; border-radius: 8px; font-size: 20px; font-weight: 900; margin-bottom: 6px; }
-        .winner-subtitle { font-size: 12px; font-weight: bold; color: #e9d5ff; margin-bottom: 8px; }
+        .called-grid-container { 
+            background: var(--card-bg); padding: 8px; border-radius: 12px; 
+            width: 48%; border: 1px solid var(--card-border); 
+            display: flex; flex-direction: column; height: 100%; overflow: hidden;
+        }
+        .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 6px; text-align: center; font-weight: 900; font-size: 11px; }
         
-        .modal-board-wrapper { background: #1e1b4b; padding: 8px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #7e22ce; }
-        .modal-bingo-header { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 4px; font-weight: bold; font-size: 11px; }
-        .modal-board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
+        .b-header { background: var(--accent-amber); color: #000; border-radius: 4px; padding: 4px 0; }
+        .i-header { background: var(--accent-green); color: #fff; border-radius: 4px; padding: 4px 0; }
+        .n-header { background: #0284c7; color: #fff; border-radius: 4px; padding: 4px 0; }
+        .g-header { background: var(--accent-rose); color: #fff; border-radius: 4px; padding: 4px 0; }
+        .o-header { background: var(--accent-purple); color: #fff; border-radius: 4px; padding: 4px 0; }
+
+        .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; overflow-y: auto; }
+        .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.02); }
+        .grid-num.called { background: var(--accent-amber); color: #000; font-size: 13px; font-weight: 900; box-shadow: 0 0 10px rgba(245, 158, 11, 0.6); }
+
+        .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; height: 100%; }
+        .countdown-box { background: var(--card-bg); color: var(--text-main); padding: 8px 10px; border-radius: 10px; display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; border: 1px solid var(--card-border); }
+        .current-call-box { background: var(--card-bg); padding: 8px 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--primary-cyan); }
+        .call-text { font-size: 11px; font-weight: 800; color: var(--text-sub); }
+        .call-circle { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; font-weight: 900; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
+
+        .recent-calls { display: flex; gap: 4px; overflow-x: auto; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 8px; min-height: 32px; align-items: center; border: 1px solid var(--card-border); }
+        .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; }
+
+        .user-board { background: var(--card-bg); padding: 8px; border-radius: 12px; border: 1px solid var(--card-border); flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; margin-top: 4px; }
+        .board-cell { background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; border: 1px solid var(--card-border); }
+        .board-cell.free, .board-cell.marked { background: var(--accent-green); color: white; border-color: #34d399; box-shadow: inset 0 0 8px rgba(0,0,0,0.2); }
+        .board-footer { text-align: center; font-size: 10px; color: var(--text-sub); margin-top: 4px; font-weight: 800; }
+
+        /* Winner Modal Layout */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 2000; padding: 16px; }
+        .modal-card { background: linear-gradient(135deg, #1e1b4b, #0f172a); width: 100%; max-width: 360px; padding: 20px; border-radius: 20px; text-align: center; border: 1px solid var(--accent-purple); color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .winner-title-box { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; padding: 12px; border-radius: 12px; font-size: 24px; font-weight: 900; margin-bottom: 8px; letter-spacing: 1px; }
+        .winner-subtitle { font-size: 13px; font-weight: 700; color: #e9d5ff; margin-bottom: 14px; }
         
-        .modal-cell { background: #2e1065; color: #f3e8ff; font-size: 11px; font-weight: bold; text-align: center; padding: 6px 0; border-radius: 3px; }
+        .modal-board-wrapper { background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; margin-bottom: 14px; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .modal-bingo-header { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-bottom: 4px; font-weight: 900; font-size: 11px; }
+        .modal-board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+        
+        .modal-cell { background: rgba(255,255,255,0.05); color: #f3e8ff; font-size: 12px; font-weight: 800; text-align: center; padding: 8px 0; border-radius: 4px; }
         .modal-cell.win-orange { background: #f97316 !important; color: #fff !important; }
-        .modal-cell.win-green { background: #10b981 !important; color: #fff !important; }
+        .modal-cell.win-green { background: var(--accent-green) !important; color: #fff !important; }
 
-        .modal-footer-info { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 10px; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px; }
-        .modal-badge-name { background: #0d9488; color: #fff; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
+        .modal-footer-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 11px; background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 8px; }
+        .modal-badge-name { background: #0d9488; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 800; }
         
-        .play-again-btn { background: linear-gradient(135deg, #fbbf24, #f97316); color: #000; border: none; width: 100%; padding: 10px; border-radius: 20px; font-weight: 900; font-size: 14px; cursor: pointer; text-transform: uppercase; }
+        .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -219,7 +241,6 @@
                 </div>
             </div>
 
-            <!-- ገጽ 2፡ በአንድ ስክሪን ላይ ሙሉ በሙሉ እንዲታይ የተስተካከለ -->
             <div id="gameStepCards" class="game-step">
                 <div class="top-stats">
                     <div class="stat-card">Wallet<span id="walletDisplay">0.00</span></div>
@@ -227,30 +248,29 @@
                     <div class="stat-card">Active<span id="activePlayersDisplay">0</span></div>
                 </div>
 
-                <!-- 100 ቁጥሮች -->
+                <!-- 10x10 Full Grid Section -->
                 <div class="cards-grid" id="cardsGrid"></div>
 
-                <!-- በግራ በኩል ቦርዱ በትንሹ እና በቀኝ በኩል አዝራሮቹ በአንድ ስክሪን -->
-                <div class="page2-bottom-container">
-                    <div class="preview-box">
-                        <div class="preview-label">የተመረጠው ቦርድ</div>
-                        <div class="preview-ticket" id="previewTicket"></div>
-                    </div>
+                <!-- Preview Section -->
+                <div class="bottom-section">
+                    <div class="preview-label">የቦርድ <span id="selectedBoardNumLabel">1</span> ይዘት (Preview)</div>
+                    <div class="preview-ticket" id="previewTicket"></div>
+                </div>
 
-                    <div class="action-column">
-                        <button class="btn-start-game" onclick="goToGame()">Start game (Join)</button>
-                        <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ (Back)</button>
-                    </div>
+                <!-- Single Line Action Buttons -->
+                <div class="action-column">
+                    <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ</button>
+                    <button class="btn-start-game" onclick="goToGame()">Start game (Join)</button>
                 </div>
             </div>
 
             <div id="gameStepLive" class="game-step">
-                <div class="top-stats">
-                    <div class="stat-card">Room<span id="gameIdDisplay">--</span></div>
-                    <div class="stat-card">Derash<span id="derashDisplay">0.0</span></div>
-                    <div class="stat-card">Active<span id="activePlayersDisplayLive">0</span></div>
-                    <div class="stat-card">Bet<span id="liveBetDisplay">20</span></div>
-                    <div class="stat-card">Call<span id="callCount">0</span></div>
+                <div class="top-stats" style="grid-template-columns: repeat(5, 1fr); gap: 4px;">
+                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Room<span id="gameIdDisplay" style="font-size: 11px;">--</span></div>
+                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Derash<span id="derashDisplay" style="font-size: 11px; color: var(--accent-green);">0.0</span></div>
+                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Active<span id="activePlayersDisplayLive" style="font-size: 11px;">0</span></div>
+                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Bet<span id="liveBetDisplay" style="font-size: 11px;">20</span></div>
+                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Call<span id="callCount" style="font-size: 11px; color: var(--accent-amber);">0</span></div>
                 </div>
 
                 <div class="game-layout">
@@ -264,7 +284,7 @@
                     <div class="right-panel">
                         <div class="countdown-box">
                             <span>Lobby Timer</span>
-                            <span id="countdownText" style="color:#fbbf24;">30s</span>
+                            <span id="countdownText" style="color:var(--accent-amber);">30s</span>
                         </div>
 
                         <div class="current-call-box">
@@ -294,32 +314,32 @@
         <div id="walletTab" class="tab-content">
             <div class="card">
                 <h3>💳 ብር ገቢ ማድረግ (Deposit)</h3>
-                <p style="font-size: 12px; color: #94a3b8; margin: 6px 0;">Telebirr Number: <b>0915503379 (Mulualem)</b></p>
+                <p style="font-size: 12px; color: var(--text-sub); margin: 6px 0;">Telebirr Number: <b>0915503379 (Mulualem)</b></p>
                 <input type="number" id="depAmount" placeholder="የብር መጠን (ETB)">
                 <textarea id="depSMS" rows="3" placeholder="የቴሌብር SMS እዚህ ይልጠፉ"></textarea>
-                <button class="btn" style="margin-top: 10px; background: #10b981;" onclick="submitDeposit()">ገቢ አድርግ</button>
+                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #10b981, #059669);" onclick="submitDeposit()">ገቢ አድርግ</button>
             </div>
 
             <div class="card" style="margin-top: 14px;">
                 <h3>💸 ገንዘብ ማውጣት (Withdraw)</h3>
-                <p style="font-size: 12px; color: #94a3b8; margin: 6px 0;">ያሸነፉትን ገንዘብ ወደ አካውንትዎ ያስተላልፉ።</p>
+                <p style="font-size: 12px; color: var(--text-sub); margin: 6px 0;">ያሸነፉትን ገንዘብ ወደ አካውንትዎ ያስተላልፉ።</p>
                 <select id="withdrawMethod">
                     <option value="Telebirr">ቴሌብር (Telebirr)</option>
                     <option value="CBE">የኢትዮጵያ ንግድ ባንክ (CBE)</option>
                 </select>
                 <input type="number" id="withdrawAmount" placeholder="የሚወጣው የብር መጠን (ETB)">
                 <input type="text" id="withdrawAccountDetails" placeholder="የባንክ አካውንት ቁጥር ወይም ስልክ ቁጥር">
-                <button class="btn" style="margin-top: 10px; background: #dc2626;" onclick="submitWithdraw()">ወጪ አድርግ (Withdraw)</button>
+                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #f43f5e, #e11d48);" onclick="submitWithdraw()">ወጪ አድርግ (Withdraw)</button>
             </div>
         </div>
 
         <div id="profileTab" class="tab-content">
             <div class="card">
                 <h3>👤 የተጫዋች መረጃ</h3>
-                <p style="margin-top: 10px;">ስም: <b id="profName">--</b></p>
-                <p style="margin-top: 6px;">ID: <b id="profId">--</b></p>
-                <p style="margin-top: 6px;">ስልክ: <b id="profPhone">--</b></p>
-                <button class="btn" style="margin-top: 12px; background: #0284c7;" onclick="requestPhoneNumber()">ስልክ ቁጥር አጋራ (Share Phone)</button>
+                <p style="margin-top: 12px;">ስም: <b id="profName">--</b></p>
+                <p style="margin-top: 8px;">ID: <b id="profId">--</b></p>
+                <p style="margin-top: 8px;">ስልክ: <b id="profPhone">--</b></p>
+                <button class="btn" style="margin-top: 16px;" onclick="requestPhoneNumber()">ስልክ ቁጥር አጋራ (Share Phone)</button>
             </div>
         </div>
     </div>
@@ -339,7 +359,7 @@
                     <span class="modal-badge-name" id="modalWinnerName">Kenbo-48990</span>
                     <span id="modalBoardNumText" style="color: #e9d5ff; font-weight: bold;">Board number 26</span>
                 </div>
-                <div style="text-align: center; margin-top: 4px; font-size: 11px; color: #fbbf24; font-weight: bold;" id="modalPrizeText">(79.38 ETB)</div>
+                <div style="text-align: center; margin-top: 6px; font-size: 12px; color: var(--accent-amber); font-weight: 800;" id="modalPrizeText">(79.38 ETB)</div>
             </div>
 
             <button class="play-again-btn" onclick="closeModal('winnerModal')">Play Again</button>
@@ -668,6 +688,7 @@
 
         function displayPreview(id) {
             selectedCardId = id;
+            document.getElementById('selectedBoardNumLabel').innerText = id;
             const previewTicket = document.getElementById('previewTicket');
             previewTicket.innerHTML = '';
             if(allCardsData[id]) {
