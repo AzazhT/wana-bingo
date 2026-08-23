@@ -82,10 +82,25 @@
         .board-cell.free, .board-cell.marked { background: #4caf50; color: white; }
         .board-footer { text-align: center; font-size: 9px; color: #7f91a4; margin-top: 4px; font-weight: bold; }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 2000; }
-        .modal-card { background: #1e2a38; width: 85%; max-width: 340px; padding: 16px; border-radius: 12px; text-align: center; border: 1px solid #3b4e62; color: white; }
-        .winner-banner { background: #ffca28; color: #000; padding: 8px; border-radius: 8px; font-size: 20px; font-weight: 900; margin-bottom: 8px; }
-        .play-again-btn { background: #4caf50; color: white; border: none; width: 100%; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; margin-top: 8px; cursor: pointer; }
+        /* WINNER MODAL STYLING (እንደ ምስሉ ዲዛይን የተስተካከለ) */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 2000; padding: 12px; }
+        .modal-card { background: #c598e8; width: 100%; max-width: 360px; padding: 16px; border-radius: 16px; text-align: center; border: 2px solid #e1bee7; color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .winner-title-box { background: linear-gradient(135deg, #ff9800, #ff5722); color: #fff; padding: 12px; border-radius: 10px; font-size: 24px; font-weight: 900; margin-bottom: 6px; letter-spacing: 1px; box-shadow: 0 4px 10px rgba(255,87,34,0.4); }
+        .winner-subtitle { font-size: 13px; font-weight: bold; color: #333; margin-bottom: 12px; }
+        
+        .modal-board-wrapper { background: #d1c4e9; padding: 10px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #b39ddb; }
+        .modal-bingo-header { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-bottom: 4px; font-weight: bold; font-size: 12px; }
+        .modal-board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+        
+        /* አሸናፊው መስመር የያዛቸው ሴሎች በምስሉ ላይ እንዳሉት ከለሮች (ብርቱካናማ እና አረንጓዴ) ይደምቃሉ */
+        .modal-cell { background: #ede7f6; color: #333; font-size: 12px; font-weight: bold; text-align: center; padding: 9px 0; border-radius: 4px; }
+        .modal-cell.win-orange { background: #ff9800 !important; color: #fff !important; }
+        .modal-cell.win-green { background: #4caf50 !important; color: #fff !important; }
+
+        .modal-footer-info { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11px; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 6px; }
+        .modal-badge-name { background: #00897b; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+        
+        .play-again-btn { background: linear-gradient(135deg, #ff9800, #ff5722); color: white; border: none; width: 100%; padding: 14px; border-radius: 25px; font-weight: 900; font-size: 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(255,87,34,0.4); text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -209,12 +224,26 @@
         </div>
     </div>
 
-    <!-- WINNER MODAL -->
+    <!-- WINNER MODAL (እንደ አዲሱ የዲዛይን ምስል የተስተካከለ) -->
     <div class="modal-overlay" id="winnerModal">
         <div class="modal-card">
-            <div class="winner-banner">🎉 BINGO!</div>
-            <p style="margin-bottom:8px; font-weight:bold; font-size:13px;" id="winnerText">እንኳን ደስ አለዎት! አሸንፈዋል።</p>
-            <button class="play-again-btn" onclick="closeModal('winnerModal')">ቀጥል (Continue)</button>
+            <div class="winner-title-box">BINGO!</div>
+            <div class="winner-subtitle" id="winnerSubText">1 player has won the game</div>
+            
+            <div class="modal-board-wrapper">
+                <div class="modal-bingo-header">
+                    <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
+                </div>
+                <div class="modal-board-grid" id="modalBoardGrid"></div>
+                
+                <div class="modal-footer-info">
+                    <span class="modal-badge-name" id="modalWinnerName">Kenbo-48990</span>
+                    <span id="modalBoardNumText" style="color: #333; font-weight: bold;">Board number 26</span>
+                </div>
+                <div style="text-align: center; margin-top: 4px; font-size: 11px; color: #4a148c; font-weight: bold;" id="modalPrizeText">(79.38 ETB)</div>
+            </div>
+
+            <button class="play-again-btn" onclick="closeModal('winnerModal')">Play Again</button>
         </div>
     </div>
 
@@ -395,10 +424,52 @@
             document.getElementById('recentCalls').prepend(ball);
         });
 
+        // አሸናፊ ሲኖር ሞዳሉን ከነ አሸናፊው መስመር ንድፍ ማሳየት
         socket.on('gameOver', (data) => {
-            document.getElementById('winnerText').innerText = data.message;
+            document.getElementById('winnerSubText').innerText = data.subtitle || "1 player has won the game";
+            document.getElementById('modalWinnerName').innerText = data.winnerName || "Kenbo-Winner";
+            document.getElementById('modalBoardNumText').innerText = `Board number ${data.boardNumber || selectedCardId}`;
+            document.getElementById('modalPrizeText').innerText = `(${parseFloat(data.winAmount || currentDerashAmount).toFixed(2)} ETB)`;
+            
+            renderModalWinningBoard(data.boardNumber || selectedCardId, data.winningLine);
             document.getElementById('winnerModal').style.display = 'flex';
         });
+
+        function renderModalWinningBoard(boardNum, winningLine) {
+            const modalGrid = document.getElementById('modalBoardGrid');
+            modalGrid.innerHTML = '';
+            const card = allCardsData[boardNum] || allCardsData[selectedCardId];
+            
+            if(card) {
+                card.forEach((row, r) => {
+                    row.forEach((val, c) => {
+                        let cell = document.createElement('div');
+                        cell.className = 'modal-cell';
+                        cell.innerText = val;
+                        
+                        // ያሸነፈበት መስመር (ረድፍ፣ አምድ ወይም ሰያፍ) ከሆነ እንደ ምስሉ በብርቱካናማ እና አረንጓዴ ከለር እናደምቀዋለን
+                        if (winningLine) {
+                            if (winningLine.type === 'row' && winningLine.index === r) {
+                                cell.classList.add(r % 2 === 0 ? 'win-orange' : 'win-green');
+                            } else if (winningLine.type === 'col' && winningLine.index === c) {
+                                cell.classList.add(c % 2 === 0 ? 'win-orange' : 'win-green');
+                            } else if (winningLine.type === 'diag1' && r === c) {
+                                cell.classList.add('win-orange');
+                            } else if (winningLine.type === 'diag2' && (r + c === 4)) {
+                                cell.classList.add('win-green');
+                            }
+                        } else {
+                            // ነባሪ ማሳያ (ዲហ្វልት የሞሉትን)
+                            if (val === '*' || drawnNumbers.includes(val)) {
+                                cell.classList.add('win-orange');
+                            }
+                        }
+                        
+                        modalGrid.appendChild(cell);
+                    });
+                });
+            }
+        }
 
         function switchTab(tabId, el) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -534,7 +605,7 @@
                 userWallet = data.newBalance;
             } catch (e) { return alert('የኔትወርክ ስህተት።'); }
 
-            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId });
+            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
 
             updateHeaderStats();
 
@@ -589,20 +660,24 @@
 
         function checkPlayerBingo() {
             const card = allCardsData[selectedCardId];
-            let isBingo = false;
+            let winningLine = null;
             const isValidMark = (r, c) => {
                 let num = card[r][c];
                 return (num === '*' || drawnNumbers.includes(num)) && playerMarkedBoard[r][c];
             };
 
-            for(let r=0; r<5; r++) if([0,1,2,3,4].every(c => isValidMark(r, c))) isBingo = true;
-            for(let c=0; c<5; c++) if([0,1,2,3,4].every(r => isValidMark(r, c))) isBingo = true;
-            if([0,1,2,3,4].every(i => isValidMark(i, i))) isBingo = true;
-            if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) isBingo = true;
+            for(let r=0; r<5; r++) {
+                if([0,1,2,3,4].every(c => isValidMark(r, c))) winningLine = { type: 'row', index: r };
+            }
+            for(let c=0; c<5; c++) {
+                if([0,1,2,3,4].every(r => isValidMark(r, c))) winningLine = { type: 'col', index: c };
+            }
+            if([0,1,2,3,4].every(i => isValidMark(i, i))) winningLine = { type: 'diag1', index: 0 };
+            if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) winningLine = { type: 'diag2', index: 0 };
 
-            if(isBingo) {
+            if(winningLine) {
                 let winAmount = currentDerashAmount > 0 ? currentDerashAmount : (currentBet * 15 * 0.90);
-                socket.emit('claimBingo', { identifier: currentUser.id, winAmount, roomId: currentRoomId });
+                socket.emit('claimBingo', { identifier: currentUser.id, name: currentUser.first_name, winAmount, roomId: currentRoomId, boardNumber: selectedCardId, winningLine });
             } else {
                 alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
             }
