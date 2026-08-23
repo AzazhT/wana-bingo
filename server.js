@@ -30,13 +30,7 @@ if (TOKEN) {
                 params: { timeout: 10 }
             } 
         });
-        
-        bot.deleteWebHook().then(() => {
-            console.log('Telegram Bot started successfully and webhook cleared!');
-        }).catch((err) => {
-            console.log('Webhook clear warning:', err.message);
-        });
-
+        console.log('Telegram Bot started successfully!');
         bot.on('polling_error', (error) => {
             console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
         });
@@ -47,32 +41,20 @@ if (TOKEN) {
     console.error('ERROR: Telegram Bot Token not provided!');
 }
 
-// ሰርቨሩ ሲነሳ ዳታቤዝ ውስጥ 'details' ኮለመን መኖሩን በራሱ ያረጋግጣል (Auto-migration)
+// ሰርቨሩ ሲነሳ 'details' ኮለመን በዳታቤዝ መኖሩን ማረጋገጫ (Auto-migration)
 async function initializeDatabase() {
     try {
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS transactions (
-                id SERIAL PRIMARY KEY,
-                tx_id VARCHAR(50),
-                identifier VARCHAR(100),
-                type VARCHAR(50),
-                amount DECIMAL(10,2),
-                details TEXT,
-                handled BOOLEAN DEFAULT FALSE
-            );
-        `);
-        // details የሚባል ኮለመን ከሌለ በራሱ ይጨምረዋል
-        await pool.query(`
             DO $$ 
             BEGIN 
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' column_name='details') THEN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='details') THEN
                     ALTER TABLE transactions ADD COLUMN details TEXT;
                 END IF;
             END $$;
         `);
-        console.log('Database table checked and updated successfully.');
+        console.log('Database transactions table checked for "details" column.');
     } catch (err) {
-        console.error('Database initialization error:', err);
+        console.error('Database initialization warning:', err.message);
     }
 }
 initializeDatabase();
@@ -128,7 +110,6 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
-// የዊዝድሮው እና የዲፖዚት ጥያቄ መቀበያ (details ን ጨምሮ)
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
@@ -210,7 +191,7 @@ if (bot) {
 
     bot.onText(/\/deposit/, (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላቁ።`, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ።`, { parse_mode: 'Markdown' });
     });
 
     bot.onText(/\/withdraw/, (msg) => {
@@ -253,7 +234,6 @@ if (bot) {
         }
     });
 
-    // አድሚን የሚጠብቃቸውን ጥያቄዎች ሲያይ የባንክ አካውንት (details) ጨምሮ እንዲያሳይ
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID) return;
@@ -274,12 +254,13 @@ if (bot) {
             bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`, { parse_mode: 'Markdown' });
 
             for (let tx of pendingRes.rows) {
+                // የባንክ አካውንት/ዲቴልስ (details) ከታች እንዲታይ ተደርጓል
                 let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
                             `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
                             `💰 መጠን: ${tx.amount} ብር\n` +
-                            `🏦 ባንክ/አካውንት: ${tx.details || 'N/A'}`; // የባንክ አካውንቱ እዚህ ጋር ይታያል
+                            `🏦 ባንክ/አካውንት: ${tx.details || 'N/A'}`;
 
                 bot.sendMessage(chatId, msgText, {
                     reply_markup: {
@@ -354,7 +335,7 @@ if (bot) {
     });
 }
 
-// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT ---
+// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT (MAX 3 ROUNDS) ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
@@ -802,6 +783,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => {
+server.listen(PORT, `0.0.0.0`, () => {
     console.log(`Server running on port ${PORT}`);
 });
