@@ -41,6 +41,7 @@ if (TOKEN) {
     console.error('ERROR: Telegram Bot Token not provided!');
 }
 
+// ሰርቨሩ ሲነሳ 'details' ኮለመን በዳታቤዝ መኖሩን ማረጋገጫ (Auto-migration)
 async function initializeDatabase() {
     try {
         await pool.query(`
@@ -58,6 +59,7 @@ async function initializeDatabase() {
 }
 initializeDatabase();
 
+// REST APIs for User & Wallet
 app.post('/api/get-user', async (req, res) => {
     const { identifier, name, username } = req.body;
     try {
@@ -124,11 +126,13 @@ app.post('/api/request-transaction', async (req, res) => {
             }
         }
 
+        // የባንክ አካውንት/ዲቴልስ መረጃን (details) ጨምሮ ዳታቤዝ ውስጥ እናስገባለን
         await pool.query(
             'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
             [tx_id, identifier, type, amount, details || 'N/A']
         );
 
+        // አድሚኑ ጋር ቀጥታ ሜሴጅ እንዲደርስ መረጃውን ከኢዘር (user) ሰንጠረዥ እናመጣለን
         if (bot && ADMIN_CHAT_ID) {
             try {
                 const userRes = await pool.query('SELECT name, username, phone FROM users WHERE identifier = $1', [identifier]);
@@ -164,6 +168,7 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
+// --- TELEGRAM BOT COMMANDS & ADMIN PANEL ---
 if (bot) {
     bot.setMyCommands([
         { command: 'start', description: 'ቦቱን ለመጀመር' },
@@ -359,6 +364,7 @@ if (bot) {
     });
 }
 
+// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT (MAX 3 ROUNDS) ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
@@ -639,7 +645,7 @@ io.on('connection', (socket) => {
         let room = getOrCreateLobby(betAmount);
 
         if (room.status === 'playing') {
-            return socket.emit('gameAlreadyStarted', { message: 'ጨዋታው አሁንም ጀምሯል! እባክዎ ቀጣዩን ጨዋታ ይጠብቁ።' });
+            return socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል! እባክዎ ቀጣዩን ጨዋታ ይበቁ።' });
         }
 
         socket.join(room.roomId);
@@ -683,7 +689,7 @@ io.on('connection', (socket) => {
 
             socket.emit('boardTempSelected', { boardNumber });
         } else if (room && room.status === 'playing') {
-            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው አሁንም ጀምሯል!' });
+            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል!' });
         }
     });
 
@@ -725,7 +731,7 @@ io.on('connection', (socket) => {
 
             socket.emit('gameJoinSuccess', { boardNumber, prizePool: currentPrizePool });
         } else if (room && room.status === 'playing') {
-            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው አሁንም ጀምሯል!' });
+            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል!' });
         }
     });
 
