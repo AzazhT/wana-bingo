@@ -47,25 +47,37 @@
         .stat-card { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 6px 4px; border-radius: 6px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; }
         .stat-card span { display: block; font-size: 12px; color: #fbbf24; margin-top: 2px; }
 
-        /* ሳይዙ እንዲጨምር የተደረገው የቁጥሮች ሰንጠረዥ (ማክስ-ሃイト 370px ተደርጓል) */
-        .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; background: #0f172a; padding: 8px; border-radius: 8px; max-height: 370px; overflow-y: auto; border: 1px solid #334155; }
-        .card-btn { background: #1e293b; color: #fff; border: none; padding: 10px 0; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; }
+        .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: #0f172a; padding: 6px; border-radius: 8px; max-height: 280px; overflow-y: auto; border: 1px solid #334155; }
+        .card-btn { background: #1e293b; color: #fff; border: none; padding: 8px 0; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; }
         .card-btn.active { background: #10b981; color: #fff; box-shadow: 0 0 8px #10b981; border: 1px solid #6ee7b7; }
         .card-btn.taken { background: #dc2626; color: #fff; cursor: not-allowed; opacity: 0.7; }
 
-        /* ሳይዙ እንዲጨምር የተደረገው የፕሪቪው ክፍል (Padding እና የፊደል መጠን ጨምሯል) */
-        .bottom-section { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 10px; background: linear-gradient(135deg, #311042, #1e1b4b, #0f172a); padding: 14px; border-radius: 14px; border: 2px solid #a855f7; box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
-        .preview-label { font-size: 12px; font-weight: bold; color: #f472b6; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: #18082c; padding: 10px; border-radius: 10px; width: 100%; border: 1px solid #c084fc; box-shadow: inset 0 0 10px rgba(192, 132, 252, 0.2); }
-        .preview-cell { background: #4c1d95; color: #fae8ff; font-size: 14px; font-weight: bold; text-align: center; padding: 10px 0; border-radius: 6px; border: 1px solid #7c3aed; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .bottom-section { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 10px; background: linear-gradient(135deg, #311042, #1e1b4b, #0f172a); padding: 12px; border-radius: 14px; border: 2px solid #a855f7; box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
+        .preview-label { font-size: 12px; font-weight: bold; color: #f472b6; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: #18082c; padding: 8px; border-radius: 10px; width: 100%; border: 1px solid #c084fc; box-shadow: inset 0 0 10px rgba(192, 132, 252, 0.2); }
+        .preview-cell { background: #4c1d95; color: #fae8ff; font-size: 13px; font-weight: bold; text-align: center; padding: 8px 0; border-radius: 6px; border: 1px solid #7c3aed; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         .preview-cell.free { background: #10b981; color: #fff; border-color: #34d399; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
 
         .action-column { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
         .btn-start-game { width: 100%; background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: none; padding: 12px; border-radius: 10px; font-size: 15px; cursor: pointer; font-weight: bold; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4); }
         .btn-back-small { width: 100%; background: #1e293b; color: #fbbf24; border: 1px solid #334155; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: bold; text-align: center; }
 
+        /* የቀኝ እና የግራ የጨዋታ አቀማመጥ (ቦታቸው ተቀያይሯል) */
         .game-layout { display: flex; gap: 6px; justify-content: space-between; }
-        .called-grid-container { background: #1e293b; padding: 6px; border-radius: 8px; width: 48%; border: 1px solid #334155; max-height: 380px; overflow-y: auto; }
+        
+        /* አሁን በግራ በኩል ያለው የተጫዋች ቦርድ ክፍል (Player Board Panel) */
+        .left-panel { width: 52%; display: flex; flex-direction: column; gap: 6px; }
+        
+        .user-board { background: #1e293b; padding: 6px; border-radius: 8px; border: 1px solid #334155; }
+        .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 3px; }
+        .board-cell { background: #0f172a; color: #fff; font-size: 12px; font-weight: bold; text-align: center; padding: 8px 0; border-radius: 3px; cursor: pointer; }
+        .board-cell.free, .board-cell.marked { background: #10b981; color: white; }
+        .board-footer { text-align: center; font-size: 10px; color: #94a3b8; margin-top: 4px; font-weight: bold; }
+
+        /* አሁን በቀኝ በኩል ያለው ማስተር ቦርድ እና ቆጣሪ ክፍል (Master Board & Status Panel) */
+        .right-panel { width: 46%; display: flex; flex-direction: column; gap: 6px; }
+        
+        .called-grid-container { background: #1e293b; padding: 6px; border-radius: 8px; border: 1px solid #334155; max-height: 260px; overflow-y: auto; }
         .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 4px; text-align: center; font-weight: bold; font-size: 11px; }
         
         .b-header { background: #fbbf24; color: #000; border-radius: 3px; padding: 2px 0; }
@@ -75,23 +87,16 @@
         .o-header { background: #a855f7; color: #fff; border-radius: 3px; padding: 2px 0; }
 
         .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
-        .grid-num { background: #0f172a; color: #475569; font-size: 10px; text-align: center; padding: 5px 0; border-radius: 3px; font-weight: bold; }
-        .grid-num.called { background: #fbbf24; color: #000; font-size: 11px; }
+        .grid-num { background: #0f172a; color: #475569; font-size: 9px; text-align: center; padding: 4px 0; border-radius: 3px; font-weight: bold; }
+        .grid-num.called { background: #fbbf24; color: #000; font-size: 10px; }
 
-        .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; }
         .countdown-box { background: #1e293b; color: #fff; padding: 6px 8px; border-radius: 8px; display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; border: 1px solid #334155; }
         .current-call-box { background: #1e293b; padding: 6px 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #0284c7; }
         .call-text { font-size: 11px; font-weight: bold; color: #94a3b8; }
-        .call-circle { background: #fbbf24; color: #000; font-weight: 900; padding: 5px 9px; border-radius: 50%; font-size: 13px; }
+        .call-circle { background: #fbbf24; color: #000; font-weight: 900; padding: 4px 8px; border-radius: 50%; font-size: 12px; }
 
-        .recent-calls { display: flex; gap: 3px; overflow-x: auto; background: #0f172a; padding: 4px; border-radius: 6px; min-height: 30px; align-items: center; border: 1px solid #334155; }
+        .recent-calls { display: flex; gap: 3px; overflow-x: auto; background: #0f172a; padding: 4px; border-radius: 6px; min-height: 28px; align-items: center; border: 1px solid #334155; }
         .recent-ball { background: #0284c7; color: white; font-size: 9px; font-weight: bold; padding: 3px 6px; border-radius: 50%; white-space: nowrap; }
-
-        .user-board { background: #1e293b; padding: 6px; border-radius: 8px; border: 1px solid #334155; }
-        .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 3px; }
-        .board-cell { background: #0f172a; color: #fff; font-size: 11px; font-weight: bold; text-align: center; padding: 6px 0; border-radius: 3px; cursor: pointer; }
-        .board-cell.free, .board-cell.marked { background: #10b981; color: white; }
-        .board-footer { text-align: center; font-size: 9px; color: #94a3b8; margin-top: 4px; font-weight: bold; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 2000; padding: 12px; }
         .modal-card { background: #311042; width: 100%; max-width: 360px; padding: 16px; border-radius: 16px; text-align: center; border: 2px solid #a855f7; color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
@@ -166,14 +171,20 @@
                     <div class="stat-card">Call<span id="callCount">0</span></div>
                 </div>
 
+                <!-- የጨዋታው አቀማመጥ (Layout)፡ ግራ እና ቀኝ ተለዋውጠዋል -->
                 <div class="game-layout">
-                    <div class="called-grid-container">
-                        <div class="bingo-header-row">
-                            <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
+                    <!-- በግራ በኩል የሰዉየው/ተጫዋቹ ሰሌዳ (User Board) እና ትላልቅ ሴሎች -->
+                    <div class="left-panel">
+                        <div class="user-board">
+                            <div class="bingo-header-row">
+                                <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
+                            </div>
+                            <div class="board-grid" id="userBoardGrid"></div>
+                            <div class="board-footer" id="boardFooterText">Board number 1</div>
                         </div>
-                        <div class="called-grid" id="calledGrid"></div>
                     </div>
 
+                    <!-- በቀኝ በኩል ማስተር ቦርድ (Called Grid) እና አነስተኛ ፓነሎች -->
                     <div class="right-panel">
                         <div class="countdown-box">
                             <span>Lobby Timer</span>
@@ -187,12 +198,11 @@
 
                         <div class="recent-calls" id="recentCalls"></div>
 
-                        <div class="user-board">
+                        <div class="called-grid-container">
                             <div class="bingo-header-row">
                                 <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
                             </div>
-                            <div class="board-grid" id="userBoardGrid"></div>
-                            <div class="board-footer" id="boardFooterText">Board number 1</div>
+                            <div class="called-grid" id="calledGrid"></div>
                         </div>
                     </div>
                 </div>
