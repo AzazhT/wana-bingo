@@ -457,8 +457,7 @@
                 <div style="text-align: center; margin-top: 6px; font-size: 12px; color: var(--accent-amber); font-weight: 800;" id="modalPrizeText">(79.38 ETB)</div>
             </div>
 
-            <!-- ጨዋታው ሲያልቅ (ወይም ራውንድ 1 አሸናፊ ሲገኝ) በቀጥታ ወደ ቀጣዩ ራውንድ (ወደ selection board) እንዲመለስ ይደረጋል -->
-            <button class="play-again-btn" onclick="proceedToNextRoundOrBet()">Play Next Round</button>
+            <button class="play-again-btn" onclick="closeModal('winnerModal')">Play Again</button>
         </div>
     </div>
 
@@ -585,19 +584,6 @@
             }, 1000);
         }
 
-        // አንዱ ራውንድ ሲያልቅ Selection Board-ውን ሙሉ በሙሉ Clear በማድረግ አዲስ ተጫዋቾች ቁጥር እንዲመርጡ ያስችላል
-        socket.on('roomResetForNextRound', (data) => {
-            document.getElementById('winnerModal').style.display = 'none';
-            selectedCardId = null;
-            roomSelectedBoards = data.selectedBoards || {};
-            updateRoundUI(data.currentRound, data.maxRounds);
-            updateBoardsUI();
-            displayPreview(null);
-            showGameStep('gameStepCards');
-            globalStartTime = data.startTime;
-            startClientCountdown();
-        });
-
         socket.on('gameStarted', (data) => {
             document.getElementById('countdownText').innerText = "Started!";
             if (clientTimerInterval) clearInterval(clientTimerInterval);
@@ -622,7 +608,6 @@
 
         socket.on('roomFinished', (data) => {
             alert(data.message || '3ቱም ራውንዶች ተጠናቀዋል!');
-            document.getElementById('winnerModal').style.display = 'none';
             showGameStep('gameStepBet');
         });
 
@@ -966,10 +951,6 @@
             }
         }
 
-        function proceedToNextRoundOrBet() {
-            document.getElementById('winnerModal').style.display = 'none';
-        }
-
         function leaveGame() {
             document.getElementById('winnerModal').style.display = 'none';
             selectedCardId = null;
@@ -977,6 +958,12 @@
             fetchUserData();
         }
 
+        function closeModal(id) { 
+            document.getElementById(id).style.display = 'none'; 
+            leaveGame(); 
+        }
+
+        // 🟢 የዲፖዚት መረጃዎችን እና SMS በትክክል ወደ ሰርቨር የሚልክ ፊደክስ
         async function submitDeposit() {
             const amount = document.getElementById('depAmount').value;
             const smsText = document.getElementById('depSMS').value;
@@ -986,30 +973,46 @@
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount })
+                    body: JSON.stringify({ 
+                        identifier: currentUser.id, 
+                        type: 'DEPOSIT', 
+                        amount, 
+                        details: smsText // የቴሌብር ኤስኤምኤስ ጽሁፍ እዚህ ተካቷል
+                    })
                 });
                 const data = await res.json();
                 if(data.success) {
                     alert(`የዲፖዚት ጥያቄዎ ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('depAmount').value = '';
                     document.getElementById('depSMS').value = '';
+                } else {
+                    alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
                 }
             } catch(e) { alert('ስህተት ተፈጥሯል።'); }
         }
 
+        // 🟢 የዊዝድሮው አካውንት/ስልክ ቁጥር በትክክል ወደ ሰርቨር የሚልክ ፊደክስ
         async function submitWithdraw() {
             const amount = document.getElementById('withdrawAmount').value;
             const method = document.getElementById('withdrawMethod').value;
-            const details = document.getElementById('withdrawAccountDetails').value;
+            const accountDetails = document.getElementById('withdrawAccountDetails').value;
 
-            if (!amount || !details) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
+            if (!amount || !accountDetails) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
             if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
+
+            // የባንክ አይነቱን እና የገባውን አካውንት/ስልክ ቁጥር አንድ ላይ ማቀናጀት (ለምሳሌ: Telebirr - 0912345678)
+            const fullDetails = `${method}: ${accountDetails}`;
 
             try {
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details })
+                    body: JSON.stringify({ 
+                        identifier: currentUser.id, 
+                        type: 'WITHDRAW', 
+                        amount, 
+                        details: fullDetails // የተጠቃሚው አካውንት/ስልክ ቁጥር እዚህ ተካቷል
+                    })
                 });
                 const data = await res.json();
                 if(data.success) {
