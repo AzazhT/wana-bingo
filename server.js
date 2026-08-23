@@ -302,7 +302,7 @@ if (bot) {
 
             } else if (action === 'reject') {
                 await pool.query('UPDATE transactions SET handled = TRUE WHERE tx_id = $1', [tx_id]);
-                bot.editMessageText(`❌ ጥያቄው ውድቅ ተደርጓል (Rejected)\n🆔 TxID: ${tx_id}`, {
+                bot.editMessageText(`❌ ጥያቄው ውድቅ ተደረጓል (Rejected)\n🆔 TxID: ${tx_id}`, {
                     chat_id: query.message.chat.id,
                     message_id: query.message.message_id
                 });
@@ -328,7 +328,6 @@ function getActivePlayersCount(room) {
         activeSocketIds.add(socketId);
     }
     let realCount = activeSocketIds.size;
-    // 💡 ሎጂክ 1 ማስተካከያ፡ ከ 46 ጀምሮ ሳይሆን የተያዘውን ትክክለኛ ቁጥር በቀጥታ ከ 1 ጀምሮ እንዲቆጥር ተደረገ
     return realCount;
 }
 
@@ -358,6 +357,7 @@ function getOrCreateLobby(betAmount) {
             betAmount,
             status: 'waiting', 
             players: new Set(),
+            playerNames: {},
             reservedNumbers: {}, 
             selectedBoards: {}, 
             tempSelections: {},  
@@ -383,7 +383,6 @@ function startGlobalLobbyCountdown(roomId) {
 
         room.countdown--;
 
-        // 🤖 አዳዲስ ፌክ ተጫዋቾች (Bots) በሰዓት ቆጠራው ሰዓት ቦርዶችን በዘፈቀደ የመምረጥ ሎጂክ
         let totalPossibleBoards = 100;
         let targetBotSelections = Math.floor((30 - room.countdown) * 1.5); 
         let currentSelectedCount = Object.keys(room.selectedBoards).length;
@@ -399,8 +398,8 @@ function startGlobalLobbyCountdown(roomId) {
             if (!room.selectedBoards[randomBoard]) {
                 let botId = `BOT_${Math.floor(Math.random() * 10000)}`;
                 room.selectedBoards[randomBoard] = botId;
+                room.playerNames[botId] = `Kenbo-${Math.floor(10000 + Math.random()*90000)}`;
 
-                // ቦርዱ በቦት መመረጡን ለሁሉም ተጫዋቾች እናሳውቃለን (በቀይ ቀለም እንዲዘጋ)
                 io.to(roomId).emit('boardSelected', { boardNumber: randomBoard, socketId: botId });
             }
         }
@@ -429,10 +428,10 @@ function startGlobalLobbyCountdown(roomId) {
     }, 1000);
 }
 
-// 💡 ሄፐር ፋንክሽን፡ የቦርድ ፕሪንት የተሟላ ማሸነፍ (Bingo) ማረጋገጫ (ለቦቶች አውቶማቲክ አሸናፊነት)
-function checkCardHasBingo(card, drawnNums) {
+// አሸናፊውን መስመር (Winning Line) በሰርቨር በኩል ፈልጎ የማውጣት ሎጂክ (ለቦት አሸናፊነት)
+function findWinningLine(card, drawnNums) {
     let marked = Array(5).fill(false).map(() => Array(5).fill(false));
-    marked[2][2] = true; // የነፃው ቦታ
+    marked[2][2] = true;
 
     for (let r = 0; r < 5; r++) {
         for (let c = 0; c < 5; c++) {
@@ -443,16 +442,22 @@ function checkCardHasBingo(card, drawnNums) {
         }
     }
 
-    let isBingo = false;
-    for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every(c => marked[r][c])) isBingo = true;
-    for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every(r => marked[r][c])) isBingo = true;
-    if ([0,1,2,3,4].every(i => marked[i][i])) isBingo = true;
-    if ([0,1,2,3,4].every(i => marked[i][4-i])) isBingo = true;
+    // ሮው (Row)
+    for(let r=0; r<5; r++) {
+        if([0,1,2,3,4].every(c => marked[r][c])) return { type: 'row', index: r };
+    }
+    // አምድ (Col)
+    for(let c=0; c<5; c++) {
+        if([0,1,2,3,4].every(r => marked[r][c])) return { type: 'col', index: c };
+    }
+    // ሰያፍ 1
+    if([0,1,2,3,4].every(i => marked[i][i])) return { type: 'diag1', index: 0 };
+    // ሰያፍ 2
+    if([0,1,2,3,4].every(i => marked[i][4-i])) return { type: 'diag2', index: 0 };
 
-    return isBingo;
+    return null;
 }
 
-// (አማራጭ የቦርድ ጀነሬተር በሰርቨር በኩል ለቦቶች ካርዶች ማረጋገጫ እንዲመች)
 function generateServerBingoCard() {
     let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
     let cols = [];
@@ -491,7 +496,6 @@ function startRoomGame(roomId) {
         prizePool: finalPrizePool
     });
 
-    // 💡 ሎጂክ 2 ማስተካከያ፡ የቦቶችን ካርዶች በሰርቨር በኩል ማዘጋጀት (አንድ ቦት ከነሱ እንዲያሸንፍ)
     let roomBotCards = {};
     for (let bNum in room.selectedBoards) {
         let ownerId = room.selectedBoards[bNum];
@@ -519,16 +523,25 @@ function startRoomGame(roomId) {
         room.drawnNumbers.push(rand);
         io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
 
-        // 💡 ሎጂክ 2 ማስተካከያ፡ ጨዋታው ከጀመረ በኋላ ከተጠሩት ቁጥሮች ውስጥ ፌክ ፕሌየሮቹ (ቦቶች) ቢያንስ አንዱ ቢያሸንፍ (Bingo ቢል) ማረጋገጫና ማሳወቂያ
+        // ቦት ሲያሸንፍ የትኛው መስመር እንደሞላ ሰርቨር አረጋግጦ ይልካል
         for (let botId in roomBotCards) {
             let botData = roomBotCards[botId];
-            if (checkCardHasBingo(botData.card, room.drawnNumbers)) {
+            let winningLine = findWinningLine(botData.card, room.drawnNumbers);
+            if (winningLine) {
                 clearInterval(room.gameInterval);
                 if (room.timer) clearInterval(room.timer);
                 room.status = 'ended';
 
                 let botWinAmount = finalPrizePool;
-                io.to(roomId).emit('gameOver', { message: `🎉 ተጫዋች (Bot - Board #${botData.boardNumber}) BINGO አሸንፏል! ${botWinAmount} ብር ተሸልሟል።` });
+                let botName = room.playerNames[botId] || "Kenbo-Bot";
+
+                io.to(roomId).emit('gameOver', { 
+                    subtitle: '1 player has won the game',
+                    winnerName: botName,
+                    boardNumber: botData.boardNumber,
+                    winAmount: botWinAmount,
+                    winningLine: winningLine
+                });
 
                 setTimeout(() => {
                     getOrCreateLobby(room.betAmount);
@@ -559,7 +572,7 @@ io.on('connection', (socket) => {
             startTime: room.startTime,
             status: room.status,
             reservedNumbers: room.reservedNumbers,
-            selectedBoards: room.selectedBoards, // የተያዙ ቦርዶች (ቦቶቹን ጨምሮ) ወደ አዲስ ገቢ ይላካሉ
+            selectedBoards: room.selectedBoards,
             activePlayersCount: getActivePlayersCount(room),
             prizePool: currentPrizePool
         });
@@ -588,7 +601,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('startPlayerGame', (data) => {
-        const { roomId, boardNumber } = data;
+        const { roomId, boardNumber, name } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'waiting') {
@@ -609,6 +622,7 @@ io.on('connection', (socket) => {
             }
 
             room.selectedBoards[boardNumber] = socket.id;
+            room.playerNames[socket.id] = name || 'Player';
 
             if (room.tempSelections && room.tempSelections[socket.id]) {
                 delete room.tempSelections[socket.id];
@@ -626,8 +640,9 @@ io.on('connection', (socket) => {
         }
     });
 
+    // ተጫዋች ቢንጎ ሲል የትኛው መስመር እንደሞላ (winningLine) ተቀብሎ ለሁሉም ያሳውቃል
     socket.on('claimBingo', async (data) => {
-        const { identifier, winAmount, roomId } = data;
+        const { identifier, name, winAmount, roomId, boardNumber, winningLine } = data;
         let room = activeRooms[roomId];
         
         if (room && room.status === 'playing') {
@@ -643,7 +658,13 @@ io.on('connection', (socket) => {
                     let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(finalWinAmount);
                     await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
                     
-                    io.to(roomId).emit('gameOver', { message: `🎉 ተጫዋች BINGO አሸንፏል! ${finalWinAmount} ብር ተሸልሟል።` });
+                    io.to(roomId).emit('gameOver', { 
+                        subtitle: '1 player has won the game',
+                        winnerName: name || room.playerNames[socket.id] || 'Winner',
+                        boardNumber: boardNumber,
+                        winAmount: finalWinAmount,
+                        winningLine: winningLine
+                    });
 
                     setTimeout(() => {
                         getOrCreateLobby(room.betAmount);
@@ -661,6 +682,7 @@ io.on('connection', (socket) => {
             let room = activeRooms[roomId];
             if (room.players.has(socket.id)) {
                 room.players.delete(socket.id);
+                delete room.playerNames[socket.id];
                 
                 if (room.tempSelections && room.tempSelections[socket.id]) {
                     delete room.tempSelections[socket.id];
