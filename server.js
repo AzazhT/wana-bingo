@@ -92,6 +92,7 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
+// የዊዝድሮው እና የዲፖዚት ጥያቄዎችን ሲቀበል details (ስልክ/አካውንት ቁጥር) እንዲይዝ ተደርጓል
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
@@ -108,9 +109,10 @@ app.post('/api/request-transaction', async (req, res) => {
             }
         }
 
+        // transactions ሠንጠረዥ ላይ details (አካውንት ወይም ስልክ ቁጥር) እንዲቀመጥ ተደርጓል
         await pool.query(
-            'INSERT INTO transactions (tx_id, identifier, type, amount, handled) VALUES ($1, $2, $3, $4, FALSE)',
-            [tx_id, identifier, type, amount]
+            'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
+            [tx_id, identifier, type, amount, details || '']
         );
         res.json({ success: true, tx_id });
     } catch (err) {
@@ -215,6 +217,7 @@ if (bot) {
         }
     });
 
+    // አድሚኑ ጥያቄዎችን ሲመለከት የገባውን ስልክ ቁጥር ወይም አካውንት (details/phone) ከ N/A ይልቅ በግልጽ እንዲያሳይ ተደርጓል[cite: 9]
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID) return;
@@ -235,10 +238,11 @@ if (bot) {
             bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`, { parse_mode: 'Markdown' });
 
             for (let tx of pendingRes.rows) {
+                let userContact = tx.details || tx.phone || 'N/A';
                 let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
-                            `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
+                            `📱 ስልክ/አካውንት: ${userContact}\n` +
                             `💰 መጠን: ${tx.amount} ብር`;
 
                 bot.sendMessage(chatId, msgText, {
@@ -420,7 +424,7 @@ function startGlobalLobbyCountdown(roomId) {
             if (room.players.size < 1 || selectedBoardsCount < 1) {
                 room.countdown = 30;
                 room.startTime = Date.now() + 30000;
-                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
+                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረطة ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
             } else {
                 startRoomGame(roomId);
             }
@@ -428,7 +432,6 @@ function startGlobalLobbyCountdown(roomId) {
     }, 1000);
 }
 
-// አሸናፊውን መስመር (Winning Line) በሰርቨር በኩል ፈልጎ የማውጣት ሎጂክ (ለቦት አሸናፊነት)
 function findWinningLine(card, drawnNums) {
     let marked = Array(5).fill(false).map(() => Array(5).fill(false));
     marked[2][2] = true;
@@ -442,17 +445,13 @@ function findWinningLine(card, drawnNums) {
         }
     }
 
-    // ሮው (Row)
     for(let r=0; r<5; r++) {
         if([0,1,2,3,4].every(c => marked[r][c])) return { type: 'row', index: r };
     }
-    // አምድ (Col)
     for(let c=0; c<5; c++) {
         if([0,1,2,3,4].every(r => marked[r][c])) return { type: 'col', index: c };
     }
-    // ሰያፍ 1
     if([0,1,2,3,4].every(i => marked[i][i])) return { type: 'diag1', index: 0 };
-    // ሰያፍ 2
     if([0,1,2,3,4].every(i => marked[i][4-i])) return { type: 'diag2', index: 0 };
 
     return null;
@@ -523,7 +522,6 @@ function startRoomGame(roomId) {
         room.drawnNumbers.push(rand);
         io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
 
-        // ቦት ሲያሸንፍ የትኛው መስመር እንደሞላ ሰርቨር አረጋግጦ ይልካል
         for (let botId in roomBotCards) {
             let botData = roomBotCards[botId];
             let winningLine = findWinningLine(botData.card, room.drawnNumbers);
@@ -640,7 +638,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ተጫዋች ቢንጎ ሲል የትኛው መስመር እንደሞላ (winningLine) ተቀብሎ ለሁሉም ያሳውቃል
     socket.on('claimBingo', async (data) => {
         const { identifier, name, winAmount, roomId, boardNumber, winningLine } = data;
         let room = activeRooms[roomId];
