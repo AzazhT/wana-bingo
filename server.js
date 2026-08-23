@@ -115,7 +115,7 @@
             showGameStep('gameStepBet');
         });
 
-        // 🤖 የቦቶች እና ተጫዋቾች ቦርድ ምርጫ ሲደርስ በቅጽበት ስክሪኑን እናዘምነዋለን
+        // 🤖 የቦቶች እና ተጫዋቾች ቦርድ ምርጫ ሲደርስ
         socket.on('boardSelected', (data) => {
             roomSelectedBoards[data.boardNumber] = data.socketId;
             updateBoardsUI();[cite: 5]
@@ -232,14 +232,11 @@
                     allCardsData[i] = generateBingoCard();
                 }
                 const btn = document.createElement('button');
-                // የመጀመሪያ አቀማመጥ (Class)
-                btn.className = 'card-btn';
+                btn.className = `card-btn ${i === selectedCardId ? 'active' : ''}`;
                 btn.id = `card-btn-${i}`;
                 btn.innerText = i;
-                
-                // የቦርድ ክሊክ ሎጂክ
                 btn.onclick = () => {
-                    // ቦርዱ በሌላ ተጫዋች ወይም በቦት የተያዘ ከሆነ እንዳይመረጥ ይከለክላል
+                    // ቦርዱ በሌላ ተጫዋች ወይም በቦት የተያዘ ከሆነ መምረጥ አይቻልም
                     if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
                         alert('ይህ ቦርድ በሌላ ተጫዋች ወይም በቦት ተይዟል!');[cite: 5]
                         return;
@@ -256,19 +253,16 @@
             updateHeaderStats();
         }
 
-        // 🎨 የቦርዶችን ገጽታ (UI) በየሰከንዱ ወይም ኢቨንት ሲመጣ የሚያዘምነው ትክክለኛ ሎጂክ
         function updateBoardsUI() {
             for(let i = 1; i <= 100; i++) {
                 const btn = document.getElementById(`card-btn-${i}`);
                 if(btn) {
-                    // ሁሉንም አሮጌ ክላሶች እናስወግዳለን
                     btn.classList.remove('active', 'taken');
-                    
                     if(roomSelectedBoards[i]) {
                         if(roomSelectedBoards[i] === socket.id) {
-                            btn.classList.add('active'); // የኛ የመረጥነው ቦርድ (ሰማያዊ/ግሪን)
+                            btn.classList.add('active'); // የኛ የተመረጠ ቦርድ
                         } else {
-                            btn.classList.add('taken');  // በቦት ወይም በሌላ ተጫዋች የተያዘ (ቀይ ሆኖ ይጠለቃል)
+                            btn.classList.add('taken');  // በቦት ወይም በሌላ ተጫዋች የተያዘ (ቀይ ሆኖ ይታያል)[cite: 5]
                         }
                     } else if(i === selectedCardId) {
                         btn.classList.add('active');
@@ -398,7 +392,7 @@
             if (!amount || !smsText) return alert('እባክዎን ሁሉንም ያሟሉ!');
             
             try {
-                const res = --fetch('/api/request-transaction', {
+                const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount })
