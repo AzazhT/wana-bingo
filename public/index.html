@@ -20,136 +20,41 @@
             --text-main: #ffffff;
             --text-sub: #94a3b8;
         }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; }
-        body { background: radial-gradient(circle at top, #111827 0%, #070a12 100%); color: var(--text-main); padding-bottom: 65px; user-select: none; min-height: 100vh; }
-        
-        @keyframes popIn {
-            0% { transform: scale(0.6); opacity: 0; }
-            80% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); }
-        }
-        @keyframes pulseGlow {
-            0% { box-shadow: 0 0 10px rgba(255, 42, 95, 0.4); }
-            50% { box-shadow: 0 0 25px rgba(255, 42, 95, 0.9); }
-            100% { box-shadow: 0 0 10px rgba(255, 42, 95, 0.4); }
-        }
-        @keyframes latestCallPulse {
-            0% { transform: scale(1); box-shadow: 0 0 8px #ff2a5f; }
-            50% { transform: scale(1.25); background: #ff003c; color: #fff; }
-            100% { transform: scale(1.1); }
-        }
-
-        .header { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); padding: 10px 16px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: #070a12; color: var(--text-main); padding-bottom: 65px; min-height: 100vh; }
+        .header { background: rgba(15, 23, 42, 0.85); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
         .header.hidden { display: none !important; }
-        .logo { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #00f2fe, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.3); }
-        
+        .logo { font-size: 18px; font-weight: 900; color: #00f2fe; }
+        .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; color: var(--accent-green); font-weight: 800; font-size: 13px; }
         .container { padding: 8px; max-width: 500px; margin: 0 auto; }
         .tab-content { display: none; }
-        .tab-content.active { display: block; animation: popIn 0.3s ease; }
+        .tab-content.active { display: block; }
         .game-step { display: none; }
-        .game-step.active { display: block; animation: popIn 0.3s ease; }
-
-        .navbar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(15, 23, 42, 0.95); display: flex; justify-content: space-around; padding: 8px 0; border-top: 1px solid var(--card-border); z-index: 1000; }
+        .game-step.active { display: block; }
+        .card { background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 12px; border: 1px solid var(--card-border); }
+        .btn { background: #2563eb; color: #fff; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 800; }
+        .bet-selection-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+        .bet-grid-btn { padding: 16px; font-size: 18px; font-weight: 800; background: var(--card-bg); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; cursor: pointer; width: 100%; text-align: center; }
+        .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: rgba(0,0,0,0.5); padding: 6px; border-radius: 10px; }
+        .card-btn { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.4); padding: 6px 0; border-radius: 4px; font-weight: 800; font-size: 11px; cursor: pointer; }
+        .card-btn.active { background: #10b981 !important; color: #000; }
+        .card-btn.taken { background: #ff003c !important; opacity: 0.9; cursor: not-allowed; }
+        .navbar { position: fixed; bottom: 0; left: 0; right: 0; background: #0f172a; display: flex; justify-content: space-around; padding: 8px 0; z-index: 1000; border-top: 1px solid var(--card-border); }
         .nav-item { color: var(--text-sub); font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; flex: 1; }
         .nav-item.active { color: var(--primary-cyan); }
-        .nav-icon { font-size: 18px; margin-bottom: 2px; }
-
-        .card { background: var(--card-bg); padding: 16px; border-radius: 16px; margin-bottom: 12px; border: 1px solid var(--card-border); }
-        .btn { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 800; }
-        
-        .bottom-actions-wrapper { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; width: 100%; }
-        .btn-bingo-small { background: linear-gradient(135deg, #ff2a5f, #e11d48); font-size: 16px; padding: 12px; border-radius: 12px; cursor: pointer; color: #fff; font-weight: 900; border: none; text-align: center; width: 100%; animation: pulseGlow 2s infinite; }
-        .btn-leave-small { background: rgba(255, 42, 95, 0.1); font-size: 11px; padding: 6px 12px; border-radius: 8px; cursor: pointer; color: #fda4af; font-weight: 700; border: 1px solid rgba(255, 42, 95, 0.3); align-self: flex-end; }
-        
-        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); color: #fff; border-radius: 10px; outline: none; font-weight: 600; }
-
-        .header-box { text-align: center; padding: 16px 0; }
-        .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
-        .header-box p { font-size: 13px; color: var(--text-sub); }
-        
-        .bet-selection-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
-        .bet-grid-btn { padding: 16px; font-size: 18px; font-weight: 800; background: var(--card-bg); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; cursor: pointer; text-align: center; width: 100%; }
-
-        .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
-        .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; }
-        .stat-card span { display: block; font-size: 13px; color: #fff; margin-top: 2px; font-weight: 900; }
-
-        .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: rgba(0, 0, 0, 0.5); padding: 6px; border-radius: 10px; border: 1px solid var(--card-border); }
-        .card-btn { background: rgba(255, 255, 255, 0.08); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.4); padding: 6px 0; border-radius: 4px; font-weight: 800; font-size: 11px; cursor: pointer; }
-        .card-btn.active { background: linear-gradient(135deg, #00ff87, #10b981) !important; color: #000 !important; transform: scale(1.08); z-index: 2; }
-        .card-btn.taken { background: linear-gradient(135deg, #ff003c, #cc0000) !important; color: #fff !important; cursor: not-allowed; opacity: 0.9; }
-
-        .bottom-section { margin-top: 8px; background: linear-gradient(135deg, rgba(88, 28, 135, 0.3), rgba(15, 23, 42, 0.7)); padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(168, 85, 247, 0.3); display: flex; flex-direction: column; align-items: center; }
-        .preview-label { font-size: 10px; font-weight: 800; color: #c084fc; margin-bottom: 4px; text-transform: uppercase; }
-        .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: rgba(0, 0, 0, 0.4); padding: 5px; border-radius: 6px; width: 100%; max-width: 240px; }
-        .preview-cell { background: rgba(126, 34, 206, 0.25); color: #f3e8ff; font-size: 11px; font-weight: 800; text-align: center; padding: 4px 0; border-radius: 3px; border: 1px solid rgba(168, 85, 247, 0.2); }
-        .preview-cell.free { background: var(--accent-green); color: #fff; }
-
-        .action-column { display: flex; gap: 8px; margin-top: 8px; width: 100%; }
-        .btn-start-game { flex: 2; background: linear-gradient(135deg, var(--primary-cyan), #0284c7); color: #070a12; border: none; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 900; text-align: center; }
-        .btn-back-small { flex: 1; background: rgba(255, 255, 255, 0.05); color: var(--accent-amber); border: 1px solid var(--card-border); padding: 10px; border-radius: 10px; font-size: 12px; cursor: pointer; font-weight: 700; text-align: center; }
-
-        .game-layout { display: flex; gap: 8px; justify-content: space-between; height: calc(100vh - 210px); min-height: 420px; }
-        .called-grid-container { background: var(--card-bg); padding: 8px; border-radius: 12px; width: 48%; border: 1px solid var(--card-border); display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-        .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 6px; text-align: center; font-weight: 900; font-size: 11px; }
-        
-        .b-header { background: var(--accent-amber); color: #000; border-radius: 4px; padding: 4px 0; }
-        .i-header { background: var(--accent-green); color: #fff; border-radius: 4px; padding: 4px 0; }
-        .n-header { background: #0284c7; color: #fff; border-radius: 4px; padding: 4px 0; }
-        .g-header { background: var(--accent-rose); color: #fff; border-radius: 4px; padding: 4px 0; }
-        .o-header { background: var(--accent-purple); color: #fff; border-radius: 4px; padding: 4px 0; }
-
-        .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; overflow-y: auto; }
-        .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.02); }
-        .grid-num.called { background: linear-gradient(135deg, #ff2a5f, #e11d48); color: #fff; font-weight: 900; }
-        .grid-num.called.latest-call { background: linear-gradient(135deg, #ff003c, #ff4d6d) !important; color: #fff !important; animation: latestCallPulse 1.2s infinite; }
-
-        .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; height: 100%; }
-        .countdown-box { background: var(--card-bg); color: var(--text-main); padding: 8px 10px; border-radius: 10px; display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; border: 1px solid var(--card-border); }
-        .current-call-box { background: var(--card-bg); padding: 8px 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--primary-cyan); }
-        .call-text { font-size: 11px; font-weight: 800; color: var(--text-sub); }
-        .call-circle { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; font-weight: 900; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
-
-        .recent-calls { display: flex; gap: 4px; overflow-x: auto; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 8px; min-height: 32px; align-items: center; border: 1px solid var(--card-border); }
-        .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; }
-
-        .user-board { background: var(--card-bg); padding: 8px; border-radius: 12px; border: 1px solid var(--card-border); flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; margin-top: 4px; }
-        .board-cell { background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; border: 1px solid var(--card-border); }
-        .board-cell.free, .board-cell.marked { background: var(--accent-green); color: white; border-color: #34d399; }
-        .board-footer { text-align: center; font-size: 10px; color: var(--text-sub); margin-top: 4px; font-weight: 800; }
-
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 2000; padding: 16px; }
-        .modal-card { background: linear-gradient(135deg, #1e1b4b, #0f172a); width: 100%; max-width: 360px; padding: 20px; border-radius: 20px; text-align: center; border: 1px solid var(--accent-purple); color: #fff; }
-        .winner-title-box { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; padding: 12px; border-radius: 12px; font-size: 24px; font-weight: 900; margin-bottom: 8px; }
-        .winner-subtitle { font-size: 13px; font-weight: 700; color: #e9d5ff; margin-bottom: 14px; }
-        
-        .modal-board-wrapper { background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; margin-bottom: 14px; border: 1px solid rgba(168, 85, 247, 0.3); }
-        .modal-bingo-header { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-bottom: 4px; font-weight: 900; font-size: 11px; }
-        .modal-board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
-        .modal-cell { background: rgba(255,255,255,0.05); color: #f3e8ff; font-size: 12px; font-weight: 800; text-align: center; padding: 8px 0; border-radius: 4px; }
-        .modal-cell.win-orange { background: #f97316 !important; color: #fff !important; }
-        .modal-cell.win-green { background: var(--accent-green) !important; color: #fff !important; }
-
-        .modal-footer-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 11px; background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 8px; }
-        .modal-badge-name { background: #0d9488; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 800; }
-        .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
     <div class="header" id="mainHeader">
-        <div class="logo">🎲 <span>Wana Bingo</span></div>
+        <div class="logo">🎲 Wana Bingo</div>
         <div class="balance-badge">💵 <span id="userBalanceDisplay">0.00</span> ETB</div>
     </div>
 
     <div class="container">
         <div id="gameTab" class="tab-content active">
-            
             <div id="gameStepBet" class="game-step active">
-                <div class="header-box">
+                <div style="text-align: center; padding: 16px 0;">
                     <h2>እንኳን ወደ Wana Bingo በደህና መጡ!</h2>
                     <p>ለመጀመር የሚፈልጉትን የጨዋታ ዋጋ ይምረጡ፡</p>
                 </div>
@@ -157,136 +62,23 @@
                     <button class="bet-grid-btn" onclick="selectBet(20)">20 ብር</button>
                     <button class="bet-grid-btn" onclick="selectBet(50)">50 ብር</button>
                     <button class="bet-grid-btn" onclick="selectBet(100)">100 ብር</button>
-                    <button class="bet-grid-btn" onclick="selectBet(500)">500 ብር</button>
                 </div>
             </div>
 
             <div id="gameStepCards" class="game-step">
-                <div class="top-stats">
-                    <div class="stat-card">Wallet<span id="walletDisplay">0.00</span></div>
-                    <div class="stat-card">Bet<span id="betDisplay">20</span></div>
-                    <div class="stat-card">Round<span id="roundDisplay" style="color: var(--accent-amber);">1/3</span></div>
-                    <div class="stat-card">Active<span id="activePlayersDisplay">0</span></div>
-                </div>
-
                 <div class="cards-grid" id="cardsGrid"></div>
-
-                <div class="bottom-section">
-                    <div class="preview-label">የቦርድ <span id="selectedBoardNumLabel">--</span> ይዘት (Preview)</div>
-                    <div class="preview-ticket" id="previewTicket"></div>
-                </div>
-
-                <div class="action-column">
-                    <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ</button>
-                    <button class="btn-start-game" onclick="goToGame()">Start game (Join)</button>
-                </div>
+                <button class="btn" style="margin-top: 12px;" onclick="goToGame()">ጨዋታውን ተቀላቀል (Join)</button>
             </div>
 
             <div id="gameStepLive" class="game-step">
-                <div class="top-stats" style="grid-template-columns: repeat(5, 1fr); gap: 4px;">
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Room<span id="gameIdDisplay" style="font-size: 11px;">--</span></div>
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Derash<span id="derashDisplay" style="font-size: 11px; color: var(--accent-green);">0.0</span></div>
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Active<span id="activePlayersDisplayLive" style="font-size: 11px;">0</span></div>
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Round<span id="liveRoundDisplay" style="font-size: 11px; color: var(--accent-amber);">1/3</span></div>
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Call<span id="callCount" style="font-size: 11px; color: var(--accent-amber);">0</span></div>
-                </div>
-
-                <div class="game-layout">
-                    <div class="called-grid-container">
-                        <div class="bingo-header-row">
-                            <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
-                        </div>
-                        <div class="called-grid" id="calledGrid"></div>
-                    </div>
-
-                    <div class="right-panel">
-                        <div class="countdown-box">
-                            <span>Lobby Timer</span>
-                            <span id="countdownText" style="color:var(--accent-amber);">30s</span>
-                        </div>
-
-                        <div class="current-call-box">
-                            <span class="call-text">Current Call</span>
-                            <div class="call-circle" id="currentCallCircle">-</div>
-                        </div>
-
-                        <div class="recent-calls" id="recentCalls"></div>
-
-                        <div class="user-board">
-                            <div class="bingo-header-row">
-                                <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
-                            </div>
-                            <div class="board-grid" id="userBoardGrid"></div>
-                            <div class="board-footer" id="boardFooterText">Board number --</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bottom-actions-wrapper">
-                    <button class="btn-bingo-small" onclick="checkPlayerBingo()">🎉 BINGO!</button>
-                    <button class="btn-leave-small" onclick="leaveGame()">Leave / Exit</button>
-                </div>
+                <h3 style="text-align:center; color: var(--accent-amber);">ጨዋታው በሂደት ላይ ነው...</h3>
+                <div id="countdownText" style="text-align:center; font-size: 20px; margin-top: 10px;">30s</div>
             </div>
-        </div>
-
-        <div id="walletTab" class="tab-content">
-            <div class="card">
-                <h3>💳 ብር ገቢ ማድረግ (Deposit)</h3>
-                <p style="font-size: 12px; color: var(--text-sub); margin: 6px 0;">Telebirr Number: <b>0915503379 (Mulualem)</b></p>
-                <input type="number" id="depAmount" placeholder="የብር መጠን (ETB)">
-                <textarea id="depSMS" rows="3" placeholder="የቴሌብር SMS እዚህ ይልጠፉ"></textarea>
-                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #10b981, #059669);" onclick="submitDeposit()">ገቢ አድርግ</button>
-            </div>
-
-            <div class="card" style="margin-top: 14px;">
-                <h3>💸 ገንዘብ ማውጣት (Withdraw)</h3>
-                <select id="withdrawMethod">
-                    <option value="Telebirr">ቴሌብር (Telebirr)</option>
-                    <option value="CBE">የኢትዮጵያ ንግድ ባንክ (CBE)</option>
-                </select>
-                <input type="number" id="withdrawAmount" placeholder="የሚወጣው የብር መጠን (ETB)">
-                <input type="text" id="withdrawAccountDetails" placeholder="የባንክ አካውንት ቁጥር ወይም ስልክ ቁጥር">
-                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #ff2a5f, #e11d48);" onclick="submitWithdraw()">ወጪ አድርግ</button>
-            </div>
-        </div>
-
-        <div id="profileTab" class="tab-content">
-            <div class="card">
-                <h3>👤 የተጫዋች መረጃ</h3>
-                <p style="margin-top: 12px;">ስም: <b id="profName">--</b></p>
-                <p style="margin-top: 8px;">ID: <b id="profId">--</b></p>
-                <p style="margin-top: 8px;">ስልክ: <b id="profPhone">--</b></p>
-                <button class="btn" style="margin-top: 16px;" onclick="requestPhoneNumber()">ስልክ ቁጥር አጋራ</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="winnerModal">
-        <div class="modal-card">
-            <div class="winner-title-box">BINGO!</div>
-            <div class="winner-subtitle" id="winnerSubText">አሸናፊ ተገኝቷል!</div>
-            
-            <div class="modal-board-wrapper">
-                <div class="modal-bingo-header">
-                    <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
-                </div>
-                <div class="modal-board-grid" id="modalBoardGrid"></div>
-                
-                <div class="modal-footer-info">
-                    <span class="modal-badge-name" id="modalWinnerName">Winner</span>
-                    <span id="modalBoardNumText" style="color: #e9d5ff; font-weight: bold;">Board --</span>
-                </div>
-                <div style="text-align: center; margin-top: 6px; font-size: 12px; color: var(--accent-amber); font-weight: 800;" id="modalPrizeText">(0 ETB)</div>
-            </div>
-
-            <button class="play-again-btn" onclick="closeModal('winnerModal')">Play Again</button>
         </div>
     </div>
 
     <div class="navbar">
-        <div class="nav-item active" onclick="switchTab('gameTab', this)"><div class="nav-icon">🎮</div>ጨዋታ</div>
-        <div class="nav-item" onclick="switchTab('walletTab', this)"><div class="nav-icon">💳</div>ዋሌት</div>
-        <div class="nav-item" onclick="switchTab('profileTab', this)"><div class="nav-icon">👤</div>ፕሮፋይል</div>
+        <div class="nav-item active" onclick="switchTab('gameTab', this)">ጨዋታ</div>
     </div>
 
     <script>
@@ -295,223 +87,27 @@
         tg.expand();
 
         const socket = io();
-        const telegramUser = tg.initDataUnsafe?.user;
-        let currentUser = {
-            id: telegramUser ? String(telegramUser.id) : "test_user_" + Math.floor(Math.random()*1000),
-            first_name: telegramUser ? (telegramUser.first_name + (telegramUser.last_name ? ' ' + telegramUser.last_name : '')) : "Bingo Player",
-            username: telegramUser ? telegramUser.username : "test_user"
-        };
-
-        let userWallet = 0.00;
+        let currentUser = { id: "user_" + Math.floor(Math.random()*1000), first_name: "Player" };
         let currentBet = 20;
-        let currentActivePlayers = 0;
-        let currentDerashAmount = 0.0;
-        
-        let allCardsData = {};
         let selectedCardId = null;
         let currentRoomId = null;
-        let drawnNumbers = [];
-        let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
-        let roomSelectedBoards = {};
-        let globalStartTime = null;
-        let clientTimerInterval = null;
-
-        window.addEventListener('DOMContentLoaded', async () => {
-            await fetchUserData();
-        });
-
-        async function fetchUserData() {
-            try {
-                const res = await fetch('/api/get-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, name: currentUser.first_name, username: currentUser.username })
-                });
-                const data = await res.json();
-                if(data.success && data.user) {
-                    userWallet = parseFloat(data.user.balance);
-                    updateHeaderStats();
-                    document.getElementById('profName').innerText = data.user.name;
-                    document.getElementById('profId').innerText = data.user.identifier;
-                    document.getElementById('profPhone').innerText = data.user.phone || 'አልተጋራም';
-                }
-            } catch (e) { console.error(e); }
-        }
-
-        function updateDerashUI(data) {
-            if (typeof data.activePlayersCount !== 'undefined') {
-                currentActivePlayers = data.activePlayersCount;
-                document.getElementById('activePlayersDisplay').innerText = currentActivePlayers;
-                document.getElementById('activePlayersDisplayLive').innerText = currentActivePlayers;
-            }
-            if (typeof data.prizePool !== 'undefined') {
-                currentDerashAmount = parseFloat(data.prizePool);
-            } else {
-                currentDerashAmount = currentActivePlayers * currentBet * 0.90; 
-            }
-            document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-        }
 
         function autoClearAndRedirect(msg) {
             selectedCardId = null;
-            updateBoardsUI();
-            displayPreview(null);
-            alert(msg || 'ጨዋታው ኦሬዲ ጀምሯል!');
+            alert(msg || 'ጨዋታው ተጀምሯል! መግባት አይቻልም።');
             showGameStep('gameStepBet');
         }
-
-        socket.on('playersUpdate', (data) => { if (data) updateDerashUI(data); });
-        socket.on('activePlayersUpdate', (data) => { if (data) updateDerashUI(data); });
-
-        socket.on('assignedRoom', (data) => {
-            currentRoomId = data.roomId;
-            document.getElementById('gameIdDisplay').innerText = currentRoomId;
-            globalStartTime = data.startTime;
-            updateDerashUI(data);
-            startClientCountdown();
-            if (data.selectedBoards) {
-                roomSelectedBoards = data.selectedBoards;
-                updateBoardsUI();
-            }
-        });
-
-        socket.on('countdownUpdate', (data) => {
-            globalStartTime = data.startTime;
-            updateDerashUI(data);
-        });
-
-        function startClientCountdown() {
-            if (clientTimerInterval) clearInterval(clientTimerInterval);
-            clientTimerInterval = setInterval(() => {
-                if (!globalStartTime) return;
-                let remaining = Math.max(0, Math.floor((globalStartTime - Date.now()) / 1000));
-                document.getElementById('countdownText').innerText = `${remaining}s`;
-                if (remaining <= 0) clearInterval(clientTimerInterval);
-            }, 1000);
-        }
-
-        // ሰዓቱ 0 ሲደርስ ወይም ጨዋታው ሲጀመር (Locked) አዳዲስ መግቢያዎች ይዘጋሉ
-        socket.on('gameStarted', (data) => {
-            document.getElementById('countdownText').innerText = "Started!";
-            if (clientTimerInterval) clearInterval(clientTimerInterval);
-            if (data && data.prizePool) {
-                currentDerashAmount = parseFloat(data.prizePool);
-                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-            }
-            updateBoardsUI();
-        });
 
         socket.on('gameAlreadyStarted', (data) => {
             autoClearAndRedirect(data.message);
         });
 
-        socket.on('boardTempSelected', (data) => {
-            selectedCardId = data.boardNumber;
-            updateBoardsUI();
-            displayPreview(selectedCardId);
-        });
-
-        socket.on('boardSelected', (data) => {
-            roomSelectedBoards[data.boardNumber] = data.socketId;
-            updateBoardsUI();
-        });
-
-        socket.on('boardReleased', (data) => {
-            delete roomSelectedBoards[data.boardNumber];
-            updateBoardsUI();
-        });
-
-        socket.on('gameJoinSuccess', (data) => {
-            selectedCardId = data.boardNumber;
-            if (data.prizePool) {
-                currentDerashAmount = parseFloat(data.prizePool);
-                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-            }
-            displayPreview(selectedCardId);
-            updateBoardsUI();
-        });
-
-        socket.on('boardSelectError', (data) => { alert(data.message); });
-
-        socket.on('numberDrawn', (data) => {
-            let rand = data.number;
-            drawnNumbers = data.drawnHistory || [];
-            document.getElementById('callCount').innerText = drawnNumbers.length;
-
-            let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
-            let callText = `${letter}-${rand}`;
-            
-            const callCircle = document.getElementById('currentCallCircle');
-            callCircle.innerText = callText;
-
-            drawnNumbers.forEach(n => {
-                let cell = document.getElementById(`grid-num-${n}`);
-                if (cell) cell.classList.add('called');
-            });
-
-            let latestCell = document.getElementById(`grid-num-${rand}`);
-            if (latestCell) {
-                latestCell.classList.add('called', 'latest-call');
-            }
-
-            let ball = document.createElement('div');
-            ball.className = 'recent-ball';
-            ball.innerText = callText;
-            document.getElementById('recentCalls').prepend(ball);
-        });
-
-        // ቼክ ተደርጎ አሸናፊ ሲኖር በክፍሉ (Room) ውስጥ ላሉት ብቻ ይገለጻል
-        socket.on('gameOver', (data) => {
-            if (data.winnerName) {
-                document.getElementById('winnerSubText').innerText = data.subtitle || "አሸናፊ ተገኝቷል!";
-                document.getElementById('modalWinnerName').innerText = data.winnerName;
-                document.getElementById('modalBoardNumText').innerText = `Board ${data.boardNumber || selectedCardId}`;
-                document.getElementById('modalPrizeText').innerText = `(${parseFloat(data.winAmount || currentDerashAmount).toFixed(2)} ETB)`;
-                renderModalWinningBoard(data.boardNumber || selectedCardId, data.winningLine);
-                document.getElementById('winnerModal').style.display = 'flex';
-            } else {
-                alert(data.message || 'ጨዋታው አልቋል!');
-                leaveGame();
+        socket.on('assignedRoom', (data) => {
+            currentRoomId = data.roomId;
+            if(data.status === 'playing') {
+                autoClearAndRedirect('ጨዋታው ተጀምሯል! መግባት አይቻልም።');
             }
         });
-
-        function renderModalWinningBoard(boardNum, winningLine) {
-            const modalGrid = document.getElementById('modalBoardGrid');
-            modalGrid.innerHTML = '';
-            const card = allCardsData[boardNum] || allCardsData[selectedCardId];
-            
-            if(card) {
-                card.forEach((row, r) => {
-                    row.forEach((val, c) => {
-                        let cell = document.createElement('div');
-                        cell.className = 'modal-cell';
-                        cell.innerText = val;
-                        
-                        if (winningLine) {
-                            if (winningLine.type === 'row' && winningLine.index === r) {
-                                cell.classList.add('win-orange');
-                            } else if (winningLine.type === 'col' && winningLine.index === c) {
-                                cell.classList.add('win-green');
-                            } else if (winningLine.type === 'diag1' && r === c) {
-                                cell.classList.add('win-orange');
-                            } else if (winningLine.type === 'diag2' && (r + c === 4)) {
-                                cell.classList.add('win-green');
-                            }
-                        } else if (val === '*' || drawnNumbers.includes(val)) {
-                            cell.classList.add('win-orange');
-                        }
-                        modalGrid.appendChild(cell);
-                    });
-                });
-            }
-        }
-
-        function switchTab(tabId, el) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            el.classList.add('active');
-        }
 
         function showGameStep(stepId) {
             document.querySelectorAll('.game-step').forEach(s => s.classList.remove('active'));
@@ -525,269 +121,36 @@
             currentBet = amount;
             selectedCardId = null;
             showGameStep('gameStepCards');
-            initPage1();
+            initCards();
             socket.emit('joinLobby', { betAmount: amount });
         }
 
-        function goToBetStep() { showGameStep('gameStepBet'); }
-
-        function updateHeaderStats() {
-            document.getElementById('userBalanceDisplay').innerText = userWallet.toFixed(2);
-            document.getElementById('walletDisplay').innerText = userWallet.toFixed(2);
-            document.getElementById('betDisplay').innerText = currentBet;
-            document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-        }
-
-        function generateBingoCard() {
-            let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
-            let cols = [];
-            for(let c = 0; c < 5; c++) {
-                let col = [];
-                let min = ranges[c][0], max = ranges[c][1];
-                while(col.length < 5) {
-                    let rand = Math.floor(Math.random() * (max - min + 1)) + min;
-                    if(!col.includes(rand)) col.push(rand);
-                }
-                cols.push(col);
-            }
-            let card = [];
-            for(let r = 0; r < 5; r++) {
-                let row = [];
-                for(let c = 0; c < 5; c++) {
-                    row.push(r === 2 && c === 2 ? "*" : cols[c][r]);
-                }
-                card.push(row);
-            }
-            return card;
-        }
-
-        function initPage1() {
+        function initCards() {
             const cardsGrid = document.getElementById('cardsGrid');
             cardsGrid.innerHTML = '';
             for(let i = 1; i <= 100; i++) {
-                if(!allCardsData[i]) allCardsData[i] = generateBingoCard();
                 const btn = document.createElement('button');
                 btn.className = `card-btn`;
                 btn.id = `card-btn-${i}`;
                 btn.innerText = i;
                 btn.onclick = () => {
-                    if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
-                        return alert('ይህ ቦርድ በሌላ ተጫዋች ተይዟል!');
-                    }
-                    socket.emit('selectBoardTemp', { roomId: currentRoomId, boardNumber: i });
+                    selectedCardId = i;
+                    document.querySelectorAll('.card-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
                 };
                 cardsGrid.appendChild(btn);
             }
-            updateBoardsUI();
-            displayPreview(null);
-            updateHeaderStats();
         }
 
-        function updateBoardsUI() {
-            for(let i = 1; i <= 100; i++) {
-                const btn = document.getElementById(`card-btn-${i}`);
-                if(btn) {
-                    btn.classList.remove('active', 'taken');
-                    if(roomSelectedBoards[i]) {
-                        if(roomSelectedBoards[i] === socket.id) btn.classList.add('active');
-                        else btn.classList.add('taken');
-                    } else if(selectedCardId !== null && i === selectedCardId) {
-                        btn.classList.add('active');
-                    }
-                }
-            }
-        }
-
-        function displayPreview(id) {
-            selectedCardId = id;
-            document.getElementById('selectedBoardNumLabel').innerText = id !== null ? id : '--';
-            const previewTicket = document.getElementById('previewTicket');
-            previewTicket.innerHTML = '';
-            
-            if(id && allCardsData[id]) {
-                allCardsData[id].forEach(row => {
-                    row.forEach(val => {
-                        const cell = document.createElement('div');
-                        cell.className = `preview-cell ${val === '*' ? 'free' : ''}`;
-                        cell.innerText = val;
-                        previewTicket.appendChild(cell);
-                    });
-                });
-            } else {
-                for(let i = 0; i < 25; i++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'preview-cell';
-                    cell.innerText = '-';
-                    previewTicket.appendChild(cell);
-                }
-            }
-        }
-
-        async function goToGame() {
-            if (selectedCardId === null) return alert('እባክዎ መጀመሪያ የቦርድ ቁጥር ይምረጡ!');
-            if (userWallet < currentBet) return alert('በቂ ባላንስ የለዎትም!');
-            
-            try {
-                const res = await fetch('/api/place-bet', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, amount: currentBet })
-                });
-                const data = await res.json();
-                if (!data.success) return alert(data.message);
-                userWallet = data.newBalance;
-            } catch (e) { return alert('የኔትወርክ ስህተት።'); }
-
-            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId });
-            updateHeaderStats();
-
-            const calledGrid = document.getElementById('calledGrid');
-            calledGrid.innerHTML = '';
-            for (let row = 0; row < 15; row++) {
-                for (let col = 0; col < 5; col++) {
-                    let num = (col * 15) + (row + 1);
-                    let cell = document.createElement('div');
-                    cell.className = 'grid-num';
-                    cell.id = `grid-num-${num}`;
-                    cell.innerText = num;
-                    calledGrid.appendChild(cell);
-                }
-            }
-
-            playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
-            playerMarkedBoard[2][2] = true;
-            renderInteractiveBoard();
-
-            drawnNumbers = [];
-            document.getElementById('recentCalls').innerHTML = '';
-            document.getElementById('currentCallCircle').innerText = '-';
-            document.getElementById('callCount').innerText = '0';
-            document.getElementById('boardFooterText').innerText = `Board number ${selectedCardId}`;
-
+        function goToGame() {
+            if (selectedCardId === null) return alert('እባክዎ ቦርድ ይምረጡ!');
+            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
             showGameStep('gameStepLive');
         }
 
-        function renderInteractiveBoard() {
-            const userBoardGrid = document.getElementById('userBoardGrid');
-            userBoardGrid.innerHTML = '';
-            const card = allCardsData[selectedCardId];
-            if(card) {
-                card.forEach((row, r) => {
-                    row.forEach((val, c) => {
-                        let cell = document.createElement('div');
-                        cell.className = `board-cell ${val === '*' ? 'free' : ''}`;
-                        if(playerMarkedBoard[r][c]) cell.classList.add('marked');
-                        cell.innerText = val;
-                        cell.onclick = () => {
-                            if(val !== '*') {
-                                playerMarkedBoard[r][c] = !playerMarkedBoard[r][c];
-                                cell.classList.toggle('marked');
-                            }
-                        };
-                        userBoardGrid.appendChild(cell);
-                    });
-                });
-            }
-        }
-
-        function checkPlayerBingo() {
-            const card = allCardsData[selectedCardId];
-            let winningLine = null;
-            const isValidMark = (r, c) => {
-                let num = card[r][c];
-                return (num === '*' || drawnNumbers.includes(num)) && playerMarkedBoard[r][c];
-            };
-
-            for(let r=0; r<5; r++) {
-                if([0,1,2,3,4].every(c => isValidMark(r, c))) winningLine = { type: 'row', index: r };
-            }
-            for(let c=0; c<5; c++) {
-                if([0,1,2,3,4].every(r => isValidMark(r, c))) winningLine = { type: 'col', index: c };
-            }
-            if([0,1,2,3,4].every(i => isValidMark(i, i))) winningLine = { type: 'diag1', index: 0 };
-            if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) winningLine = { type: 'diag2', index: 0 };
-
-            if(winningLine) {
-                let winAmount = currentDerashAmount > 0 ? currentDerashAmount : (currentBet * 15 * 0.90);
-                socket.emit('claimBingo', { 
-                    identifier: currentUser.id, 
-                    name: currentUser.first_name, 
-                    winAmount, 
-                    roomId: currentRoomId, 
-                    boardNumber: selectedCardId, 
-                    winningLine 
-                });
-            } else {
-                alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
-            }
-        }
-
-        function leaveGame() {
-            document.getElementById('winnerModal').style.display = 'none';
-            selectedCardId = null;
-            showGameStep('gameStepBet');
-            fetchUserData();
-        }
-
-        function closeModal(id) { 
-            document.getElementById(id).style.display = 'none'; 
-            leaveGame(); 
-        }
-
-        async function submitDeposit() {
-            const amount = document.getElementById('depAmount').value;
-            const smsText = document.getElementById('depSMS').value;
-            if (!amount || !smsText) return alert('እባክዎን ሁሉንም ያሟሉ!');
-            try {
-                const res = await fetch('/api/request-transaction', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    alert(`የዲፖዚት ጥያቄዎ ተልኳል! TxID: ${data.tx_id}`);
-                    document.getElementById('depAmount').value = '';
-                    document.getElementById('depSMS').value = '';
-                }
-            } catch(e) { alert('ስህተት ተፈጥሯል።'); }
-        }
-
-        async function submitWithdraw() {
-            const amount = document.getElementById('withdrawAmount').value;
-            const details = document.getElementById('withdrawAccountDetails').value;
-            if (!amount || !details) return alert('እባክዎን መረጃዎችን በትክክል ይሙሉ!');
-            if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
-
-            try {
-                const res = await fetch('/api/request-transaction', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    alert(`የዊዝድሮው ጥያቄዎ ተልኳል! TxID: ${data.tx_id}`);
-                    document.getElementById('withdrawAmount').value = '';
-                    document.getElementById('withdrawAccountDetails').value = '';
-                }
-            } catch(e) { alert('ስህተት ተፈጥሯል።'); }
-        }
-
-        function requestPhoneNumber() {
-            if (tg.requestContact) {
-                tg.requestContact(async (shared, contact) => {
-                    if (shared && contact) {
-                        await fetch('/api/update-phone', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ identifier: currentUser.id, phone: contact.phone_number })
-                        });
-                        alert('ስልክ ቁጥርዎ ተመዝግቧል!');
-                        fetchUserData();
-                    }
-                });
-            }
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
         }
     </script>
 </body>
