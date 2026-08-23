@@ -983,22 +983,20 @@
             } catch(e) { alert('ስህተት ተፈጥሯል።'); }
         }
 
-        // [የተስተካከለ] ተጠቃሚው ያስገባውን የባንክ ዓይነት እና አካውንት ቁጥር (details) ወደ ሰርቨር የሚልክበት ፈንክሽን
+        // [ተስተካክሏል] - ዊዝድሮ ሲጠየቅ withdrawAccountDetails (የባንክ/ስልክ ቁጥር) ወደ ሰርቨር እንዲላክ ተደርጓል
         async function submitWithdraw() {
             const amount = document.getElementById('withdrawAmount').value;
             const method = document.getElementById('withdrawMethod').value;
-            const details = document.getElementById('withdrawAccountDetails').value;
+            const details = document.getElementById('withdrawAccountDetails').value; // የሚወጣበት አካውንት ቁጥር ወይም ስልክ
 
             if (!amount || !details) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
             if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
 
             try {
-                const fullDetails = `${method}: ${details}`;
-
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details: fullDetails })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details })
                 });
                 const data = await res.json();
                 if(data.success) {
@@ -1006,7 +1004,7 @@
                     document.getElementById('withdrawAmount').value = '';
                     document.getElementById('withdrawAccountDetails').value = '';
                 } else {
-                    (data.message || 'ጥያቄውን መላክ አልተቻለም።');
+                    alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
                 }
             } catch(e) { alert('ሰርቨር ላይ ስህተት ተፈጥሯል።'); }
         }
