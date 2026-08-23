@@ -279,6 +279,19 @@
         let globalStartTime = null;
         let clientTimerInterval = null;
 
+        // የድምጽ ማስታወቂያ (Voice Announcement Function)
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // ቀድሞ የሚነገረውን እያቆመ አዲሱን እንዲጀምር
+                let utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US'; // ቁጥሮችን እና ፊደሎችን በግልጽ እንዲጠራ
+                utterance.rate = 1.0; 
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        let announced5Sec = false;
+
         window.addEventListener('DOMContentLoaded', async () => {
             await fetchUserData();
         });
@@ -333,6 +346,7 @@
             currentRoomId = data.roomId;
             document.getElementById('gameIdDisplay').innerText = currentRoomId;
             globalStartTime = data.startTime;
+            announced5Sec = false;
             
             updateDerashUI(data);
             startClientCountdown();
@@ -355,6 +369,12 @@
                 let remaining = Math.max(0, Math.floor((globalStartTime - Date.now()) / 1000));
                 document.getElementById('countdownText').innerText = `${remaining}s`;
 
+                // ከ 5 ሰከንድ ሲቀረው የሚለውን ድምጽ ማስተላለፍ (3, 2, 1 ጨዋታው ሊጀምር ነው)
+                if (remaining === 5 && !announced5Sec) {
+                    announced5Sec = true;
+                    speakText("ጨዋታው ሊጀምር ነው 3, 2, 1");
+                }
+
                 if (remaining <= 0) clearInterval(clientTimerInterval);
             }, 1000);
         }
@@ -367,11 +387,6 @@
                 document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
             }
             updateBoardsUI();
-        });
-
-        socket.on('gameAlreadyStarted', (data) => {
-            alert(data.message);
-            showGameStep('gameStepBet');
         });
 
         socket.on('boardTempSelected', (data) => {
@@ -412,6 +427,9 @@
             let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
             let callText = `${letter}-${rand}`;
             document.getElementById('currentCallCircle').innerText = callText;
+
+            // ቁጥር ሲጠራ በድምጽ እንዲናገር ማድረግ (ለምሳሌ: B 7, O 73)
+            speakText(`${letter} ${rand}`);
 
             let gridCell = document.getElementById(`grid-num-${rand}`);
             if(gridCell) gridCell.classList.add('called');
@@ -705,8 +723,6 @@
                     alert(`የዲፖዚት ጥያቄዎ ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('depAmount').value = '';
                     document.getElementById('depSMS').value = '';
-                } else {
-                    alert(data.message || 'ማስተላለፍ አልተቻለም');
                 }
             } catch(e) { alert('ስህተት ተፈጥሯል።'); }
         }
@@ -726,7 +742,7 @@
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details: `${method} - ${details}` })
                 });
                 const data = await res.json();
                 if(data.success) {
