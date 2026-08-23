@@ -8,115 +8,120 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #121921; color: #ffffff; padding-bottom: 75px; user-select: none; }
+        body { background-color: #0f172a; color: #ffffff; padding-bottom: 75px; user-select: none; }
         
-        .header { background: #1e2a38; padding: 12px 16px; border-bottom: 2px solid #0088cc; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        .logo { font-size: 18px; font-weight: bold; color: #40b3e0; display: flex; align-items: center; gap: 6px; }
-        .header-right { display: flex; align-items: center; gap: 8px; }
-        .balance-badge { background: #2b3a4a; padding: 6px 12px; border-radius: 20px; font-weight: bold; color: #4caf50; font-size: 13px; border: 1px solid #3b4e62; }
-        .sound-toggle-btn { background: #2b3a4a; padding: 6px 10px; border-radius: 20px; font-weight: bold; color: #ffca28; font-size: 12px; border: 1px solid #3b4e62; cursor: pointer; }
+        .header { background: #1e293b; padding: 8px 12px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .header.hidden { display: none !important; }
+
+        .logo { font-size: 16px; font-weight: bold; color: #38bdf8; display: flex; align-items: center; gap: 6px; }
+        .balance-badge { background: #0f172a; padding: 4px 10px; border-radius: 15px; font-weight: bold; color: #4ade80; font-size: 13px; border: 1px solid #334155; }
         
-        .container { padding: 12px; max-width: 500px; margin: 0 auto; }
+        .container { padding: 10px; max-width: 500px; margin: 0 auto; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
         .game-step { display: none; }
         .game-step.active { display: block; }
 
-        .navbar { position: fixed; bottom: 0; left: 0; right: 0; background: #1e2a38; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #2b3a4a; z-index: 1000; }
-        .nav-item { color: #7f91a4; text-decoration: none; font-size: 11px; text-align: center; cursor: pointer; flex: 1; }
-        .nav-item.active { color: #40b3e0; font-weight: bold; }
-        .nav-icon { font-size: 20px; margin-bottom: 2px; }
+        .navbar { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; display: flex; justify-content: space-around; padding: 8px 0; border-top: 1px solid #334155; z-index: 1000; }
+        .nav-item { color: #64748b; text-decoration: none; font-size: 11px; text-align: center; cursor: pointer; flex: 1; }
+        .nav-item.active { color: #38bdf8; font-weight: bold; }
+        .nav-icon { font-size: 18px; margin-bottom: 2px; }
 
-        .card { background: #1e2a38; padding: 14px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #2b3a4a; }
-        .btn { background: #0088cc; color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 15px; cursor: pointer; font-weight: bold; }
-        .btn-bingo { background: #e53935; font-size: 18px; padding: 14px; border-radius: 25px; box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4); }
+        .card { background: #1e293b; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #334155; }
+        .btn { background: #0284c7; color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 15px; cursor: pointer; font-weight: bold; }
         
-        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; background: #121921; border: 1px solid #3b4e62; color: #fff; border-radius: 8px; outline: none; }
-
-        .header-box { text-align: center; padding: 10px 0; color: #fff; }
-        .header-box h2 { font-size: 18px; margin-bottom: 5px; color: #ffca28; }
-        .header-box p { font-size: 12px; color: #7f91a4; }
+        .btn-bingo-small { background: #dc2626; font-size: 15px; padding: 10px; border-radius: 20px; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.4); width: 100%; cursor: pointer; color: #fff; font-weight: bold; border: none; text-align: center; }
+        .btn-leave-small { background: #1e293b; font-size: 13px; padding: 8px; border-radius: 8px; width: 100%; cursor: pointer; color: #fca5a5; font-weight: bold; border: 1px solid #dc2626; text-align: center; margin-top: 6px; }
         
-        .bet-selection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
-        .bet-grid-btn { padding: 22px 10px; font-size: 20px; font-weight: bold; background: #2b3a4a; color: #ffca28; border: 2px solid #3b4e62; border-radius: 12px; cursor: pointer; text-align: center; }
+        input, textarea, select { width: 100%; padding: 10px; margin-top: 6px; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 8px; outline: none; }
 
-        .top-stats { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 10px; }
-        .stat-card { background: #1e2a38; border: 1px solid #2b3a4a; color: #7f91a4; padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; }
-        .stat-card span { display: block; font-size: 13px; color: #ffca28; margin-top: 2px; }
+        .header-box { text-align: center; padding: 8px 0; color: #fff; }
+        .header-box h2 { font-size: 17px; margin-bottom: 4px; color: #fbbf24; }
+        .header-box p { font-size: 12px; color: #94a3b8; }
+        
+        .bet-selection-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+        .bet-grid-btn { padding: 14px 10px; font-size: 17px; font-weight: bold; background: #1e293b; color: #fbbf24; border: 2px solid #334155; border-radius: 10px; cursor: pointer; text-align: center; width: 100%; }
 
-        .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: #121921; padding: 6px; border-radius: 10px; max-height: 280px; overflow-y: auto; border: 1px solid #2b3a4a; }
-        .card-btn { background: #2b3a4a; color: #fff; border: none; padding: 8px 0; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; position: relative; }
-        .card-btn.active { background: #4caf50; color: #fff; box-shadow: 0 0 8px #4caf50; }
-        .card-btn.taken { background: #e53935; color: #fff; cursor: not-allowed; opacity: 0.7; }
+        .top-stats { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 8px; }
+        .stat-card { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 6px 4px; border-radius: 6px; text-align: center; font-size: 10px; font-weight: bold; flex: 1; }
+        .stat-card span { display: block; font-size: 12px; color: #fbbf24; margin-top: 2px; }
 
-        .bottom-section { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 10px; }
-        .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; background: #121921; padding: 4px; border-radius: 6px; width: 160px; border: 1px solid #2b3a4a; }
-        .preview-cell { background: #2b3a4a; color: #fff; font-size: 10px; font-weight: bold; text-align: center; padding: 5px 0; border-radius: 3px; }
-        .preview-cell.free { background: #4caf50; color: #fff; }
+        .cards-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: #0f172a; padding: 6px; border-radius: 8px; max-height: 320px; overflow-y: auto; border: 1px solid #334155; }
+        .card-btn { background: #1e293b; color: #fff; border: none; padding: 8px 0; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer; }
+        .card-btn.active { background: #10b981; color: #fff; box-shadow: 0 0 8px #10b981; border: 1px solid #6ee7b7; }
+        .card-btn.taken { background: #dc2626; color: #fff; cursor: not-allowed; opacity: 0.7; }
+
+        /* በአረንጓዴ ያከበብከው ቦታ፡ እጅግ ማራኪ እና የተለየ ከለር ያለው ፕሪቪው ቦርድ ዲዛይን */
+        .bottom-section { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 10px; background: linear-gradient(135deg, #1e1b4b, #311042); padding: 8px; border-radius: 12px; border: 1px solid #a855f7; box-shadow: 0 0 15px rgba(168, 85, 247, 0.25); }
+        .preview-label { font-size: 11px; font-weight: bold; color: #e9d5ff; margin-bottom: 2px; }
+        .preview-ticket { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: #0f172a; padding: 6px; border-radius: 8px; width: 100%; border: 1px solid #7e22ce; }
+        .preview-cell { background: #2e1065; color: #f3e8ff; font-size: 11px; font-weight: bold; text-align: center; padding: 6px 0; border-radius: 4px; border: 1px solid #581c87; }
+        .preview-cell.free { background: #10b981; color: #fff; border-color: #34d399; }
+
+        /* በቀይ ያሰመርካቸው Start እና Back አዝራሮች ከላይ ወደ ታች (Vertical Stack) እንዲሆኑ */
+        .action-column { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+        .btn-start-game { width: 100%; background: #0284c7; color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; text-align: center; }
+        .btn-back-small { width: 100%; background: #1e293b; color: #fbbf24; border: 1px solid #334155; padding: 10px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; text-align: center; }
 
         .game-layout { display: flex; gap: 6px; justify-content: space-between; }
-        .called-grid-container { background: #1e2a38; padding: 6px; border-radius: 8px; width: 48%; border: 1px solid #2b3a4a; }
+        .called-grid-container { background: #1e293b; padding: 6px; border-radius: 8px; width: 48%; border: 1px solid #334155; max-height: 380px; overflow-y: auto; }
         .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 4px; text-align: center; font-weight: bold; font-size: 11px; }
         
-        .b-header { background: #ffca28; color: #000; border-radius: 3px; padding: 2px 0; }
-        .i-header { background: #4caf50; color: #fff; border-radius: 3px; padding: 2px 0; }
-        .n-header { background: #0088cc; color: #fff; border-radius: 3px; padding: 2px 0; }
-        .g-header { background: #e53935; color: #fff; border-radius: 3px; padding: 2px 0; }
-        .o-header { background: #9c27b0; color: #fff; border-radius: 3px; padding: 2px 0; }
+        .b-header { background: #fbbf24; color: #000; border-radius: 3px; padding: 2px 0; }
+        .i-header { background: #10b981; color: #fff; border-radius: 3px; padding: 2px 0; }
+        .n-header { background: #0284c7; color: #fff; border-radius: 3px; padding: 2px 0; }
+        .g-header { background: #dc2626; color: #fff; border-radius: 3px; padding: 2px 0; }
+        .o-header { background: #a855f7; color: #fff; border-radius: 3px; padding: 2px 0; }
 
         .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
-        .grid-num { background: #121921; color: #556b82; font-size: 9px; text-align: center; padding: 3px 0; border-radius: 3px; font-weight: bold; }
-        .grid-num.called { background: #ffca28; color: #000; }
+        .grid-num { background: #0f172a; color: #475569; font-size: 10px; text-align: center; padding: 5px 0; border-radius: 3px; font-weight: bold; }
+        .grid-num.called { background: #fbbf24; color: #000; font-size: 11px; }
 
         .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; }
-        .countdown-box { background: #1e2a38; color: #fff; padding: 6px 8px; border-radius: 8px; display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; border: 1px solid #2b3a4a; }
-        .current-call-box { background: #1e2a38; padding: 6px 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #0088cc; }
-        .call-text { font-size: 11px; font-weight: bold; color: #7f91a4; }
-        .call-circle { background: #ffca28; color: #000; font-weight: 900; padding: 6px 10px; border-radius: 50%; font-size: 14px; }
+        .countdown-box { background: #1e293b; color: #fff; padding: 6px 8px; border-radius: 8px; display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; border: 1px solid #334155; }
+        .current-call-box { background: #1e293b; padding: 6px 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #0284c7; }
+        .call-text { font-size: 11px; font-weight: bold; color: #94a3b8; }
+        .call-circle { background: #fbbf24; color: #000; font-weight: 900; padding: 5px 9px; border-radius: 50%; font-size: 13px; }
 
-        .recent-calls { display: flex; gap: 3px; overflow-x: auto; background: #121921; padding: 4px; border-radius: 6px; min-height: 32px; align-items: center; border: 1px solid #2b3a4a; }
-        .recent-ball { background: #0088cc; color: white; font-size: 9px; font-weight: bold; padding: 3px 6px; border-radius: 50%; white-space: nowrap; }
+        .recent-calls { display: flex; gap: 3px; overflow-x: auto; background: #0f172a; padding: 4px; border-radius: 6px; min-height: 30px; align-items: center; border: 1px solid #334155; }
+        .recent-ball { background: #0284c7; color: white; font-size: 9px; font-weight: bold; padding: 3px 6px; border-radius: 50%; white-space: nowrap; }
 
-        .user-board { background: #1e2a38; padding: 6px; border-radius: 8px; border: 1px solid #2b3a4a; }
+        .user-board { background: #1e293b; padding: 6px; border-radius: 8px; border: 1px solid #334155; }
         .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 3px; }
-        .board-cell { background: #2b3a4a; color: #fff; font-size: 11px; font-weight: bold; text-align: center; padding: 6px 0; border-radius: 3px; cursor: pointer; }
-        .board-cell.free, .board-cell.marked { background: #4caf50; color: white; }
-        .board-footer { text-align: center; font-size: 9px; color: #7f91a4; margin-top: 4px; font-weight: bold; }
+        .board-cell { background: #0f172a; color: #fff; font-size: 11px; font-weight: bold; text-align: center; padding: 6px 0; border-radius: 3px; cursor: pointer; }
+        .board-cell.free, .board-cell.marked { background: #10b981; color: white; }
+        .board-footer { text-align: center; font-size: 9px; color: #94a3b8; margin-top: 4px; font-weight: bold; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 2000; padding: 12px; }
-        .modal-card { background: #c598e8; width: 100%; max-width: 360px; padding: 16px; border-radius: 16px; text-align: center; border: 2px solid #e1bee7; color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .winner-title-box { background: linear-gradient(135deg, #ff9800, #ff5722); color: #fff; padding: 12px; border-radius: 10px; font-size: 24px; font-weight: 900; margin-bottom: 6px; letter-spacing: 1px; box-shadow: 0 4px 10px rgba(255,87,34,0.4); }
-        .winner-subtitle { font-size: 13px; font-weight: bold; color: #333; margin-bottom: 12px; }
+        .modal-card { background: #311042; width: 100%; max-width: 360px; padding: 16px; border-radius: 16px; text-align: center; border: 2px solid #a855f7; color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .winner-title-box { background: linear-gradient(135deg, #fbbf24, #f97316); color: #000; padding: 12px; border-radius: 10px; font-size: 24px; font-weight: 900; margin-bottom: 6px; letter-spacing: 1px; }
+        .winner-subtitle { font-size: 13px; font-weight: bold; color: #e9d5ff; margin-bottom: 12px; }
         
-        .modal-board-wrapper { background: #d1c4e9; padding: 10px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #b39ddb; }
+        .modal-board-wrapper { background: #1e1b4b; padding: 10px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #7e22ce; }
         .modal-bingo-header { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-bottom: 4px; font-weight: bold; font-size: 12px; }
         .modal-board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
         
-        .modal-cell { background: #ede7f6; color: #333; font-size: 12px; font-weight: bold; text-align: center; padding: 9px 0; border-radius: 4px; }
-        .modal-cell.win-orange { background: #ff9800 !important; color: #fff !important; }
-        .modal-cell.win-green { background: #4caf50 !important; color: #fff !important; }
+        .modal-cell { background: #2e1065; color: #f3e8ff; font-size: 12px; font-weight: bold; text-align: center; padding: 9px 0; border-radius: 4px; }
+        .modal-cell.win-orange { background: #f97316 !important; color: #fff !important; }
+        .modal-cell.win-green { background: #10b981 !important; color: #fff !important; }
 
         .modal-footer-info { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11px; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 6px; }
-        .modal-badge-name { background: #00897b; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+        .modal-badge-name { background: #0d9488; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
         
-        .play-again-btn { background: linear-gradient(135deg, #ff9800, #ff5722); color: white; border: none; width: 100%; padding: 14px; border-radius: 25px; font-weight: 900; font-size: 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(255,87,34,0.4); text-transform: uppercase; }
+        .play-again-btn { background: linear-gradient(135deg, #fbbf24, #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 25px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-    <div class="header">
+    <div class="header" id="mainHeader">
         <div class="logo">🎲 <span>Wana Bingo</span></div>
-        <div class="header-right">
-            <!-- የድምጽ ማብሪያ/ማጥፊያ (Sound Toggle) አዝራር -->
-            <button class="sound-toggle-btn" id="soundToggleBtn" onclick="toggleSound()">🔊 Sound: ON</button>
-            <div class="balance-badge">💵 <span id="userBalanceDisplay">0.00</span> ETB</div>
-        </div>
+        <div class="balance-badge">💵 <span id="userBalanceDisplay">0.00</span> ETB</div>
     </div>
 
     <div class="container">
-        <!-- 1. GAME TAB -->
         <div id="gameTab" class="tab-content active">
+            
             <div id="gameStepBet" class="game-step active">
                 <div class="header-box">
                     <h2>እንኳን ወደ Wana Bingo በደህና መጡ!</h2>
@@ -139,13 +144,19 @@
 
                 <div class="cards-grid" id="cardsGrid"></div>
 
+                <!-- በአረንጓዴ ያከበብከው የተለየ እና ማራኪ ፕሪቪው ክፍል -->
                 <div class="bottom-section">
-                    <div class="preview-ticket" id="previewTicket"></div>
-                    <div class="controls">
-                        <button class="btn" onclick="goToGame()">Start game (Join)</button>
+                    <div style="width: 100%;">
+                        <div class="preview-label">የተመረጠው ቦርድ ፕሪቪው</div>
+                        <div class="preview-ticket" id="previewTicket"></div>
                     </div>
                 </div>
-                <button class="btn" style="width: 100%; margin-top: 8px; background: #2b3a4a;" onclick="goToBetStep()">‹ ተመለስ (Back)</button>
+
+                <!-- በቀይ ያሰመርካቸው Start እና Back አዝራሮች ከላይ ወደ ታች (Vertical) ተደርድረዋል -->
+                <div class="action-column">
+                    <button class="btn-start-game" onclick="goToGame()">Start game (Join)</button>
+                    <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ (Back)</button>
+                </div>
             </div>
 
             <div id="gameStepLive" class="game-step">
@@ -168,7 +179,7 @@
                     <div class="right-panel">
                         <div class="countdown-box">
                             <span>Lobby Timer</span>
-                            <span id="countdownText" style="color:#ffca28;">30s</span>
+                            <span id="countdownText" style="color:#fbbf24;">30s</span>
                         </div>
 
                         <div class="current-call-box">
@@ -188,47 +199,44 @@
                     </div>
                 </div>
 
-                <button class="btn btn-bingo" style="margin-top: 10px;" onclick="checkPlayerBingo()">🎉 BINGO!</button>
-                <button class="btn" style="background: #e53935; margin-top: 8px;" onclick="leaveGame()">Leave / Exit</button>
+                <button class="btn-bingo-small" style="margin-top: 10px;" onclick="checkPlayerBingo()">🎉 BINGO!</button>
+                <button class="btn-leave-small" onclick="leaveGame()">Leave / Exit</button>
             </div>
         </div>
 
-        <!-- 2. WALLET & WITHDRAW TAB -->
         <div id="walletTab" class="tab-content">
             <div class="card">
                 <h3>💳 ብር ገቢ ማድረግ (Deposit)</h3>
-                <p style="font-size: 12px; color: #7f91a4; margin: 6px 0;">Telebirr Number: <b>0915503379 (Mulualem)</b></p>
+                <p style="font-size: 12px; color: #94a3b8; margin: 6px 0;">Telebirr Number: <b>0915503379 (Mulualem)</b></p>
                 <input type="number" id="depAmount" placeholder="የብር መጠን (ETB)">
                 <textarea id="depSMS" rows="3" placeholder="የቴሌብር SMS እዚህ ይልጠፉ"></textarea>
-                <button class="btn" style="margin-top: 10px; background: #4caf50;" onclick="submitDeposit()">ገቢ አድርግ</button>
+                <button class="btn" style="margin-top: 10px; background: #10b981;" onclick="submitDeposit()">ገቢ አድርግ</button>
             </div>
 
-            <div class="card" style="margin-top: 16px;">
+            <div class="card" style="margin-top: 14px;">
                 <h3>💸 ገንዘብ ማውጣት (Withdraw)</h3>
-                <p style="font-size: 12px; color: #7f91a4; margin: 6px 0;">ያሸነፉትን ገንዘብ ወደ አካውንትዎ ያስተላልፉ።</p>
+                <p style="font-size: 12px; color: #94a3b8; margin: 6px 0;">ያሸነፉትን ገንዘብ ወደ አካውንትዎ ያስተላልፉ።</p>
                 <select id="withdrawMethod">
                     <option value="Telebirr">ቴሌብር (Telebirr)</option>
                     <option value="CBE">የኢትዮጵያ ንግድ ባንክ (CBE)</option>
                 </select>
                 <input type="number" id="withdrawAmount" placeholder="የሚወጣው የብር መጠን (ETB)">
                 <input type="text" id="withdrawAccountDetails" placeholder="የባንክ አካውንት ቁጥር ወይም ስልክ ቁጥር">
-                <button class="btn" style="margin-top: 10px; background: #e53935;" onclick="submitWithdraw()">ወጪ አድርግ (Withdraw)</button>
+                <button class="btn" style="margin-top: 10px; background: #dc2626;" onclick="submitWithdraw()">ወጪ አድርግ (Withdraw)</button>
             </div>
         </div>
 
-        <!-- 3. PROFILE TAB -->
         <div id="profileTab" class="tab-content">
             <div class="card">
                 <h3>👤 የተጫዋች መረጃ</h3>
-                <p style="margin-top: 12px;">ስም: <b id="profName">--</b></p>
+                <p style="margin-top: 10px;">ስም: <b id="profName">--</b></p>
                 <p style="margin-top: 6px;">ID: <b id="profId">--</b></p>
                 <p style="margin-top: 6px;">ስልክ: <b id="profPhone">--</b></p>
-                <button class="btn" style="margin-top: 12px; background: #0088cc;" onclick="requestPhoneNumber()">ስልክ ቁጥር አጋራ (Share Phone)</button>
+                <button class="btn" style="margin-top: 12px; background: #0284c7;" onclick="requestPhoneNumber()">ስልክ ቁጥር አጋራ (Share Phone)</button>
             </div>
         </div>
     </div>
 
-    <!-- WINNER MODAL -->
     <div class="modal-overlay" id="winnerModal">
         <div class="modal-card">
             <div class="winner-title-box">BINGO!</div>
@@ -242,16 +250,15 @@
                 
                 <div class="modal-footer-info">
                     <span class="modal-badge-name" id="modalWinnerName">Kenbo-48990</span>
-                    <span id="modalBoardNumText" style="color: #333; font-weight: bold;">Board number 26</span>
+                    <span id="modalBoardNumText" style="color: #e9d5ff; font-weight: bold;">Board number 26</span>
                 </div>
-                <div style="text-align: center; margin-top: 4px; font-size: 11px; color: #4a148c; font-weight: bold;" id="modalPrizeText">(79.38 ETB)</div>
+                <div style="text-align: center; margin-top: 4px; font-size: 11px; color: #fbbf24; font-weight: bold;" id="modalPrizeText">(79.38 ETB)</div>
             </div>
 
             <button class="play-again-btn" onclick="closeModal('winnerModal')">Play Again</button>
         </div>
     </div>
 
-    <!-- BOTTOM NAVBAR -->
     <div class="navbar">
         <div class="nav-item active" onclick="switchTab('gameTab', this)"><div class="nav-icon">🎮</div>ጨዋታ</div>
         <div class="nav-item" onclick="switchTab('walletTab', this)"><div class="nav-icon">💳</div>ዋሌት</div>
@@ -284,29 +291,6 @@
         let roomSelectedBoards = {};
         let globalStartTime = null;
         let clientTimerInterval = null;
-        
-        // የድምጽ ማስታወቂያ ሁኔታ (Sound State)
-        let soundEnabled = true;
-
-        function toggleSound() {
-            soundEnabled = !soundEnabled;
-            const btn = document.getElementById('soundToggleBtn');
-            if (btn) {
-                btn.innerText = soundEnabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
-                btn.style.background = soundEnabled ? '#2b3a4a' : '#e53935';
-            }
-        }
-
-        // ቁጥር ሲጠራ በድምጽ የሚናገር ሎጂክ
-        function speakNumber(text) {
-            if (soundEnabled && 'speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // ቀድሞ የሚነገር ካለ ማቋረጥ
-                let utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                utterance.rate = 1.0;
-                window.speechSynthesis.speak(utterance);
-            }
-        }
 
         window.addEventListener('DOMContentLoaded', async () => {
             await fetchUserData();
@@ -350,22 +334,15 @@
             document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
         }
 
-        socket.on('playersUpdate', (data) => {
-            if (data) updateDerashUI(data);
-        });
-
-        socket.on('activePlayersUpdate', (data) => {
-            if (data) updateDerashUI(data);
-        });
+        socket.on('playersUpdate', (data) => { if (data) updateDerashUI(data); });
+        socket.on('activePlayersUpdate', (data) => { if (data) updateDerashUI(data); });
 
         socket.on('assignedRoom', (data) => {
             currentRoomId = data.roomId;
             document.getElementById('gameIdDisplay').innerText = currentRoomId;
             globalStartTime = data.startTime;
-            
             updateDerashUI(data);
             startClientCountdown();
-
             if (data.selectedBoards) {
                 roomSelectedBoards = data.selectedBoards;
                 updateBoardsUI();
@@ -383,7 +360,6 @@
                 if (!globalStartTime) return;
                 let remaining = Math.max(0, Math.floor((globalStartTime - Date.now()) / 1000));
                 document.getElementById('countdownText').innerText = `${remaining}s`;
-
                 if (remaining <= 0) clearInterval(clientTimerInterval);
             }, 1000);
         }
@@ -429,9 +405,7 @@
             updateBoardsUI();
         });
 
-        socket.on('boardSelectError', (data) => {
-            alert(data.message);
-        });
+        socket.on('boardSelectError', (data) => { alert(data.message); });
 
         socket.on('numberDrawn', (data) => {
             let rand = data.number;
@@ -441,9 +415,6 @@
             let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
             let callText = `${letter}-${rand}`;
             document.getElementById('currentCallCircle').innerText = callText;
-
-            // ቁጥር ሲጠራ ድምጽ እንዲጫወት ማድረግ
-            speakNumber(`${letter} ${rand}`);
 
             let gridCell = document.getElementById(`grid-num-${rand}`);
             if(gridCell) gridCell.classList.add('called');
@@ -491,7 +462,6 @@
                                 cell.classList.add('win-orange');
                             }
                         }
-                        
                         modalGrid.appendChild(cell);
                     });
                 });
@@ -508,6 +478,13 @@
         function showGameStep(stepId) {
             document.querySelectorAll('.game-step').forEach(s => s.classList.remove('active'));
             document.getElementById(stepId).classList.add('active');
+
+            const header = document.getElementById('mainHeader');
+            if (stepId === 'gameStepBet') {
+                header.classList.remove('hidden');
+            } else {
+                header.classList.add('hidden');
+            }
         }
 
         function selectBet(amount) {
@@ -633,7 +610,6 @@
             } catch (e) { return alert('የኔትወርክ ስህተት።'); }
 
             socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
-
             updateHeaderStats();
 
             const calledGrid = document.getElementById('calledGrid');
@@ -730,7 +706,7 @@
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount, details: smsText })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount })
                 });
                 const data = await res.json();
                 if(data.success) {
@@ -747,20 +723,17 @@
             const details = document.getElementById('withdrawAccountDetails').value;
 
             if (!amount || !details) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
-            
-            if (parseFloat(amount) > userWallet) {
-                return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
-            }
+            if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
 
             try {
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details: `${method} - ${details}` })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details })
                 });
                 const data = await res.json();
                 if(data.success) {
-                    alert(`የዊዝድሮው (Withdraw) ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
+                    alert(`የዊዝድሮው ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('withdrawAmount').value = '';
                     document.getElementById('withdrawAccountDetails').value = '';
                 } else {
