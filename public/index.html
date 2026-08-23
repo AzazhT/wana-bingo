@@ -61,10 +61,10 @@
         .btn-back-small { width: 100%; background: #1e293b; color: #fbbf24; border: 1px solid #334155; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: bold; text-align: center; }
 
         /* የግራ እና ቀኝ ዋና አቀማመጥ */
-        .game-layout { display: flex; gap: 6px; justify-content: space-between; align-items: flex-start; }
+        .game-layout { display: flex; gap: 6px; justify-content: space-between; align-items: stretch; }
         
         /* የግራ በኩል 1-75 የቁጥር ሰንጠረዥ ቁመቱ ልክ እስከ አረንጓዴው መስመር ድረስ እንዲረዝም ተስተካክሏል */
-        .called-grid-container { background: #1e293b; padding: 6px; border-radius: 8px; width: 44%; border: 1px solid #334155; height: 312px; display: flex; flex-direction: column; }
+        .called-grid-container { background: #1e293b; padding: 6px; border-radius: 8px; width: 44%; border: 1px solid #334155; display: flex; flex-direction: column; }
         .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 4px; text-align: center; font-weight: bold; font-size: 11px; }
         
         .b-header { background: #fbbf24; color: #000; border-radius: 3px; padding: 2px 0; }
@@ -74,8 +74,8 @@
         .o-header { background: #a855f7; color: #fff; border-radius: 3px; padding: 2px 0; }
 
         .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; flex-grow: 1; }
-        .grid-num { background: #0f172a; color: #64748b; font-size: 10px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 3px; font-weight: bold; }
-        .grid-num.called { background: #fbbf24; color: #000; font-size: 11px; }
+        .grid-num { background: #0f172a; color: #64748b; font-size: 9px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 2px; font-weight: bold; }
+        .grid-num.called { background: #fbbf24; color: #000; font-size: 10px; }
 
         /* የቀኝ በኩል ፓነል */
         .right-panel { width: 54%; display: flex; flex-direction: column; gap: 6px; }
@@ -174,8 +174,8 @@
                 </div>
 
                 <div class="game-layout">
-                    <!-- የግራ በኩል 1-75 ሰንጠረዥ -->
-                    <div class="called-grid-container">
+                    <!-- የግራ በኩል 1-75 ሰንጠረዥ (ቁመቱ ልክ እስከ አረንጓዴው መስመር እንዲረዝም ተደርጓል) -->
+                    <div class="called-grid-container" id="calledGridContainer">
                         <div class="bingo-header-row">
                             <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
                         </div>
@@ -183,7 +183,7 @@
                     </div>
 
                     <!-- የቀኝ በኩል ፓነል -->
-                    <div class="right-panel">
+                    <div class="right-panel" id="rightPanel">
                         <div class="countdown-box">
                             <span>Count Down</span>
                             <span id="countdownText" style="color:#fbbf24; font-size: 13px;">12</span>
