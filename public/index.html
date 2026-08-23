@@ -474,7 +474,7 @@
                 btn.innerText = i;
                 btn.onclick = () => {
                     if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
-                        alert('ይህ ቦርድ በሌላ ተጫዋች ተይዟል!');
+                        alert('ይህ ቦርድ በሌላ ተጫዋች ወይም በቦት ተይዟል!');
                         return;
                     }
                     socket.emit('selectBoardTemp', { roomId: currentRoomId, boardNumber: i });
