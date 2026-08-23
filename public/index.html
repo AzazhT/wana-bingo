@@ -268,8 +268,10 @@
                 currentDerashAmount = parseFloat(data.derashAmount);
             } else if (typeof data.derash !== 'undefined') {
                 currentDerashAmount = parseFloat(data.derash);
+            } else if (typeof data.prizePool !== 'undefined') {
+                currentDerashAmount = parseFloat(data.prizePool);
             } else {
-                currentDerashAmount = currentActivePlayers * currentBet * 0.85; 
+                currentDerashAmount = currentActivePlayers * currentBet * 0.90; 
             }
             
             document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
@@ -316,6 +318,10 @@
         socket.on('gameStarted', (data) => {
             document.getElementById('countdownText').innerText = "Started!";
             if (clientTimerInterval) clearInterval(clientTimerInterval);
+            if (data && data.prizePool) {
+                currentDerashAmount = parseFloat(data.prizePool);
+                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
+            }
             updateBoardsUI();
         });
 
@@ -342,6 +348,10 @@
 
         socket.on('gameJoinSuccess', (data) => {
             selectedCardId = data.boardNumber;
+            if (data.prizePool) {
+                currentDerashAmount = parseFloat(data.prizePool);
+                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
+            }
             displayPreview(selectedCardId);
             updateBoardsUI();
         });
@@ -574,7 +584,7 @@
             if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) isBingo = true;
 
             if(isBingo) {
-                let winAmount = currentDerashAmount > 0 ? currentDerashAmount : (currentBet * 15 * 0.85);
+                let winAmount = currentDerashAmount > 0 ? currentDerashAmount : (currentBet * 15 * 0.90);
                 socket.emit('claimBingo', { identifier: currentUser.id, winAmount, roomId: currentRoomId });
             } else {
                 alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
