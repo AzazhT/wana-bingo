@@ -23,7 +23,6 @@ const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 let bot = null;
 if (TOKEN) {
     try {
-        // 409 Conflict ችግሩን ለመከላከል ዌብሁክን (Webhook) አጥፍተን ፖሊንግ እንጀምራለን
         bot = new TelegramBot(TOKEN, {  
             polling: {
                 interval: 300,
@@ -32,7 +31,6 @@ if (TOKEN) {
             } 
         });
         
-        // ቀደም ሲል የተከፈቱ ሌሎች ግንኙነቶች ካሉ እንዳይጋጩ ዌብሁክን እናጸዳለን
         bot.deleteWebHook().then(() => {
             console.log('Telegram Bot started successfully and webhook cleared!');
         }).catch((err) => {
@@ -48,6 +46,36 @@ if (TOKEN) {
 } else {
     console.error('ERROR: Telegram Bot Token not provided!');
 }
+
+// ሰርቨሩ ሲነሳ ዳታቤዝ ውስጥ 'details' ኮለመን መኖሩን በራሱ ያረጋግጣል (Auto-migration)
+async function initializeDatabase() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS transactions (
+                id SERIAL PRIMARY KEY,
+                tx_id VARCHAR(50),
+                identifier VARCHAR(100),
+                type VARCHAR(50),
+                amount DECIMAL(10,2),
+                details TEXT,
+                handled BOOLEAN DEFAULT FALSE
+            );
+        `);
+        // details የሚባል ኮለመን ከሌለ በራሱ ይጨምረዋል
+        await pool.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' column_name='details') THEN
+                    ALTER TABLE transactions ADD COLUMN details TEXT;
+                END IF;
+            END $$;
+        `);
+        console.log('Database table checked and updated successfully.');
+    } catch (err) {
+        console.error('Database initialization error:', err);
+    }
+}
+initializeDatabase();
 
 // REST APIs for User & Wallet
 app.post('/api/get-user', async (req, res) => {
@@ -100,6 +128,7 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
+// የዊዝድሮው እና የዲፖዚት ጥያቄ መቀበያ (details ን ጨምሮ)
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
@@ -116,9 +145,10 @@ app.post('/api/request-transaction', async (req, res) => {
             }
         }
 
+        // የባንክ አካውንት/ዲቴልስ መረጃን (details) ጨምሮ ዳታቤዝ ውስጥ እናስገባለን
         await pool.query(
-            'INSERT INTO transactions (tx_id, identifier, type, amount, handled) VALUES ($1, $2, $3, $4, FALSE)',
-            [tx_id, identifier, type, amount]
+            'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
+            [tx_id, identifier, type, amount, details || 'N/A']
         );
         res.json({ success: true, tx_id });
     } catch (err) {
@@ -180,7 +210,7 @@ if (bot) {
 
     bot.onText(/\/deposit/, (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ።`, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላቁ።`, { parse_mode: 'Markdown' });
     });
 
     bot.onText(/\/withdraw/, (msg) => {
@@ -223,6 +253,7 @@ if (bot) {
         }
     });
 
+    // አድሚን የሚጠብቃቸውን ጥያቄዎች ሲያይ የባንክ አካውንት (details) ጨምሮ እንዲያሳይ
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID) return;
@@ -247,7 +278,8 @@ if (bot) {
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
                             `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
-                            `💰 መጠን: ${tx.amount} ብር`;
+                            `💰 መጠን: ${tx.amount} ብር\n` +
+                            `🏦 ባንክ/አካውንት: ${tx.details || 'N/A'}`; // የባንክ አካውንቱ እዚህ ጋር ይታያል
 
                 bot.sendMessage(chatId, msgText, {
                     reply_markup: {
@@ -322,7 +354,7 @@ if (bot) {
     });
 }
 
-// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT (MAX 3 ROUNDS) ---
+// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
