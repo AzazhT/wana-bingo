@@ -223,7 +223,6 @@
 
         let userWallet = 0.00;
         let currentBet = 20;
-        
         let currentActivePlayers = 0;
         let currentDerashAmount = 0.0;
         
@@ -258,7 +257,6 @@
             } catch (e) { console.error(e); }
         }
 
-        // --- DERASH AND ACTIVE PLAYERS HELPER ---
         function updateDerashUI(data) {
             if (typeof data.activePlayersCount !== 'undefined') {
                 currentActivePlayers = data.activePlayersCount;
@@ -266,21 +264,17 @@
                 document.getElementById('activePlayersDisplayLive').innerText = currentActivePlayers;
             }
             
-            // ከሰርቨር የሚመጣውን prizePool (የ 10% ቅናሽ ተደርጎበት የሚመጣውን) በትክክል እንቀበላለን
-            if (typeof data.prizePool !== 'undefined') {
-                currentDerashAmount = parseFloat(data.prizePool);
-            } else if (typeof data.derashAmount !== 'undefined') {
+            if (typeof data.derashAmount !== 'undefined') {
                 currentDerashAmount = parseFloat(data.derashAmount);
             } else if (typeof data.derash !== 'undefined') {
                 currentDerashAmount = parseFloat(data.derash);
             } else {
-                currentDerashAmount = currentActivePlayers * currentBet * 0.90; 
+                currentDerashAmount = currentActivePlayers * currentBet * 0.85; 
             }
             
             document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
         }
 
-        // --- SOCKET EVENT HANDLERS ---
         socket.on('playersUpdate', (data) => {
             if (data) updateDerashUI(data);
         });
@@ -295,7 +289,6 @@
             globalStartTime = data.startTime;
             
             updateDerashUI(data);
-
             startClientCountdown();
 
             if (data.selectedBoards) {
@@ -323,10 +316,6 @@
         socket.on('gameStarted', (data) => {
             document.getElementById('countdownText').innerText = "Started!";
             if (clientTimerInterval) clearInterval(clientTimerInterval);
-            if (data && typeof data.prizePool !== 'undefined') {
-                currentDerashAmount = parseFloat(data.prizePool);
-                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-            }
             updateBoardsUI();
         });
 
@@ -353,10 +342,6 @@
 
         socket.on('gameJoinSuccess', (data) => {
             selectedCardId = data.boardNumber;
-            if (typeof data.prizePool !== 'undefined') {
-                currentDerashAmount = parseFloat(data.prizePool);
-                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-            }
             displayPreview(selectedCardId);
             updateBoardsUI();
         });
@@ -589,7 +574,7 @@
             if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) isBingo = true;
 
             if(isBingo) {
-                let winAmount = currentDerashAmount > 0 ? currentDerashAmount : (currentActivePlayers * currentBet * 0.90);
+                let winAmount = currentDerashAmount > 0 ? currentDerashAmount : (currentBet * 15 * 0.85);
                 socket.emit('claimBingo', { identifier: currentUser.id, winAmount, roomId: currentRoomId });
             } else {
                 alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
