@@ -3,50 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Wana Bingo Retro Deluxe</title>
+    <title>Wana Bingo Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #070913;
-            --card-bg: rgba(19, 26, 47, 0.85);
-            --card-border: rgba(255, 255, 255, 0.12);
+            --bg-dark: #070a12;
+            --card-bg: rgba(22, 30, 49, 0.75);
+            --card-border: rgba(255, 255, 255, 0.15);
             --primary-cyan: #00f2fe;
             --accent-green: #10b981;
-            --accent-amber: #ffb703;
-            --accent-rose: #f43f5e;
-            --accent-purple: #9d4edd;
-            --text-main: #f8fafc;
+            --accent-amber: #f59e0b;
+            --accent-rose: #ff2a5f;
+            --accent-purple: #a855f7;
+            --text-main: #ffffff;
             --text-sub: #94a3b8;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; }
         
         body { 
-            background: #070913;
+            background: radial-gradient(circle at top, #111827 0%, #070a12 100%); 
             color: var(--text-main); 
             padding-bottom: 65px; 
             user-select: none; 
             min-height: 100vh;
-            overflow-x: hidden;
-            position: relative;
-        }
-
-        /* Moving Animated Canvas Background */
-        #bgCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -1;
-            pointer-events: none;
         }
         
+        /* KEYFRAME ANIMATIONS */
+        @keyframes popIn {
+            0% { transform: scale(0.6); opacity: 0; }
+            80% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 10px rgba(255, 42, 95, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(255, 42, 95, 0.9), 0 0 10px rgba(255, 255, 255, 0.8); }
+            100% { box-shadow: 0 0 10px rgba(255, 42, 95, 0.4); }
+        }
+
+        /* መጨረሻ የተጠራች ቁጥር ብልጭልጭ (Asterisk Glow Animation) */
+        @keyframes latestCallPulse {
+            0% { transform: scale(1); box-shadow: 0 0 8px #ff2a5f; }
+            50% { transform: scale(1.25); box-shadow: 0 0 20px #ff2a5f, 0 0 10px #ffffff; background: #ff003c; color: #fff; z-index: 10; }
+            100% { transform: scale(1.1); box-shadow: 0 0 12px #ff2a5f; }
+        }
+
+        @keyframes callPop {
+            0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        @keyframes modalSlideUp {
+            0% { transform: translateY(50px) scale(0.9); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
         /* Fixed Top Header */
         .header { 
-            background: rgba(15, 23, 42, 0.9); 
+            background: rgba(15, 23, 42, 0.85); 
             backdrop-filter: blur(12px);
             padding: 10px 16px; 
             border-bottom: 1px solid var(--card-border); 
@@ -56,18 +74,20 @@
             position: sticky; 
             top: 0; 
             z-index: 100; 
+            transition: all 0.3s ease;
         }
         .header.hidden { display: none !important; }
 
-        .logo { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #00f2fe, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 6px; }
-        .balance-badge { background: rgba(16, 185, 129, 0.15); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .logo { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #00f2fe, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 6px; }
+        .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.3); transition: transform 0.2s; }
+        .balance-badge:active { transform: scale(0.95); }
         
-        .container { padding: 8px; max-width: 500px; margin: 0 auto; position: relative; z-index: 1; }
+        .container { padding: 8px; max-width: 500px; margin: 0 auto; }
         .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .tab-content.active { display: block; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         
         .game-step { display: none; }
-        .game-step.active { display: block; }
+        .game-step.active { display: block; animation: popIn 0.3s ease-out; }
 
         /* Navigation Bar */
         .navbar { 
@@ -76,46 +96,58 @@
             display: flex; justify-content: space-around; padding: 8px 0; 
             border-top: 1px solid var(--card-border); z-index: 1000; 
         }
-        .nav-item { color: var(--text-sub); text-decoration: none; font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; flex: 1; transition: all 0.2s; }
-        .nav-item.active { color: var(--primary-cyan); }
-        .nav-icon { font-size: 18px; margin-bottom: 2px; }
+        .nav-item { color: var(--text-sub); text-decoration: none; font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; flex: 1; transition: all 0.2s ease; }
+        .nav-item.active { color: var(--primary-cyan); transform: translateY(-2px); }
+        .nav-icon { font-size: 18px; margin-bottom: 2px; transition: transform 0.2s; }
+        .nav-item.active .nav-icon { transform: scale(1.2); }
 
-        .card { background: var(--card-bg); backdrop-filter: blur(10px); padding: 16px; border-radius: 16px; margin-bottom: 12px; border: 1px solid var(--card-border); box-shadow: 0 8px 32px rgba(0,0,0,0.37); }
-        .btn { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 800; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3); }
+        .card { background: var(--card-bg); backdrop-filter: blur(8px); padding: 16px; border-radius: 16px; margin-bottom: 12px; border: 1px solid var(--card-border); }
+        .btn { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 800; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3); transition: all 0.2s ease; }
+        .btn:active { transform: scale(0.97); }
         
-        /* Action Buttons Wrapper */
         .bottom-actions-wrapper { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; width: 100%; }
         .btn-bingo-small { 
-            background: linear-gradient(135deg, #ff007f, #7928ca); 
+            background: linear-gradient(135deg, #ff2a5f, #e11d48); 
             font-size: 16px; padding: 12px; border-radius: 12px; 
-            box-shadow: 0 4px 20px rgba(255, 0, 127, 0.5); 
+            box-shadow: 0 4px 20px rgba(255, 42, 95, 0.4); 
             cursor: pointer; color: #fff; font-weight: 900; border: none; text-align: center; width: 100%; 
-            letter-spacing: 1px; transition: transform 0.1s;
+            letter-spacing: 1px; transition: all 0.15s ease;
+            animation: pulseGlow 2s infinite ease-in-out;
         }
-        .btn-bingo-small:active { transform: scale(0.98); }
+        .btn-bingo-small:active { transform: scale(0.95); }
         .btn-leave-small { 
-            background: rgba(244, 63, 94, 0.1); 
+            background: rgba(255, 42, 95, 0.1); 
             font-size: 11px; padding: 6px 12px; border-radius: 8px; 
             cursor: pointer; color: #fda4af; font-weight: 700; 
-            border: 1px solid rgba(244, 63, 94, 0.3); text-align: center; align-self: flex-end; 
+            border: 1px solid rgba(255, 42, 95, 0.3); text-align: center; align-self: flex-end; 
+            transition: background 0.2s;
         }
+        .btn-leave-small:active { background: rgba(255, 42, 95, 0.2); }
         
-        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); color: #fff; border-radius: 10px; outline: none; font-weight: 600; }
+        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); color: #fff; border-radius: 10px; outline: none; font-weight: 600; transition: border-color 0.2s; }
+        input:focus, textarea:focus, select:focus { border-color: var(--primary-cyan); }
 
         .header-box { text-align: center; padding: 16px 0; }
-        .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; text-shadow: 0 0 10px rgba(255,183,3,0.3); }
+        .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
         .header-box p { font-size: 13px; color: var(--text-sub); }
         
         .bet-selection-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
-        .bet-grid-btn { padding: 16px; font-size: 18px; font-weight: 800; background: var(--card-bg); color: var(--accent-amber); border: 1px solid rgba(255, 183, 3, 0.4); border-radius: 12px; cursor: pointer; text-align: center; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s; }
-        .bet-grid-btn:hover { background: rgba(255, 183, 3, 0.15); transform: translateY(-2px); }
+        .bet-grid-btn { 
+            padding: 16px; font-size: 18px; font-weight: 800; 
+            background: var(--card-bg); color: var(--accent-amber); 
+            border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; 
+            cursor: pointer; text-align: center; width: 100%; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .bet-grid-btn:active { transform: scale(0.97); background: rgba(245, 158, 11, 0.15); }
 
         /* Top Dashboard Stats Bar */
         .top-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
-        .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; transition: transform 0.2s; }
         .stat-card span { display: block; font-size: 13px; color: #fff; margin-top: 2px; font-weight: 900; }
 
-        /* PAGE 2 OPTIMIZED LAYOUT */
+        /* PAGE 2 OPTIMIZED SELECTION BOARD */
         .cards-grid { 
             display: grid; 
             grid-template-columns: repeat(10, 1fr); 
@@ -125,27 +157,50 @@
             border-radius: 10px; 
             border: 1px solid var(--card-border); 
         }
+        
+        /* 1. ያልተያዙት ቁጥሮች (Available - ነጭ) */
         .card-btn { 
-            background: rgba(255, 255, 255, 0.05); 
-            color: var(--text-main); 
-            border: 1px solid rgba(255, 255, 255, 0.05); 
+            background: rgba(255, 255, 255, 0.08); 
+            color: #ffffff; 
+            border: 1px solid rgba(255, 255, 255, 0.4); 
             padding: 6px 0; 
             border-radius: 4px; 
             font-weight: 800; 
             font-size: 11px; 
             cursor: pointer; 
-            transition: all 0.15s;
+            transition: all 0.15s ease;
         }
-        .card-btn.active { background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); border: 1px solid #34d399; }
-        .card-btn.taken { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); cursor: not-allowed; opacity: 0.5; border: 1px solid rgba(244, 63, 94, 0.2); }
+        .card-btn:active { transform: scale(0.85); }
+
+        /* 2. ተጫዋቹ እየመረጠ ያለው (Selected - ድምቅ ያለ አረንጓዴ) */
+        .card-btn.active { 
+            background: linear-gradient(135deg, #00ff87, #10b981) !important; 
+            color: #000000 !important; 
+            font-weight: 900;
+            box-shadow: 0 0 12px rgba(0, 255, 135, 0.9); 
+            border: 1px solid #ffffff !important; 
+            transform: scale(1.08); 
+            z-index: 2; 
+        }
+
+        /* 3. በሌላ ሰው የተያዙት (Taken - ድምቅ ያለ ቀይ) */
+        .card-btn.taken { 
+            background: linear-gradient(135deg, #ff003c, #cc0000) !important; 
+            color: #ffffff !important; 
+            cursor: not-allowed; 
+            opacity: 0.9; 
+            font-weight: 900;
+            border: 1px solid #ff4d6d !important; 
+            box-shadow: 0 0 8px rgba(255, 0, 60, 0.7);
+        }
 
         /* Compact 5x5 Card Preview Box */
         .bottom-section { 
             margin-top: 8px; 
-            background: linear-gradient(135deg, rgba(88, 28, 135, 0.4), rgba(15, 23, 42, 0.8)); 
+            background: linear-gradient(135deg, rgba(88, 28, 135, 0.3), rgba(15, 23, 42, 0.7)); 
             padding: 8px 10px; 
             border-radius: 10px; 
-            border: 1px solid rgba(168, 85, 247, 0.4); 
+            border: 1px solid rgba(168, 85, 247, 0.3); 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -170,12 +225,15 @@
             padding: 4px 0; 
             border-radius: 3px; 
             border: 1px solid rgba(168, 85, 247, 0.2); 
+            animation: popIn 0.2s ease-out;
         }
         .preview-cell.free { background: var(--accent-green); color: #fff; border-color: #34d399; font-weight: 900; }
 
         .action-column { display: flex; gap: 8px; margin-top: 8px; width: 100%; }
-        .btn-start-game { flex: 2; background: linear-gradient(135deg, var(--primary-cyan), #0284c7); color: #070a12; border: none; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 900; text-align: center; box-shadow: 0 4px 12px rgba(0, 242, 254, 0.4); }
-        .btn-back-small { flex: 1; background: rgba(255, 255, 255, 0.05); color: var(--accent-amber); border: 1px solid var(--card-border); padding: 10px; border-radius: 10px; font-size: 12px; cursor: pointer; font-weight: 700; text-align: center; }
+        .btn-start-game { flex: 2; background: linear-gradient(135deg, var(--primary-cyan), #0284c7); color: #070a12; border: none; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 900; text-align: center; box-shadow: 0 4px 12px rgba(0, 242, 254, 0.3); transition: all 0.2s; }
+        .btn-start-game:active { transform: scale(0.96); }
+        .btn-back-small { flex: 1; background: rgba(255, 255, 255, 0.05); color: var(--accent-amber); border: 1px solid var(--card-border); padding: 10px; border-radius: 10px; font-size: 12px; cursor: pointer; font-weight: 700; text-align: center; transition: all 0.2s; }
+        .btn-back-small:active { transform: scale(0.96); }
 
         /* Game Layout (Live Step) */
         .game-layout { display: flex; gap: 8px; justify-content: space-between; height: calc(100vh - 210px); min-height: 420px; }
@@ -194,97 +252,66 @@
         .o-header { background: var(--accent-purple); color: #fff; border-radius: 4px; padding: 4px 0; }
 
         .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; overflow-y: auto; }
-        .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.02); }
-        .grid-num.called { background: var(--accent-amber); color: #000; font-size: 13px; font-weight: 900; box-shadow: 0 0 10px rgba(255, 183, 3, 0.7); }
-
-        /* Right Panel Layout Adjustments */
-        .right-panel { width: 50%; display: flex; flex-direction: column; gap: 8px; height: 100%; }
-        .countdown-box { background: var(--card-bg); color: var(--text-main); padding: 6px 10px; border-radius: 10px; display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; border: 1px solid var(--card-border); }
+        .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.02); transition: all 0.2s; }
         
-        /* Vibrant Pulsing Current Call Box */
-        .current-call-box { 
-            background: rgba(15, 23, 42, 0.95); 
-            padding: 6px 10px; 
-            border-radius: 12px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            border: 1px solid var(--accent-amber); 
-            box-shadow: 0 0 12px rgba(255, 183, 3, 0.3);
-            margin-bottom: 4px; 
+        /* ቀደም ብለው የተጠሩ ቁጥሮች (ቀይ/ወርቃማ Glow) */
+        .grid-num.called { 
+            background: linear-gradient(135deg, #ff2a5f, #e11d48); 
+            color: #ffffff; font-size: 12px; font-weight: 900; 
+            box-shadow: 0 0 8px rgba(255, 42, 95, 0.8); 
         }
-        .call-text { font-size: 10px; font-weight: 800; color: var(--text-sub); }
-        
-        /* Custom Glowing Golden Current Call Circle with Asterisk Accent */
-        .call-circle { 
-            background: linear-gradient(135deg, #ffe600, #ffb703, #ff007f); 
-            background-size: 200% 200%;
-            animation: gradientPulse 2s ease infinite;
-            color: #000; 
-            font-weight: 900; 
-            padding: 4px 10px; 
-            border-radius: 16px; 
-            font-size: 13px; 
-            box-shadow: 0 0 14px rgba(255, 183, 3, 0.8);
+
+        /* 4. መጨረሻ የተጠራች ቁጥር (*Asterisk* + Glowing Blink) */
+        .grid-num.called.latest-call { 
+            background: linear-gradient(135deg, #ff003c, #ff4d6d) !important; 
+            color: #ffffff !important; 
+            font-size: 13px !important; 
+            font-weight: 900 !important; 
+            animation: latestCallPulse 1.2s infinite ease-in-out;
             border: 1px solid #ffffff;
-            position: relative;
-        }
-        .call-circle::before {
-            content: "★";
-            font-size: 8px;
-            color: #fff;
-            margin-right: 3px;
-        }
-        
-        @keyframes gradientPulse {
-            0% { background-position: 0% 50%; transform: scale(1); }
-            50% { background-position: 100% 50%; transform: scale(1.05); }
-            100% { background-position: 0% 50%; transform: scale(1); }
         }
 
-        .recent-calls { display: flex; gap: 4px; overflow-x: auto; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 8px; min-height: 28px; align-items: center; border: 1px solid var(--card-border); margin-bottom: 6px; }
-        .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 10px; white-space: nowrap; }
-
-        /* Prominent & Vibrant User Board Design */
-        .user-board { 
-            background: linear-gradient(135deg, rgba(20, 15, 38, 0.95), rgba(30, 27, 75, 0.9)); 
-            padding: 8px; 
-            border-radius: 14px; 
-            border: 2px solid var(--primary-cyan); 
-            box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: space-between; 
+        .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; height: 100%; }
+        .countdown-box { background: var(--card-bg); color: var(--text-main); padding: 8px 10px; border-radius: 10px; display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; border: 1px solid var(--card-border); }
+        .current-call-box { background: var(--card-bg); padding: 8px 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--primary-cyan); box-shadow: 0 0 10px rgba(0, 242, 254, 0.15); }
+        .call-text { font-size: 11px; font-weight: 800; color: var(--text-sub); }
+        .call-circle { 
+            background: linear-gradient(135deg, var(--accent-amber), #f97316); 
+            color: #000; font-weight: 900; padding: 6px 12px; border-radius: 20px; font-size: 14px; 
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+            transition: all 0.2s;
         }
+        .call-circle.animate { animation: callPop 0.4s ease-out; }
+
+        .recent-calls { display: flex; gap: 4px; overflow-x: auto; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 8px; min-height: 32px; align-items: center; border: 1px solid var(--card-border); }
+        .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; animation: popIn 0.25s ease-out; }
+
+        .user-board { background: var(--card-bg); padding: 8px; border-radius: 12px; border: 1px solid var(--card-border); flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; margin-top: 4px; }
-        
         .board-cell { 
-            background: rgba(255, 255, 255, 0.07); 
-            color: #fff; 
-            font-size: 13px; 
-            font-weight: 900; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            border: 1px solid rgba(255, 255, 255, 0.1); 
+            background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-weight: 800; 
+            display: flex; align-items: center; justify-content: center; border-radius: 4px; 
+            cursor: pointer; border: 1px solid var(--card-border); 
             transition: all 0.15s ease;
         }
+        .board-cell:active { transform: scale(0.9); }
         .board-cell.free, .board-cell.marked { 
-            background: linear-gradient(135deg, #10b981, #059669); 
-            color: #ffffff; 
-            border-color: #34d399; 
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.7); 
-            font-size: 14px;
+            background: var(--accent-green); color: white; border-color: #34d399; 
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); 
+            animation: popIn 0.2s ease-out;
         }
-        .board-footer { text-align: center; font-size: 10px; color: var(--primary-cyan); margin-top: 4px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+        .board-footer { text-align: center; font-size: 10px; color: var(--text-sub); margin-top: 4px; font-weight: 800; }
 
         /* Winner Modal Layout */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 2000; padding: 16px; }
-        .modal-card { background: linear-gradient(135deg, #1e1b4b, #0f172a); width: 100%; max-width: 360px; padding: 20px; border-radius: 20px; text-align: center; border: 1px solid var(--accent-purple); color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
-        .winner-title-box { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; padding: 12px; border-radius: 12px; font-size: 24px; font-weight: 900; margin-bottom: 8px; letter-spacing: 1px; }
+        .modal-card { 
+            background: linear-gradient(135deg, #1e1b4b, #0f172a); 
+            width: 100%; max-width: 360px; padding: 20px; border-radius: 20px; 
+            text-align: center; border: 1px solid var(--accent-purple); color: #fff; 
+            box-shadow: 0 10px 35px rgba(168, 85, 247, 0.3); 
+            animation: modalSlideUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .winner-title-box { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; padding: 12px; border-radius: 12px; font-size: 24px; font-weight: 900; margin-bottom: 8px; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4); }
         .winner-subtitle { font-size: 13px; font-weight: 700; color: #e9d5ff; margin-bottom: 14px; }
         
         .modal-board-wrapper { background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; margin-bottom: 14px; border: 1px solid rgba(168, 85, 247, 0.3); }
@@ -292,19 +319,17 @@
         .modal-board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
         
         .modal-cell { background: rgba(255,255,255,0.05); color: #f3e8ff; font-size: 12px; font-weight: 800; text-align: center; padding: 8px 0; border-radius: 4px; }
-        .modal-cell.win-orange { background: #f97316 !important; color: #fff !important; }
-        .modal-cell.win-green { background: var(--accent-green) !important; color: #fff !important; }
+        .modal-cell.win-orange { background: #f97316 !important; color: #fff !important; box-shadow: 0 0 8px #f97316; }
+        .modal-cell.win-green { background: var(--accent-green) !important; color: #fff !important; box-shadow: 0 0 8px var(--accent-green); }
 
         .modal-footer-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 11px; background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 8px; }
         .modal-badge-name { background: #0d9488; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 800; }
         
-        .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; }
+        .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); }
+        .play-again-btn:active { transform: scale(0.97); }
     </style>
 </head>
 <body>
-
-    <!-- Dynamic Animated Background Canvas -->
-    <canvas id="bgCanvas"></canvas>
 
     <div class="header" id="mainHeader">
         <div class="logo">🎲 <span>Wana Bingo</span></div>
@@ -373,7 +398,6 @@
                             <span id="countdownText" style="color:var(--accent-amber);">30s</span>
                         </div>
 
-                        <!-- Enhanced Current Call Display -->
                         <div class="current-call-box">
                             <span class="call-text">Current Call</span>
                             <div class="call-circle" id="currentCallCircle">-</div>
@@ -381,7 +405,6 @@
 
                         <div class="recent-calls" id="recentCalls"></div>
 
-                        <!-- User Board -->
                         <div class="user-board">
                             <div class="bingo-header-row">
                                 <div class="b-header">B</div><div class="i-header">I</div><div class="n-header">N</div><div class="g-header">G</div><div class="o-header">O</div>
@@ -417,7 +440,7 @@
                 </select>
                 <input type="number" id="withdrawAmount" placeholder="የሚወጣው የብር መጠን (ETB)">
                 <input type="text" id="withdrawAccountDetails" placeholder="የባንክ አካውንት ቁጥር ወይም ስልክ ቁጥር">
-                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #f43f5e, #e11d48);" onclick="submitWithdraw()">ወጪ አድርግ (Withdraw)</button>
+                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #ff2a5f, #e11d48);" onclick="submitWithdraw()">ወጪ አድርግ (Withdraw)</button>
             </div>
         </div>
 
@@ -461,62 +484,6 @@
     </div>
 
     <script>
-        /* Floating Animated Background Particles Script */
-        const canvas = document.getElementById('bgCanvas');
-        const ctx = canvas.getContext('2d');
-        let particles = [];
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        class Particle {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.radius = Math.random() * 12 + 4;
-                this.speedY = Math.random() * 0.8 + 0.2;
-                this.speedX = (Math.random() - 0.5) * 0.4;
-                this.opacity = Math.random() * 0.4 + 0.1;
-                this.color = Math.random() > 0.5 ? '#00f2fe' : '#9d4edd';
-            }
-            update() {
-                this.y -= this.speedY;
-                this.x += this.speedX;
-                if (this.y < -20) {
-                    this.y = canvas.height + 20;
-                    this.x = Math.random() * canvas.width;
-                }
-            }
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = this.opacity;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = this.color;
-                ctx.fill();
-                ctx.globalAlpha = 1;
-            }
-        }
-
-        for (let i = 0; i < 35; i++) {
-            particles.push(new Particle());
-        }
-
-        function animateBg() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            particles.forEach(p => {
-                p.update();
-                p.draw();
-            });
-            requestAnimationFrame(animateBg);
-        }
-        animateBg();
-
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
@@ -658,6 +625,7 @@
 
         socket.on('boardSelectError', (data) => { alert(data.message); });
 
+        /* NUMBER DRAWN LOGIC (Updated with Asterisk and Glowing Blink) */
         socket.on('numberDrawn', (data) => {
             let rand = data.number;
             drawnNumbers = data.drawnHistory || [];
@@ -665,10 +633,33 @@
 
             let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
             let callText = `${letter}-${rand}`;
-            document.getElementById('currentCallCircle').innerText = callText;
+            
+            const callCircle = document.getElementById('currentCallCircle');
+            callCircle.innerText = callText;
+            callCircle.classList.remove('animate');
+            void callCircle.offsetWidth; // Trigger reflow
+            callCircle.classList.add('animate');
 
-            let gridCell = document.getElementById(`grid-num-${rand}`);
-            if(gridCell) gridCell.classList.add('called');
+            // 1. Remove latest-call status and Asterisks from previous numbers
+            document.querySelectorAll('.grid-num').forEach(el => {
+                el.classList.remove('latest-call');
+                if(el.dataset.num) {
+                    el.innerText = el.dataset.num;
+                }
+            });
+
+            // 2. Add 'called' status to all called numbers
+            drawnNumbers.forEach(n => {
+                let cell = document.getElementById(`grid-num-${n}`);
+                if (cell) cell.classList.add('called');
+            });
+
+            // 3. Highlight current (latest) number with Asterisks (*NUM*) and Glowing Blink
+            let latestCell = document.getElementById(`grid-num-${rand}`);
+            if (latestCell) {
+                latestCell.classList.add('called', 'latest-call');
+                latestCell.innerText = `*${rand}*`;
+            }
 
             let ball = document.createElement('div');
             ball.className = 'recent-ball';
@@ -812,6 +803,7 @@
             updateHeaderStats();
         }
 
+        /* CARD BUTTON COLOR UPDATES */
         function updateBoardsUI() {
             for(let i = 1; i <= 100; i++) {
                 const btn = document.getElementById(`card-btn-${i}`);
@@ -819,12 +811,12 @@
                     btn.classList.remove('active', 'taken');
                     if(roomSelectedBoards[i]) {
                         if(roomSelectedBoards[i] === socket.id) {
-                            btn.classList.add('active'); 
+                            btn.classList.add('active'); // ተጫዋቹ የመረጠው - አረንጓዴ
                         } else {
-                            btn.classList.add('taken');  
+                            btn.classList.add('taken');  // በሌላ ሰው የተያዘ - ቀይ
                         }
                     } else if(i === selectedCardId) {
-                        btn.classList.add('active');
+                        btn.classList.add('active'); // ተጫዋቹ የመረጠው - አረንጓዴ
                     }
                 }
             }
@@ -872,6 +864,7 @@
                     let cell = document.createElement('div');
                     cell.className = 'grid-num';
                     cell.id = `grid-num-${num}`;
+                    cell.dataset.num = num;
                     cell.innerText = num;
                     calledGrid.appendChild(cell);
                 }
