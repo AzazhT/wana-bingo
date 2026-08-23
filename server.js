@@ -96,10 +96,27 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
+// የዲፖዚት እና የዊዝድሮው (Withdraw/Deposit) ጥያቄዎችን በአንድ ላይ የሚያስተናግድ API
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
+    
     try {
+        // ዊዝድሮው (WITHDRAW) ሲሆን ተጠቃሚው በቂ ባላንስ እንዳለው ማረጋገጥ
+        if (type === 'WITHDRAW') {
+            const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+            if (userRes.rows.length === 0) {
+                return res.json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
+            }
+            let currentBalance = parseFloat(userRes.rows[0].balance);
+            if (currentBalance < parseFloat(amount)) {
+                return res.json({ success: false, message: 'በዋሌትዎ ውስጥ ያለው ብር በቂ አይደለም!' });
+            }
+
+            // ጥያቄው እስኪጸድቅ ድረስ ገንዘቡን ከባላንሱ ወዲያውኑ መቀነስ ከፈለጉ እዚህ ጋር ማስተካከል ይቻላል፣ 
+            // አሁን ባለው አሰራር ግን አድሚኑ 'Approve' ሲያደርገው እንዲቀነስ ተደርጎ ተዋቅሯል።
+        }
+
         await pool.query(
             'INSERT INTO transactions (tx_id, identifier, type, amount, handled) VALUES ($1, $2, $3, $4, FALSE)',
             [tx_id, identifier, type, amount]
@@ -107,7 +124,7 @@ app.post('/api/request-transaction', async (req, res) => {
         res.json({ success: true, tx_id });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false });
+        res.status(500).json({ success: false, message: 'ሰርቨር ላይ ስህተት ተፈጥሯል' });
     }
 });
 
@@ -126,7 +143,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
                             `─────────────────────\n` +
                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -278,7 +295,8 @@ if (bot) {
                 } else if (txType === 'WITHDRAW') {
                     const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
                     if (userRes.rows.length > 0) {
-                        let newBal = parseFloat(userRes.rows[0].balance) - amount;
+                        let currentBal = parseFloat(userRes.rows[0].balance);
+                        let newBal = currentBal - amount;
                         await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal >= 0 ? newBal : 0, identifier]);
                     }
                 }
@@ -558,8 +576,6 @@ io.on('connection', (socket) => {
 
                 let boardReleasedFlag = false;
                 
-                // ጨዋታው ገና በመጠባበቅ ላይ (waiting) ከሆነ ብቻ ቦርዱ ይለቀቃል፤ 
-                // ጨዋታው ከተጀመረ ግን (playing) ቦርዱም ሆነ ቁጥሩ/አክቲቭነቱ አይሰረዝም!
                 if (room.status === 'waiting') {
                     for (let bNum in room.selectedBoards) {
                         if (room.selectedBoards[bNum] === socket.id) {
