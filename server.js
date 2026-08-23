@@ -126,7 +126,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
                             `─────────────────────\n` +
                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -145,7 +145,7 @@ if (bot) {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🚀  ዋናውን ቢንጎ ጨዋታ ጀምር (Play Bingo)  🎮', web_app: { url: WEB_APP_URL } }]
+                    [{ text: '🚀 ዋናውን ቢንጎ ጨዋታ ጀምር (Play Bingo) 🎮', web_app: { url: WEB_APP_URL } }]
                 ]
             }
         });
@@ -156,7 +156,7 @@ if (bot) {
         bot.sendMessage(chatId, `🎮 የቢንጎ ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ፡`, {
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🚀  Play Bingo Web App  🎮', web_app: { url: WEB_APP_URL } }]
+                    [{ text: '🚀 Play Bingo Web App 🎮', web_app: { url: WEB_APP_URL } }]
                 ]
             }
         });
@@ -545,7 +545,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 💡 የተስተካከለ: ጨዋታው 'playing' (ከጀመረ) በኋላ ተጫዋቹ ቢወጣ/ዲስኮኔክት ቢል ቦርዱም ሆነ የብር መጠኑ ከቶም እንዳይቀነስ ተደርጓል።
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
         for (let roomId in activeRooms) {
@@ -559,7 +558,6 @@ io.on('connection', (socket) => {
 
                 let boardReleasedFlag = false;
                 
-                // ጨዋታው 'waiting' በሆነበት ሰዓት ብቻ ቦርዱ ይሰረዛል/ይለቀቃል
                 if (room.status === 'waiting') {
                     for (let bNum in room.selectedBoards) {
                         if (room.selectedBoards[bNum] === socket.id) {
@@ -569,7 +567,6 @@ io.on('connection', (socket) => {
                         }
                     }
                 }
-                // ጨዋታው 'playing' ከሆነ ግን selectedBoards ላይ ያለው ባለቤትነት ከቶም አይሰረዝም (በዚህም ምክንያት activePlayersCount እና prizePool ከፍ ብለው ይቆያሉ)
 
                 let currentPrizePool = calculatePrizePool(room);
 
