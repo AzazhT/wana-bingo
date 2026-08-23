@@ -31,10 +31,10 @@
         .card { background: #1e293b; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #334155; }
         .btn { background: #0284c7; color: #fff; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 15px; cursor: pointer; font-weight: bold; }
         
-        /* የተስተካከሉ የቢንጎ እና ሊቭ አዝራሮች ከዋሌት/ስታትስ ስር ጥግ ላይ */
-        .bottom-actions-wrapper { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; align-items: flex-end; width: 100%; }
+        /* የተስተካከሉ የቢንጎ እና ሊቭ አዝራሮች (ሊቭ ከታች ጥግ ላይ፣ ቢንጎ ከሱ በላይ) */
+        .bottom-actions-wrapper { display: flex; flex-direction: column-reverse; gap: 6px; margin-top: 10px; width: 100%; }
         .btn-bingo-small { background: #dc2626; font-size: 14px; padding: 8px 14px; border-radius: 16px; box-shadow: 0 3px 8px rgba(220, 38, 38, 0.4); cursor: pointer; color: #fff; font-weight: bold; border: none; text-align: center; width: 100%; }
-        .btn-leave-small { background: #1e293b; font-size: 10px; padding: 4px 8px; border-radius: 6px; cursor: pointer; color: #fca5a5; font-weight: normal; border: 1px solid #dc2626; text-align: center; width: auto; align-self: flex-end; }
+        .btn-leave-small { background: #1e293b; font-size: 10px; padding: 6px 12px; border-radius: 6px; cursor: pointer; color: #fca5a5; font-weight: normal; border: 1px solid #dc2626; text-align: center; width: 100%; align-self: flex-end; }
         
         input, textarea, select { width: 100%; padding: 10px; margin-top: 6px; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 8px; outline: none; }
 
@@ -66,7 +66,6 @@
 
         .game-layout { display: flex; gap: 6px; justify-content: space-between; }
         
-        /* የተስተካከለ የኮል ቦርድ (1 እስከ 75 ያሉት ቁጥሮች የሚጠሩበት) - ከፍ እንዲል እና ትልቅ እንዲሆን */
         .called-grid-container { background: #1e293b; padding: 8px; border-radius: 8px; width: 48%; border: 1px solid #334155; max-height: 400px; overflow-y: auto; margin-top: 4px; }
         .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-bottom: 6px; text-align: center; font-weight: bold; font-size: 12px; }
         
@@ -77,8 +76,8 @@
         .o-header { background: #a855f7; color: #fff; border-radius: 4px; padding: 3px 0; }
 
         .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
-        .grid-num { background: #0f172a; color: #64748b; font-size: 15px; text-align: center; padding: 7px 0; border-radius: 4px; font-weight: bold; }
-        .grid-num.called { background: #fbbf24; color: #000; font-size: 17px; box-shadow: 0 0 6px rgba(251, 191, 36, 0.5); }
+        .grid-num { background: #0f172a; color: #64748b; font-size: 12px; text-align: center; padding: 7px 0; border-radius: 4px; font-weight: bold; }
+        .grid-num.called { background: #fbbf24; color: #000; font-size: 13px; box-shadow: 0 0 6px rgba(251, 191, 36, 0.5); }
 
         .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; }
         .countdown-box { background: #1e293b; color: #fff; padding: 6px 8px; border-radius: 8px; display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; border: 1px solid #334155; }
@@ -199,10 +198,10 @@
                     </div>
                 </div>
 
-                <!-- የተስተካከሉ የቢንጎ እና ሊቭ አዝራሮች (ከዋሌት ስር ጥግ ላይ በትንሽ እና ትኩረት በሚሰጥ መልኩ) -->
+                <!-- የተስተካከሉ አዝራሮች፡ ሊቭ ከታች ጥግ ላይ፣ ቢንጎ ከሱ በላይ -->
                 <div class="bottom-actions-wrapper">
-                    <button class="btn-bingo-small" onclick="checkPlayerBingo()">🎉 BINGO!</button>
                     <button class="btn-leave-small" onclick="leaveGame()">Leave / Exit</button>
+                    <button class="btn-bingo-small" onclick="checkPlayerBingo()">🎉 BINGO!</button>
                 </div>
             </div>
         </div>
