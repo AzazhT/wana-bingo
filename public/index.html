@@ -76,8 +76,7 @@
         .header.hidden { display: none !important; }
 
         .logo { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #00f2fe, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 6px; }
-        .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.3); transition: transform 0.2s; }
-        .balance-badge:active { transform: scale(0.95); }
+        .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.3); }
         
         .container { padding: 8px; max-width: 500px; margin: 0 auto; }
         .tab-content { display: none; }
@@ -92,14 +91,12 @@
             display: flex; justify-content: space-around; padding: 8px 0; 
             border-top: 1px solid var(--card-border); z-index: 1000; 
         }
-        .nav-item { color: var(--text-sub); text-decoration: none; font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; flex: 1; transition: all 0.2s ease; }
-        .nav-item.active { color: var(--primary-cyan); transform: translateY(-2px); }
-        .nav-icon { font-size: 18px; margin-bottom: 2px; transition: transform 0.2s; }
-        .nav-item.active .nav-icon { transform: scale(1.2); }
+        .nav-item { color: var(--text-sub); text-decoration: none; font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; flex: 1; }
+        .nav-item.active { color: var(--primary-cyan); }
+        .nav-icon { font-size: 18px; margin-bottom: 2px; }
 
         .card { background: var(--card-bg); backdrop-filter: blur(8px); padding: 16px; border-radius: 16px; margin-bottom: 12px; border: 1px solid var(--card-border); }
-        .btn { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 800; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3); transition: all 0.2s ease; }
-        .btn:active { transform: scale(0.97); }
+        .btn { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 800; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3); }
         
         .bottom-actions-wrapper { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; width: 100%; }
         .btn-bingo-small { 
@@ -107,22 +104,11 @@
             font-size: 16px; padding: 12px; border-radius: 12px; 
             box-shadow: 0 4px 20px rgba(255, 42, 95, 0.4); 
             cursor: pointer; color: #fff; font-weight: 900; border: none; text-align: center; width: 100%; 
-            letter-spacing: 1px; transition: all 0.15s ease;
             animation: pulseGlow 2s infinite ease-in-out;
         }
-        .btn-bingo-small:active { transform: scale(0.95); }
-        .btn-leave-small { 
-            background: rgba(255, 42, 95, 0.1); 
-            font-size: 11px; padding: 6px 12px; border-radius: 8px; 
-            cursor: pointer; color: #fda4af; font-weight: 700; 
-            border: 1px solid rgba(255, 42, 95, 0.3); text-align: center; align-self: flex-end; 
-            transition: background 0.2s;
-        }
-        .btn-leave-small:active { background: rgba(255, 42, 95, 0.2); }
-        
-        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); color: #fff; border-radius: 10px; outline: none; font-weight: 600; transition: border-color 0.2s; }
-        input:focus, textarea:focus, select:focus { border-color: var(--primary-cyan); }
 
+        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); color: #fff; border-radius: 10px; outline: none; font-weight: 600; }
+        
         .header-box { text-align: center; padding: 16px 0; }
         .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
         .header-box p { font-size: 13px; color: var(--text-sub); }
@@ -133,13 +119,10 @@
             background: var(--card-bg); color: var(--accent-amber); 
             border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; 
             cursor: pointer; text-align: center; width: 100%; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .bet-grid-btn:active { transform: scale(0.97); background: rgba(245, 158, 11, 0.15); }
 
         .top-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
-        .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; transition: transform 0.2s; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; }
         .stat-card span { display: block; font-size: 13px; color: #fff; margin-top: 2px; font-weight: 900; }
 
         .cards-grid { 
@@ -161,9 +144,7 @@
             font-weight: 800; 
             font-size: 11px; 
             cursor: pointer; 
-            transition: all 0.15s ease;
         }
-        .card-btn:active { transform: scale(0.85); }
 
         .card-btn.active { 
             background: linear-gradient(135deg, #00ff87, #10b981) !important; 
@@ -172,7 +153,6 @@
             box-shadow: 0 0 12px rgba(0, 255, 135, 0.9); 
             border: 1px solid #ffffff !important; 
             transform: scale(1.08); 
-            z-index: 2; 
         }
 
         .card-btn.taken { 
@@ -181,8 +161,12 @@
             cursor: not-allowed; 
             opacity: 0.9; 
             font-weight: 900;
-            border: 1px solid #ff4d6d !important; 
-            box-shadow: 0 0 8px rgba(255, 0, 60, 0.7);
+        }
+
+        /* የመምረጫ ቦርዱ ሲቆለፍ የሚኖረው Visual lock */
+        .cards-grid.locked {
+            pointer-events: none;
+            opacity: 0.5;
         }
 
         .bottom-section { 
@@ -195,7 +179,7 @@
             flex-direction: column;
             align-items: center;
         }
-        .preview-label { font-size: 10px; font-weight: 800; color: #c084fc; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .preview-label { font-size: 10px; font-weight: 800; color: #c084fc; margin-bottom: 4px; text-transform: uppercase; }
         .preview-ticket { 
             display: grid; 
             grid-template-columns: repeat(5, 1fr); 
@@ -214,16 +198,13 @@
             text-align: center; 
             padding: 4px 0; 
             border-radius: 3px; 
-            border: 1px solid rgba(168, 85, 247, 0.2); 
-            animation: popIn 0.2s ease-out;
         }
-        .preview-cell.free { background: var(--accent-green); color: #fff; border-color: #34d399; font-weight: 900; }
+        .preview-cell.free { background: var(--accent-green); color: #fff; font-weight: 900; }
 
         .action-column { display: flex; gap: 8px; margin-top: 8px; width: 100%; }
-        .btn-start-game { flex: 2; background: linear-gradient(135deg, var(--primary-cyan), #0284c7); color: #070a12; border: none; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 900; text-align: center; box-shadow: 0 4px 12px rgba(0, 242, 254, 0.3); transition: all 0.2s; }
-        .btn-start-game:active { transform: scale(0.96); }
-        .btn-back-small { flex: 1; background: rgba(255, 255, 255, 0.05); color: var(--accent-amber); border: 1px solid var(--card-border); padding: 10px; border-radius: 10px; font-size: 12px; cursor: pointer; font-weight: 700; text-align: center; transition: all 0.2s; }
-        .btn-back-small:active { transform: scale(0.96); }
+        .btn-start-game { flex: 2; background: linear-gradient(135deg, var(--primary-cyan), #0284c7); color: #070a12; border: none; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 900; text-align: center; }
+        .btn-start-game:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; }
+        .btn-back-small { flex: 1; background: rgba(255, 255, 255, 0.05); color: var(--accent-amber); border: 1px solid var(--card-border); padding: 10px; border-radius: 10px; font-size: 12px; cursor: pointer; font-weight: 700; text-align: center; }
 
         .game-layout { display: flex; gap: 8px; justify-content: space-between; height: calc(100vh - 210px); min-height: 420px; }
         
@@ -241,37 +222,18 @@
         .o-header { background: var(--accent-purple); color: #fff; border-radius: 4px; padding: 4px 0; }
 
         .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; overflow-y: auto; }
-        .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.02); transition: all 0.2s; }
-        
-        .grid-num.called { 
-            background: linear-gradient(135deg, #ff2a5f, #e11d48); 
-            color: #ffffff; font-size: 12px; font-weight: 900; 
-            box-shadow: 0 0 8px rgba(255, 42, 95, 0.8); 
-        }
-
-        .grid-num.called.latest-call { 
-            background: linear-gradient(135deg, #ff003c, #ff4d6d) !important; 
-            color: #ffffff !important; 
-            font-size: 13px !important; 
-            font-weight: 900 !important; 
-            animation: latestCallPulse 1.2s infinite ease-in-out;
-            border: 1px solid #ffffff;
-        }
+        .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; }
+        .grid-num.called { background: linear-gradient(135deg, #ff2a5f, #e11d48); color: #ffffff; font-weight: 900; }
 
         .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; height: 100%; }
         .countdown-box { background: var(--card-bg); color: var(--text-main); padding: 8px 10px; border-radius: 10px; display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; border: 1px solid var(--card-border); }
-        .current-call-box { background: var(--card-bg); padding: 8px 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--primary-cyan); box-shadow: 0 0 10px rgba(0, 242, 254, 0.15); }
+        .current-call-box { background: var(--card-bg); padding: 8px 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--primary-cyan); }
         .call-text { font-size: 11px; font-weight: 800; color: var(--text-sub); }
-        .call-circle { 
-            background: linear-gradient(135deg, var(--accent-amber), #f97316); 
-            color: #000; font-weight: 900; padding: 6px 12px; border-radius: 20px; font-size: 14px; 
-            box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
-            transition: all 0.2s;
-        }
+        .call-circle { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; font-weight: 900; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .call-circle.animate { animation: callPop 0.4s ease-out; }
 
-        .recent-calls { display: flex; gap: 4px; overflow-x: auto; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 8px; min-height: 32px; align-items: center; border: 1px solid var(--card-border); }
-        .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; animation: popIn 0.25s ease-out; }
+        .recent-calls { display: flex; gap: 4px; overflow-x: auto; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 8px; min-height: 32px; align-items: center; }
+        .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; }
 
         .user-board { background: var(--card-bg); padding: 8px; border-radius: 12px; border: 1px solid var(--card-border); flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; margin-top: 4px; }
@@ -279,14 +241,8 @@
             background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-weight: 800; 
             display: flex; align-items: center; justify-content: center; border-radius: 4px; 
             cursor: pointer; border: 1px solid var(--card-border); 
-            transition: all 0.15s ease;
         }
-        .board-cell:active { transform: scale(0.9); }
-        .board-cell.free, .board-cell.marked { 
-            background: var(--accent-green); color: white; border-color: #34d399; 
-            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); 
-            animation: popIn 0.2s ease-out;
-        }
+        .board-cell.free, .board-cell.marked { background: var(--accent-green); color: white; }
         .board-footer { text-align: center; font-size: 10px; color: var(--text-sub); margin-top: 4px; font-weight: 800; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 2000; padding: 16px; }
@@ -294,10 +250,9 @@
             background: linear-gradient(135deg, #1e1b4b, #0f172a); 
             width: 100%; max-width: 360px; padding: 20px; border-radius: 20px; 
             text-align: center; border: 1px solid var(--accent-purple); color: #fff; 
-            box-shadow: 0 10px 35px rgba(168, 85, 247, 0.3); 
             animation: modalSlideUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .winner-title-box { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; padding: 12px; border-radius: 12px; font-size: 24px; font-weight: 900; margin-bottom: 8px; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4); }
+        .winner-title-box { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; padding: 12px; border-radius: 12px; font-size: 24px; font-weight: 900; margin-bottom: 8px; }
         .winner-subtitle { font-size: 13px; font-weight: 700; color: #e9d5ff; margin-bottom: 14px; }
         
         .modal-board-wrapper { background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; margin-bottom: 14px; border: 1px solid rgba(168, 85, 247, 0.3); }
@@ -305,14 +260,13 @@
         .modal-board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
         
         .modal-cell { background: rgba(255,255,255,0.05); color: #f3e8ff; font-size: 12px; font-weight: 800; text-align: center; padding: 8px 0; border-radius: 4px; }
-        .modal-cell.win-orange { background: #f97316 !important; color: #fff !important; box-shadow: 0 0 8px #f97316; }
-        .modal-cell.win-green { background: var(--accent-green) !important; color: #fff !important; box-shadow: 0 0 8px var(--accent-green); }
+        .modal-cell.win-orange { background: #f97316 !important; color: #fff !important; }
+        .modal-cell.win-green { background: var(--accent-green) !important; color: #fff !important; }
 
         .modal-footer-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 11px; background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 8px; }
         .modal-badge-name { background: #0d9488; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 800; }
         
-        .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); }
-        .play-again-btn:active { transform: scale(0.97); }
+        .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -339,7 +293,7 @@
             </div>
 
             <div id="gameStepCards" class="game-step">
-                <div class="top-stats" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="top-stats">
                     <div class="stat-card">Wallet<span id="walletDisplay">0.00</span></div>
                     <div class="stat-card">Bet<span id="betDisplay">20</span></div>
                     <div class="stat-card">Active<span id="activePlayersDisplay">0</span></div>
@@ -353,17 +307,17 @@
                 </div>
 
                 <div class="action-column">
-                    <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ</button>
-                    <button class="btn-start-game" onclick="goToGame()">Start game (Join)</button>
+                    <button class="btn-back-small" id="btnBackToBet" onclick="goToBetStep()">‹ ተመለስ</button>
+                    <button class="btn-start-game" id="btnStartGame" onclick="goToGame()">Start game (Join)</button>
                 </div>
             </div>
 
             <div id="gameStepLive" class="game-step">
                 <div class="top-stats" style="grid-template-columns: repeat(4, 1fr); gap: 4px;">
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Room<span id="gameIdDisplay" style="font-size: 11px;">--</span></div>
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Derash<span id="derashDisplay" style="font-size: 11px; color: var(--accent-green);">0.0</span></div>
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Active<span id="activePlayersDisplayLive" style="font-size: 11px;">0</span></div>
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Call<span id="callCount" style="font-size: 11px; color: var(--accent-amber);">0</span></div>
+                    <div class="stat-card">Room<span id="gameIdDisplay">--</span></div>
+                    <div class="stat-card">Derash<span id="derashDisplay" style="color: var(--accent-green);">0.0</span></div>
+                    <div class="stat-card">Active<span id="activePlayersDisplayLive">0</span></div>
+                    <div class="stat-card">Call<span id="callCount" style="color: var(--accent-amber);">0</span></div>
                 </div>
 
                 <div class="game-layout">
@@ -399,7 +353,6 @@
 
                 <div class="bottom-actions-wrapper">
                     <button class="btn-bingo-small" onclick="checkPlayerBingo()">🎉 BINGO!</button>
-                    <button class="btn-leave-small" onclick="leaveGame()">Leave / Exit</button>
                 </div>
             </div>
         </div>
@@ -452,7 +405,7 @@
                     <span class="modal-badge-name" id="modalWinnerName">Kenbo-48990</span>
                     <span id="modalBoardNumText" style="color: #e9d5ff; font-weight: bold;">Board number --</span>
                 </div>
-                <div style="text-align: center; margin-top: 6px; font-size: 12px; color: var(--accent-amber); font-weight: 800;" id="modalPrizeText">(79.38 ETB)</div>
+                <div style="text-align: center; margin-top: 6px; font-size: 12px; color: var(--accent-amber); font-weight: 800;" id="modalPrizeText">(0.00 ETB)</div>
             </div>
 
             <button class="play-again-btn" onclick="closeModal('winnerModal')">Play Again</button>
@@ -482,6 +435,7 @@
         let currentBet = 20;
         let currentActivePlayers = 0;
         let currentDerashAmount = 0.0;
+        let isGameStarted = false;
         
         let allCardsData = {};
         let selectedCardId = null;
@@ -491,6 +445,27 @@
         let roomSelectedBoards = {};
         let globalStartTime = null;
         let clientTimerInterval = null;
+
+        // የጨበጨባ ሳውንድ አፌክት (Web Audio API)
+        function playApplauseSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                for (let i = 0; i < 30; i++) {
+                    setTimeout(() => {
+                        let osc = ctx.createOscillator();
+                        let gain = ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.value = 150 + Math.random() * 400;
+                        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.1);
+                    }, i * 40);
+                }
+            } catch(e) {}
+        }
 
         window.addEventListener('DOMContentLoaded', async () => {
             await fetchUserData();
@@ -520,25 +495,18 @@
                 document.getElementById('activePlayersDisplay').innerText = currentActivePlayers;
                 document.getElementById('activePlayersDisplayLive').innerText = currentActivePlayers;
             }
-            
-            if (typeof data.derashAmount !== 'undefined') {
-                currentDerashAmount = parseFloat(data.derashAmount);
-            } else if (typeof data.derash !== 'undefined') {
-                currentDerashAmount = parseFloat(data.derash);
-            } else if (typeof data.prizePool !== 'undefined') {
+            if (typeof data.prizePool !== 'undefined') {
                 currentDerashAmount = parseFloat(data.prizePool);
-            } else {
-                currentDerashAmount = currentActivePlayers * currentBet * 0.90; 
             }
-            
             document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
         }
 
         function autoClearAndRedirect(msg) {
             selectedCardId = null;
+            isGameStarted = false;
             updateBoardsUI();
             displayPreview(null);
-            alert(msg || 'ጨዋታው ኦሬዲ ጀምሯል!');
+            alert(msg || 'ጨዋታው ኦሬዲ ጀምሯል! መግባት አይቻልም።');
             showGameStep('gameStepBet');
         }
 
@@ -567,28 +535,37 @@
             clientTimerInterval = setInterval(() => {
                 if (!globalStartTime) return;
                 let remaining = Math.max(0, Math.floor((globalStartTime - Date.now()) / 1000));
-                document.getElementById('countdownText').innerText = `${remaining}s`;
-                if (remaining <= 0) clearInterval(clientTimerInterval);
+                
+                if (remaining > 0) {
+                    document.getElementById('countdownText').innerText = `${remaining}s`;
+                } else {
+                    document.getElementById('countdownText').innerText = "START!";
+                    clearInterval(clientTimerInterval);
+                }
             }, 1000);
         }
 
         socket.on('gameStarted', (data) => {
-            document.getElementById('countdownText').innerText = "Started!";
+            isGameStarted = true;
+            playApplauseSound(); // የጨበጨባ ድምፅ ማጫወት
+            document.getElementById('countdownText').innerText = "START!";
             if (clientTimerInterval) clearInterval(clientTimerInterval);
+            
+            // የሴሌክሽን ቦርዱን ሙሉ በሙሉ መቆለፍ
+            document.getElementById('cardsGrid').classList.add('locked');
+            document.getElementById('btnStartGame').disabled = true;
+            document.getElementById('btnStartGame').innerText = "ጨዋታው ተጀምሯል";
+            document.getElementById('btnBackToBet').style.display = 'none';
+
             if (data && data.prizePool) {
                 currentDerashAmount = parseFloat(data.prizePool);
                 document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
             }
-            
-            // ቆጠራው አልቆ ጨዋታው ስታርት ሲል ቦርዶቹን ሙሉ በሙሉ ማጽዳት (Clear)
-            selectedCardId = null;
-            roomSelectedBoards = {};
             updateBoardsUI();
-            displayPreview(null);
 
             const liveStepActive = document.getElementById('gameStepLive').classList.contains('active');
-            if (!liveStepActive && selectedCardId !== null) {
-                autoClearAndRedirect('ጨዋታው ኦሬዲ ጀምሯል!');
+            if (!liveStepActive && selectedCardId === null) {
+                autoClearAndRedirect('ጨዋታው ኦሬዲ ጀምሯል! መግባት አይቻልም።');
             }
         });
 
@@ -596,12 +573,8 @@
             autoClearAndRedirect(data.message);
         });
 
-        socket.on('roomFinished', (data) => {
-            alert(data.message || 'ጨዋታው ተጠናቀዋል!');
-            showGameStep('gameStepBet');
-        });
-
         socket.on('boardTempSelected', (data) => {
+            if (isGameStarted) return;
             selectedCardId = data.boardNumber;
             updateBoardsUI();
             displayPreview(selectedCardId);
@@ -643,23 +616,10 @@
             void callCircle.offsetWidth;
             callCircle.classList.add('animate');
 
-            document.querySelectorAll('.grid-num').forEach(el => {
-                el.classList.remove('latest-call');
-                if(el.dataset.num) {
-                    el.innerText = el.dataset.num;
-                }
-            });
-
             drawnNumbers.forEach(n => {
                 let cell = document.getElementById(`grid-num-${n}`);
                 if (cell) cell.classList.add('called');
             });
-
-            let latestCell = document.getElementById(`grid-num-${rand}`);
-            if (latestCell) {
-                latestCell.classList.add('called', 'latest-call');
-                latestCell.innerText = `*${rand}*`;
-            }
 
             let ball = document.createElement('div');
             ball.className = 'recent-ball';
@@ -732,12 +692,20 @@
         function selectBet(amount) {
             currentBet = amount;
             selectedCardId = null;
+            isGameStarted = false;
+            
+            document.getElementById('cardsGrid').classList.remove('locked');
+            document.getElementById('btnStartGame').disabled = false;
+            document.getElementById('btnStartGame').innerText = "Start game (Join)";
+            document.getElementById('btnBackToBet').style.display = 'block';
+
             showGameStep('gameStepCards');
             initPage1();
             socket.emit('joinLobby', { betAmount: amount });
         }
 
         function goToBetStep() { 
+            if (isGameStarted) return;
             showGameStep('gameStepBet'); 
         }
 
@@ -745,12 +713,7 @@
             document.getElementById('userBalanceDisplay').innerText = userWallet.toFixed(2);
             document.getElementById('walletDisplay').innerText = userWallet.toFixed(2);
             document.getElementById('betDisplay').innerText = currentBet;
-            
-            if(currentActivePlayers === 0) {
-                document.getElementById('derashDisplay').innerText = "0.0";
-            } else {
-                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-            }
+            document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
         }
 
         function generateBingoCard() {
@@ -790,6 +753,7 @@
                 btn.id = `card-btn-${i}`;
                 btn.innerText = i;
                 btn.onclick = () => {
+                    if (isGameStarted) return;
                     if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
                         alert('ይህ ቦርድ በሌላ ተጫዋች ወይም በቦት ተይዟል!');
                         return;
@@ -847,9 +811,8 @@
         }
 
         async function goToGame() {
-            if (selectedCardId === null) {
-                return alert('እባክዎ መጀመሪያ የቦርድ ቁጥር ይምረጡ!');
-            }
+            if (isGameStarted) return alert('ጨዋታው ኦሬዲ ጀምሯል! መግባት አይቻልም።');
+            if (selectedCardId === null) return alert('እባክዎ መጀመሪያ የቦርድ ቁጥር ይምረጡ!');
             if (userWallet < currentBet) return alert('በቂ ባላንስ የለዎትም!');
             
             try {
@@ -874,7 +837,6 @@
                     let cell = document.createElement('div');
                     cell.className = 'grid-num';
                     cell.id = `grid-num-${num}`;
-                    cell.dataset.num = num;
                     cell.innerText = num;
                     calledGrid.appendChild(cell);
                 }
@@ -924,12 +886,8 @@
                 return (num === '*' || drawnNumbers.includes(num)) && playerMarkedBoard[r][c];
             };
 
-            for(let r=0; r<5; r++) {
-                if([0,1,2,3,4].every(c => isValidMark(r, c))) winningLine = { type: 'row', index: r };
-            }
-            for(let c=0; c<5; c++) {
-                if([0,1,2,3,4].every(r => isValidMark(r, c))) winningLine = { type: 'col', index: c };
-            }
+            for(let r=0; r<5; r++) { if([0,1,2,3,4].every(c => isValidMark(r, c))) winningLine = { type: 'row', index: r }; }
+            for(let c=0; c<5; c++) { if([0,1,2,3,4].every(r => isValidMark(r, c))) winningLine = { type: 'col', index: c }; }
             if([0,1,2,3,4].every(i => isValidMark(i, i))) winningLine = { type: 'diag1', index: 0 };
             if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) winningLine = { type: 'diag2', index: 0 };
 
@@ -941,16 +899,12 @@
             }
         }
 
-        function leaveGame() {
-            document.getElementById('winnerModal').style.display = 'none';
-            selectedCardId = null;
-            showGameStep('gameStepBet');
-            fetchUserData();
-        }
-
         function closeModal(id) { 
             document.getElementById(id).style.display = 'none'; 
-            leaveGame(); 
+            selectedCardId = null;
+            isGameStarted = false;
+            showGameStep('gameStepBet');
+            fetchUserData();
         }
 
         async function submitDeposit() {
