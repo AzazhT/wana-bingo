@@ -27,17 +27,13 @@ if (TOKEN) {
             polling: {
                 interval: 300,
                 autoStart: true,
-                params: {
-                    timeout: 10
-                }
+                params: { timeout: 10 }
             } 
         });
         console.log('Telegram Bot started successfully!');
-
         bot.on('polling_error', (error) => {
             console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
         });
-
     } catch (err) {
         console.error('Telegram Bot initialization error:', err);
     }
@@ -323,37 +319,28 @@ let activeRooms = {};
 
 function getActivePlayersCount(room) {
     let activeSocketIds = new Set();
-    
     for (let bNum in room.selectedBoards) {
         if (room.selectedBoards[bNum]) {
             activeSocketIds.add(room.selectedBoards[bNum]);
         }
     }
-
     for (let socketId of room.players) {
         activeSocketIds.add(socketId);
     }
-
     let realCount = activeSocketIds.size;
-    // ቢያንስ 50 ተጫዋቾች እንዲታዩ (እውነተኛው ከ 50 በታች ከሆነ በዘፈቀደ ወይም በቋሚነት 45-50 ተጭኖ እንዲታይ)
     return realCount < 50 ? realCount + 45 : realCount;
 }
 
 function calculatePrizePool(room) {
     let activeCount = getActivePlayersCount(room);
     let totalBet = activeCount * parseFloat(room.betAmount);
-    
     let commissionRate = 0.10; 
     let prizePool = totalBet * (1 - commissionRate);
-    
     return Math.floor(prizePool > 0 ? prizePool : parseFloat(room.betAmount));
 }
 
-// አሁን እየጠበቀ ያለ (waiting) ሎቢ መፈለግ ወይም አዲስ መፍጠር (ለብዙ ራውንድ እንዲመች)
 function getOrCreateLobby(betAmount) {
     let roomId = null;
-    
-    // አሁን ያለው ክፍል waiting ከሆነ እና ጨዋታው ካልጀመረ እሱን መጠቀም፣ ካለበለዚያ አዲስ መፍጠር
     for (let id in activeRooms) {
         if (activeRooms[id].betAmount === betAmount && activeRooms[id].status === 'waiting') {
             roomId = id;
@@ -394,6 +381,29 @@ function startGlobalLobbyCountdown(roomId) {
         if (room.status !== 'waiting') return;
 
         room.countdown--;
+
+        // 🤖 አዳዲስ ፌክ ተጫዋቾች (Bots) በሰዓት ቆጠራው ሰዓት ቦርዶችን በዘፈቀደ የመምረጥ ሎጂክ
+        let totalPossibleBoards = 100;
+        let targetBotSelections = Math.floor((30 - room.countdown) * 1.5); 
+        let currentSelectedCount = Object.keys(room.selectedBoards).length;
+
+        if (currentSelectedCount < targetBotSelections && currentSelectedCount < totalPossibleBoards) {
+            let randomBoard;
+            let attempts = 0;
+            do {
+                randomBoard = Math.floor(Math.random() * totalPossibleBoards) + 1;
+                attempts++;
+            } while (room.selectedBoards[randomBoard] && attempts < 20);
+
+            if (!room.selectedBoards[randomBoard]) {
+                let botId = `BOT_${Math.floor(Math.random() * 10000)}`;
+                room.selectedBoards[randomBoard] = botId;
+
+                // ቦርዱ በቦት መመረጡን ለሁሉም ተጫዋቾች እናሳውቃለን (በቀይ ቀለም እንዲዘጋ)
+                io.to(roomId).emit('boardSelected', { boardNumber: randomBoard, socketId: botId });
+            }
+        }
+
         let currentPrizePool = calculatePrizePool(room);
 
         io.to(roomId).emit('countdownUpdate', { 
@@ -431,16 +441,11 @@ function startRoomGame(roomId) {
         prizePool: finalPrizePool
     });
 
-    // ጨዋታው ሲጀምር፣ ሌሎቹ አዲስ የሚገቡ ተጫዋቾች ወዲያውኑ ሌላ ራውንድ (Waiting Room) እንዲያገኙ እናስተካክላለን
-    // (getOrCreateLobby ሲጠራ አዲስ ሩም ይፈጥራል)
-
     room.gameInterval = setInterval(() => {
         if (room.drawnNumbers.length >= 75) {
             clearInterval(room.gameInterval);
             room.status = 'ended';
             io.to(roomId).emit('gameOver', { message: 'ጨዋታው አልቋል! 75ቱ ቁጥሮች ተጠርተዋል አሸናፊ አልተገኘም።' });
-            
-            // 75 ቁጥሮች ተጠርተው ካለቀ በኋላ አዲስ ራውንድ በራስሰር ለመክፈት
             setTimeout(() => {
                 getOrCreateLobby(room.betAmount);
             }, 3000);
@@ -470,8 +475,6 @@ io.on('connection', (socket) => {
 
         let currentPrizePool = calculatePrizePool(room);
 
-        // ተጫዋቹ ሲገባ ጨዋታው የጀመረ ከሆነ አሁን ላለው ጨዋታ አባላት እንዲሆን ወይም
-        // አዲሱ ራውንድ (Waiting) ውስጥ እንዲገባ ይደረጋል
         socket.emit('assignedRoom', { 
             roomId: room.roomId, 
             betAmount: room.betAmount,
@@ -479,7 +482,7 @@ io.on('connection', (socket) => {
             startTime: room.startTime,
             status: room.status,
             reservedNumbers: room.reservedNumbers,
-            selectedBoards: room.selectedBoards,
+            selectedBoards: room.selectedBoards, // የተያዙ ቦርዶች (ቦቶቹን ጨምሮ) ወደ አዲስ ገቢ ይላካሉ
             activePlayersCount: getActivePlayersCount(room),
             prizePool: currentPrizePool
         });
@@ -497,7 +500,7 @@ io.on('connection', (socket) => {
 
         if (room && room.status === 'waiting') {
             if (room.selectedBoards[boardNumber]) {
-                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
             }
 
             if (!room.tempSelections) room.tempSelections = {};
@@ -513,7 +516,7 @@ io.on('connection', (socket) => {
 
         if (room && room.status === 'waiting') {
             if (room.selectedBoards[boardNumber]) {
-                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ተይዟል!' });
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
             }
 
             let previousBoard = null;
@@ -565,7 +568,6 @@ io.on('connection', (socket) => {
                     
                     io.to(roomId).emit('gameOver', { message: `🎉 ተጫዋች BINGO አሸንፏል! ${finalWinAmount} ብር ተሸልሟል።` });
 
-                    // አሸናፊ ሲወጣ ቀጣዩ ራውንድ በራስሰር እንዲጀመር አዲስ ሩም መፍጠር
                     setTimeout(() => {
                         getOrCreateLobby(room.betAmount);
                     }, 3000);
@@ -588,7 +590,6 @@ io.on('connection', (socket) => {
                 }
 
                 let boardReleasedFlag = false;
-                
                 if (room.status === 'waiting') {
                     for (let bNum in room.selectedBoards) {
                         if (room.selectedBoards[bNum] === socket.id) {
@@ -600,7 +601,6 @@ io.on('connection', (socket) => {
                 }
 
                 let currentPrizePool = calculatePrizePool(room);
-
                 io.to(roomId).emit('playersUpdate', { 
                     playersCount: room.players.size,
                     activePlayersCount: getActivePlayersCount(room),
