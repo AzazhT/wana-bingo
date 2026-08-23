@@ -23,6 +23,7 @@ const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 let bot = null;
 if (TOKEN) {
     try {
+        // 409 Conflict ችግሩን ለመከላከል ዌብሁክን (Webhook) አጥፍተን ፖሊንግ እንጀምራለን
         bot = new TelegramBot(TOKEN, {  
             polling: {
                 interval: 300,
@@ -30,7 +31,14 @@ if (TOKEN) {
                 params: { timeout: 10 }
             } 
         });
-        console.log('Telegram Bot started successfully!');
+        
+        // ቀደም ሲል የተከፈቱ ሌሎች ግንኙነቶች ካሉ እንዳይጋጩ ዌብሁክን እናጸዳለን
+        bot.deleteWebHook().then(() => {
+            console.log('Telegram Bot started successfully and webhook cleared!');
+        }).catch((err) => {
+            console.log('Webhook clear warning:', err.message);
+        });
+
         bot.on('polling_error', (error) => {
             console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
         });
@@ -92,7 +100,6 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
-// [ተስተካክሏል] - የዲፖዚት እና ዊዝድሮው ጥያቄ ሲመጣ details (ስልክ/ባንክ ቁጥር) ዳታቤዝ ውስጥ እንዲመዘገብ ተደርጓል
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
@@ -109,10 +116,9 @@ app.post('/api/request-transaction', async (req, res) => {
             }
         }
 
-        // details ኮለመንን ወደ transactions ቴብል ማስገባት
         await pool.query(
-            'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
-            [tx_id, identifier, type, amount, details || 'አልተገኘም']
+            'INSERT INTO transactions (tx_id, identifier, type, amount, handled) VALUES ($1, $2, $3, $4, FALSE)',
+            [tx_id, identifier, type, amount]
         );
         res.json({ success: true, tx_id });
     } catch (err) {
@@ -217,7 +223,6 @@ if (bot) {
         }
     });
 
-    // [ተስተካክሏል] - አድሚኑ /pending ሲል ተጠቃሚው ያስገባው የባንክ/ስልክ ቁጥር (details) በግልጽ እንዲታይ ተደርጓል
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID) return;
@@ -241,7 +246,7 @@ if (bot) {
                 let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
-                            `📱 ስልክ/አካውንት (Details): ${tx.details || tx.phone || 'N/A'}\n` +
+                            `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
                             `💰 መጠን: ${tx.amount} ብር`;
 
                 bot.sendMessage(chatId, msgText, {
