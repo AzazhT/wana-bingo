@@ -31,8 +31,15 @@ if (TOKEN) {
             } 
         });
         console.log('Telegram Bot started successfully!');
+        
+        bot.stopPolling().then(() => {
+            bot.startPolling();
+        });
+
         bot.on('polling_error', (error) => {
-            console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
+            if (error.code !== 'ETELEGRAM' || error.message.indexOf('409 Conflict') === -1) {
+                console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
+            }
         });
     } catch (err) {
         console.error('Telegram Bot initialization error:', err);
@@ -41,7 +48,6 @@ if (TOKEN) {
     console.error('ERROR: Telegram Bot Token not provided!');
 }
 
-// REST APIs for User & Wallet
 app.post('/api/get-user', async (req, res) => {
     const { identifier, name, username } = req.body;
     try {
@@ -112,31 +118,6 @@ app.post('/api/request-transaction', async (req, res) => {
             'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
             [tx_id, identifier, type, amount, details || '']
         );
-
-        const userRes = await pool.query('SELECT name, username, phone FROM users WHERE identifier = $1', [identifier]);
-        const user = userRes.rows[0] || {};
-
-        if (bot && ADMIN_CHAT_ID) {
-            let adminMsg = `🔔 **አዲስ የ ${type} ጥያቄ መጥቷል!**\n\n` +
-                           `🆔 TxID: ${tx_id}\n` +
-                           `👤 ስም: ${user.name || 'Unknown'} (@${user.username || 'none'})\n` +
-                           `📱 ስልክ: ${user.phone || 'N/A'}\n` +
-                           `💰 መጠን: ${amount} ብር\n` +
-                           `📝 መረጃ/ኤስኤምኤስ: ${details || 'N/A'}`;
-
-            bot.sendMessage(ADMIN_CHAT_ID, adminMsg, {
-                parse_mode: 'Markdown',
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}` },
-                            { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}` }
-                        ]
-                    ]
-                }
-            }).catch(err => console.error('Admin notify error:', err));
-        }
-
         res.json({ success: true, tx_id });
     } catch (err) {
         console.error(err);
@@ -144,7 +125,6 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
-// --- TELEGRAM BOT COMMANDS & ADMIN PANEL ---
 if (bot) {
     bot.setMyCommands([
         { command: 'start', description: 'ቦቱን ለመጀመር' },
@@ -197,7 +177,7 @@ if (bot) {
 
     bot.onText(/\/deposit/, (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላኩ።`, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `💳 **የዲፖዚት መመሪያ**\n\nበቴሌብር ወይም በባንክ ገንዘብ ገቢ በማድረግ በዌብሳይቱ (App) በኩል የዲፖዚት ጥያቄ ይላቁ።`, { parse_mode: 'Markdown' });
     });
 
     bot.onText(/\/withdraw/, (msg) => {
@@ -265,7 +245,7 @@ if (bot) {
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
                             `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
                             `💰 መጠን: ${tx.amount} ብር\n` +
-                            `📝 መረጃ: ${tx.details || 'N/A'}`;
+                            `📝 መረጃ/SMS: ${tx.details || 'N/A'}`;
 
                 bot.sendMessage(chatId, msgText, {
                     reply_markup: {
@@ -340,7 +320,6 @@ if (bot) {
     });
 }
 
-// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
@@ -353,8 +332,7 @@ function getActivePlayersCount(room) {
     for (let socketId of room.players) {
         activeSocketIds.add(socketId);
     }
-    let realCount = activeSocketIds.size;
-    return realCount;
+    return activeSocketIds.size;
 }
 
 function calculatePrizePool(room) {
