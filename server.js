@@ -92,68 +92,28 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
-// የዊዝድሮ እና የዲፖዚት ጥያቄ መቀበያ (የባንክ/ስልክ ቁጥር መረጃን ጨምሮ የሚመዘግብ)
+// [ተስተካክሏል] - የዲፖዚት እና ዊዝድሮው ጥያቄ ሲመጣ details (ስልክ/ባንክ ቁጥር) ዳታቤዝ ውስጥ እንዲመዘገብ ተደርጓል
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
     
     try {
-        let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
-        if (userRes.rows.length === 0) {
-            return res.json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
-        }
-        let user = userRes.rows[0];
-
         if (type === 'WITHDRAW') {
-            let currentBalance = parseFloat(user.balance);
+            const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+            if (userRes.rows.length === 0) {
+                return res.json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
+            }
+            let currentBalance = parseFloat(userRes.rows[0].balance);
             if (currentBalance < parseFloat(amount)) {
                 return res.json({ success: false, message: 'በዋሌትዎ ውስጥ ያለው ብር በቂ አይደለም!' });
             }
         }
 
-        // ዳታቤዝ ውስጥ 'details' (የባንክ አካውንት ወይም ስልክ ቁጥር) ጨምሮ ማስቀመጥ
+        // details ኮለመንን ወደ transactions ቴብል ማስገባት
         await pool.query(
             'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
-            [tx_id, identifier, type, amount, details || 'N/A']
+            [tx_id, identifier, type, amount, details || 'አልተገኘም']
         );
-
-        // 1. ለተጠቃሚው ማሳወቂያ መላክ
-        if (bot && identifier) {
-            try {
-                let userMsg = type === 'WITHDRAW' 
-                    ? `💸 የወጪ (Withdraw) ጥያቄዎ ደርሷል!\n\n🆔 TxID: ${tx_id}\n💰 መጠን: ${amount} ብር\n📱 አካውንት/ስልክ: ${details || 'N/A'}\n⏳ ሁኔታ: በሂደት ላይ (Pending)`
-                    : `💳 የዲፖዚት ጥያቄዎ ደርሷል!\n\n🆔 TxID: ${tx_id}\n💰 መጠን: ${amount} ብር\n⏳ ሁኔታ: በምርመራ ላይ (Pending)`;
-                
-                await bot.sendMessage(identifier, userMsg);
-            } catch (botErr) {
-                console.error('Failed to send Telegram notification to user:', botErr);
-            }
-        }
-
-        // 2. ለአድሚን ማሳወቂያ መላክ (ተጠቃሚው ያስገባው የባንክ/ስልክ ቁጥር 'details' በሚለው በግልጽ እንዲታይ ተደርጓል)
-        if (bot && ADMIN_CHAT_ID) {
-            try {
-                let adminMsg = `🔔 አዲስ የ ${type} ጥያቄ መጥቷል!\n` +
-                               `🆔 TxID: ${tx_id}\n` +
-                               `👤 ስም: ${user.name || 'Unknown'} (@${user.username || 'none'})\n` +
-                               `📱 የባንክ/ስልክ ቁጥር: ${details || 'አልተሰጠም'}\n` +
-                               `💰 መጠን: ${amount} ብር`;
-
-                await bot.sendMessage(ADMIN_CHAT_ID, adminMsg, {
-                    reply_markup: {
-                        inline_keyboard: [
-                            [
-                                { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}` },
-                                { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}` }
-                            ]
-                        ]
-                    }
-                });
-            } catch (adminErr) {
-                console.error('Failed to send Telegram notification to admin:', adminErr);
-            }
-        }
-
         res.json({ success: true, tx_id });
     } catch (err) {
         console.error(err);
@@ -176,7 +136,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
                             `─────────────────────\n` +
                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -257,6 +217,7 @@ if (bot) {
         }
     });
 
+    // [ተስተካክሏል] - አድሚኑ /pending ሲል ተጠቃሚው ያስገባው የባንክ/ስልክ ቁጥር (details) በግልጽ እንዲታይ ተደርጓል
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID) return;
@@ -277,10 +238,10 @@ if (bot) {
             bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`, { parse_mode: 'Markdown' });
 
             for (let tx of pendingRes.rows) {
-                let msgText = `🔔 አዲስ የ ${tx.type} ጥያቄ\n` +
+                let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
-                            `📱 የባንክ/ስልክ ቁጥር: ${tx.details || 'አልተሰጠም'}\n` +
+                            `📱 ስልክ/አካውንት (Details): ${tx.details || tx.phone || 'N/A'}\n` +
                             `💰 መጠን: ${tx.amount} ብር`;
 
                 bot.sendMessage(chatId, msgText, {
@@ -356,7 +317,7 @@ if (bot) {
     });
 }
 
-// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT ---
+// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT (MAX 3 ROUNDS) ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
@@ -397,7 +358,7 @@ function getOrCreateLobby(betAmount) {
             roomId,
             betAmount,
             status: 'waiting', 
-            currentRound: 1,
+            currentRound: 1, 
             maxRounds: 3,
             players: new Set(),
             playerNames: {},
