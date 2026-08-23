@@ -1,4 +1,4 @@
-const express = require('http');
+const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
@@ -6,17 +6,16 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// የ 3 ራውንዶች የሰርቨር ስቴት አስተዳደር (Multi-Round Lobby State)
+// የ 3 ራውንዶች የሰርቨር ስቴት አስተዳደር
 const rounds = {
     1: { id: 1, status: 'waiting', timer: 30, selectedNumbers: {}, players: [] },
     2: { id: 2, status: 'idle', timer: 30, selectedNumbers: {}, players: [] },
     3: { id: 3, status: 'idle', timer: 30, selectedNumbers: {}, players: [] }
 };
 
-// የሰርቨር ቆጠራ (Timers) ማከማቻ
 const roundTimers = {};
 
-// ራውንድ እንዲጀምር ወይም ቆጠራ እንዲቀጥል የሚያደርግ ፋንክሽን
+// ቆጠራን ማስጀመር (ለ waiting ራውንዶች)
 function startRoundTimer(roundId) {
     if (roundTimers[roundId]) clearInterval(roundTimers[roundId]);
 
@@ -34,39 +33,46 @@ function startRoundTimer(roundId) {
     }, 1000);
 }
 
-// 30 ሰከንዱ አልቆ ጨዋታው ሲጀምር
+// 30 ሰከንዱ አልቆ ጨዋታው ሲጀምር የሚፈጸም
 function startActiveGame(roundId) {
     const round = rounds[roundId];
     round.status = 'playing';
     io.emit('gameStarted', { roundId: round.id });
 
-    // ቀጣዩ ራውንድ በራስ-ሰር ክፍት እንዲሆን ማድረግ (Waiting እንዲገባ)
-    let nextRoundId = roundId + 1;
-    if (nextRoundId > 3) nextRoundId = 1; // ሉፕ (Loop back to 1)
+    // **እዚህ ጋር ነው ዋናው ለውጥ:** 
+    // አንደኛው ራውንድ ጨዋታውን ሲጀምር፣ ሌላው ራውንድ ሌላ ጨዋታ (Lobby) እንዲከፍት ወዲያው እናደርጋለን!
+    openNextAvailableRound(roundId);
 
-    const nextRound = rounds[nextRoundId];
-    if (nextRound.status === 'idle') {
-        nextRound.status = 'waiting';
-        nextRound.timer = 30;
-        nextRound.selectedNumbers = {};
-        startRoundTimer(nextRoundId);
-        io.emit('newRoundOpened', { roundId: nextRoundId });
-    }
-
-    // የጨዋታው ጊዜ (ለምሳሌ ጨዋታው ተጫውቶ ሲያልቅ - በምሳሌነት 30 ሰከንድ ቆይታ ተሰጥቷል)
+    // የጨዋታው ቆይታ (ለምሳሌ 30 ሰከንድ ቆይቶ እንዲያልቅ ከፈለጉ)
     setTimeout(() => {
         handleRoundCompletion(roundId);
     }, 30000); 
 }
 
-// ራውንድ ሲያልቅ (የ 3 ሰከንድ Clear ቆይታ)
+// ቀጣዩን ራውንድ አዲስ ጨዋታ እንዲሆን አድርጎ የሚከፍት ፋንክሽን
+function openNextAvailableRound(currentRoundId) {
+    let nextRoundId = currentRoundId + 1;
+    if (nextRoundId > 3) nextRoundId = 1;
+
+    const nextRound = rounds[nextRoundId];
+    
+    // ቀጣዩ ራውንድ idle ወይም ከዚህ ቀደም ጨርሶ ከነበረ አዲስ ራውንድ አድርገን እንከፍተዋለን
+    nextRound.status = 'waiting';
+    nextRound.timer = 30;
+    nextRound.selectedNumbers = {};
+    nextRound.players = [];
+
+    startRoundTimer(nextRoundId);
+    io.emit('newRoundOpened', { roundId: nextRoundId });
+}
+
+// ራውንድ ሲያልቅ (የ 3 ሰከንድ ባዶ ሆኖ የመቆየት ሂደት)
 function handleRoundCompletion(finishedRoundId) {
     const round = rounds[finishedRoundId];
     round.status = 'clearing';
     round.selectedNumbers = {};
     round.players = [];
 
-    // ቦርዱ ለ 3 ሰከንድ ባዶ (Clear) ሆኖ እንዲቆይ ለተጫዋቾች ማሳወቅ
     io.emit('roundClearing', { 
         roundId: finishedRoundId, 
         message: `ራውንድ ${finishedRoundId} አልቋል፤ ቦርዱ ለ 3 ሰከንድ ባዶ ሆኖ ይቆያል...` 
@@ -75,44 +81,30 @@ function handleRoundCompletion(finishedRoundId) {
     setTimeout(() => {
         round.status = 'idle';
         io.emit('boardCleared', { roundId: finishedRoundId });
-
-        // ሁለቱም ቀጣይ ራውንዶች አድል ሰጥተው ከጨረሱ፣ ይህኛው ራውንድ እንደገና 'waiting' ሆኖ ሊከፈት ይችላል
-        // ሰርቨሩ ሁልጊዜ ቢያንስ አንድ ራውንድ ክፍት (Waiting) መኖሩን ያረጋግጣል
-        checkAndEnsureActiveLobby();
-    }, 3000); // 3 ሰከንድ ማቆያ
-}
-
-// ሁልጊዜ ቢያንስ አንድ ራውንድ ክፍት መሆኑን ማረጋገጫ
-function checkAndEnsureActiveLobby() {
-    const activeWaiting = Object.values(rounds).find(r => r.status === 'waiting');
-    if (!activeWaiting) {
-        // ምንም Waiting ራውንድ ከሌለ፣ Idle የሆነውን ወደ waiting መቀየር
-        const idleRound = Object.values(rounds).find(r => r.status === 'idle');
-        if (idleRound) {
-            idleRound.status = 'waiting';
-            idleRound.timer = 30;
-            idleRound.selectedNumbers = {};
-            startRoundTimer(idleRound.id);
-            io.emit('newRoundOpened', { roundId: idleRound.id });
-        }
-    }
+    }, 3000); 
 }
 
 // የሶኬት ግንኙነቶች
 io.on('connection', (socket) => {
     console.log('አዲስ ተጠቃሚ ተገናኝቷል:', socket.id);
 
-    // ተጠቃሚው ወደ ሲስተሙ ሲገባ የሚገኝበትን ክፍት ራውንድ መጠየቅ
+    // ተጠቃሚው ሲገባ ሁልጊዜ አሁን ክፍት ወደሆነው (Waiting) ራውንድ ይመደባል
     socket.on('joinGame', () => {
-        const availableRound = Object.values(rounds).find(r => r.status === 'waiting');
+        let availableRound = Object.values(rounds).find(r => r.status === 'waiting');
 
+        // ምንም waiting ራውንድ ከሌለ (ሁሉም እየተጫወቱ ወይም clearing ላይ ከሆኑ) 
+        // የመጀመሪያውን ራውንድ ወይም idle የሆነውን አስገዳጅ በመክፈት አዲስ ጌም እንፈጥራለን
         if (!availableRound) {
-            // ሶስቱም ራውንዶች ሞልተው አክቲቭ ከሆኑ
-            socket.emit('gameNotification', { 
-                type: 'BUSY', 
-                message: 'ጨዋታ እየተካሄደ ነው፣ እባክዎ ትንሽ ይጠብቁ' 
-            });
-            return;
+            let idleRound = Object.values(rounds).find(r => r.status === 'idle');
+            if (!idleRound) idleRound = rounds[1]; // ከጠፋ ወደ 1ኛ እናመራለን
+
+            idleRound.status = 'waiting';
+            idleRound.timer = 30;
+            idleRound.selectedNumbers = {};
+            startRoundTimer(idleRound.id);
+            availableRound = idleRound;
+            
+            io.emit('newRoundOpened', { roundId: availableRound.id });
         }
 
         socket.join(`round_${availableRound.id}`);
@@ -141,7 +133,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// የመጀመሪያውን ራውንድ በማስጀመር ሰርቨሩን መክፈት
+// ሰርቨሩ ሲጀምር የመጀመሪያውን ራውንድ መክፈት
 rounds[1].status = 'waiting';
 startRoundTimer(1);
 
