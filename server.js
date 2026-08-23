@@ -92,27 +92,68 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
-// [የተስተካከለ] ዊዝድሮ እና ዲፖዚት መረጃዎችን (details) ጨምሮ የሚይዝበት API
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
     
     try {
+        let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
+        if (userRes.rows.length === 0) {
+            return res.json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
+        }
+        let user = userRes.rows[0];
+
         if (type === 'WITHDRAW') {
-            const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
-            if (userRes.rows.length === 0) {
-                return res.json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
-            }
-            let currentBalance = parseFloat(userRes.rows[0].balance);
+            let currentBalance = parseFloat(user.balance);
             if (currentBalance < parseFloat(amount)) {
                 return res.json({ success: false, message: 'በዋሌትዎ ውስጥ ያለው ብር በቂ አይደለም!' });
             }
         }
 
         await pool.query(
-            'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
-            [tx_id, identifier, type, amount, details || '']
+            'INSERT INTO transactions (tx_id, identifier, type, amount, handled) VALUES ($1, $2, $3, $4, FALSE)',
+            [tx_id, identifier, type, amount]
         );
+
+        // ለተጠቃሚው በቴሌግራም ቦት በኩል ማሳወቂያ መላክ
+        if (bot && identifier) {
+            try {
+                let userMsg = type === 'WITHDRAW' 
+                    ? `💸 **የወጪ (Withdraw) ጥያቄዎ ደርሷል!**\n\n🆔 TxID: ${tx_id}\n💰 መጠን: ${amount} ብር\n⏳ ሁኔታ: በሂደት ላይ (Pending)\n\nአስተዳዳሪዎች ሲያጸድቁት ይለቀቃል።`
+                    : `💳 **የዲፖዚት ጥያቄዎ ደርሷል!**\n\n🆔 TxID: ${tx_id}\n💰 መጠን: ${amount} ብር\n⏳ ሁኔታ: በምርመራ ላይ (Pending)`;
+                
+                await bot.sendMessage(identifier, userMsg, { parse_mode: 'Markdown' });
+            } catch (botErr) {
+                console.error('Failed to send Telegram notification to user:', botErr);
+            }
+        }
+
+        // ለአድሚን (ADMIN_CHAT_ID) ማሳወቂያ እና አዝራር መላክ
+        if (bot && ADMIN_CHAT_ID) {
+            try {
+                let adminMsg = `🔔 **አዲስ የ ${type} ጥያቄ መጥቷል!**\n` +
+                               `🆔 TxID: ${tx_id}\n` +
+                               `👤 ስም: ${user.name || 'Unknown'} (@${user.username || 'none'})\n` +
+                               `📱 ስልክ: ${user.phone || 'N/A'}\n` +
+                               (details ? `📋 ዝርዝር: ${details}\n` : '') +
+                               `💰 መጠን: ${amount} ብር`;
+
+                await bot.sendMessage(ADMIN_CHAT_ID, adminMsg, {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}` },
+                                { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}` }
+                            ]
+                        ]
+                    }
+                });
+            } catch (adminErr) {
+                console.error('Failed to send Telegram notification to admin:', adminErr);
+            }
+        }
+
         res.json({ success: true, tx_id });
     } catch (err) {
         console.error(err);
@@ -216,7 +257,6 @@ if (bot) {
         }
     });
 
-    // [የተስተካከለ] አድሚኑ የሚጠብቁ ጥያቄዎችን ሲያይ የባንክ አካውንት እና ስልክ ቁጥሩን (tx.details) ጨምሮ እንዲያሳይ የተደረገበት ክፍል
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID) return;
@@ -242,10 +282,6 @@ if (bot) {
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
                             `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
                             `💰 መጠን: ${tx.amount} ብር`;
-
-                if (tx.type === 'WITHDRAW' && tx.details) {
-                    msgText += `\n🏦 የባንክ/ስልክ አካውንት: ${tx.details}`;
-                }
 
                 bot.sendMessage(chatId, msgText, {
                     reply_markup: {
@@ -361,7 +397,7 @@ function getOrCreateLobby(betAmount) {
             roomId,
             betAmount,
             status: 'waiting', 
-            currentRound: 1, 
+            currentRound: 1,
             maxRounds: 3,
             players: new Set(),
             playerNames: {},
