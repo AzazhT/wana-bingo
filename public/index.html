@@ -18,7 +18,6 @@
 
     <h1>የቢንጎ ባለብዙ ራውንድ ጨዋታ</h1>
     
-    <!-- ኖቲፊኬሽን ማሳያ (ለምሳሌ: ጨዋታ በሂደት ላይ ሲሆን) -->
     <div id="notification-bar"></div>
 
     <div class="board-container">
@@ -27,7 +26,6 @@
         <div class="grid" id="number-board"></div>
     </div>
 
-    <!-- Socket.io ከሰርቨር ጋር ማገናኛ -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -42,7 +40,7 @@
         // ጨዋታውን መቀላቀል
         socket.emit('joinGame');
 
-        // የቦጥር ሰሌዳ ማዘጋጀት (ከ 1 እስከ 25 ቁጥሮች)
+        // የቦርድ ሰሌዳ መፍጠር
         function createBoard(selectedNumbers = {}) {
             numberBoard.innerHTML = '';
             for (let i = 1; i <= 25; i++) {
@@ -65,7 +63,7 @@
             }
         }
 
-        // ራውንድ ሲሳካና መረጃ ሲመጣ
+        // ወደ ራውንድ ሲገባ
         socket.on('joinedRound', (data) => {
             currentRoundId = data.roundId;
             roundTitle.textContent = `ራውንድ ${data.roundId} (ምርጫ ክፍት ነው)`;
@@ -109,7 +107,6 @@
                 notificationBar.style.display = 'block';
                 notificationBar.textContent = data.message;
                 
-                // ቦርዱን በሰአቱ ማጽዳት/Clearing ማድረግ
                 const cells = document.querySelectorAll('.cell');
                 cells.forEach(cell => {
                     cell.classList.remove('selected');
@@ -121,16 +118,8 @@
         // የ 3 ሰከንዱ Clear ሂደት አብቅቶ ቦርዱ ሙሉ በሙሉ ሲጸዳ
         socket.on('boardCleared', (data) => {
             if (data.roundId === currentRoundId) {
-                // ተጠቃሚው ወደ ቀጣዩ ክፍት ራውንድ በራስ-ሰር እንዲገባ መጠየቅ
+                // ጨዋታው ሲያልቅ ተጠቃሚው አውቶማቲክ ወደ ቀጣዩ ክፍት ራውንድ እንዲዘዋወር ይደረጋል
                 socket.emit('joinGame');
-            }
-        });
-
-        // ሶስቱም ራውንዶች ሞልተው ሲገኙ የሚመጣ ማሳሰቢያ
-        socket.on('gameNotification', (data) => {
-            if (data.type === 'BUSY') {
-                notificationBar.style.display = 'block';
-                notificationBar.textContent = data.message; // "ጨዋታ እየተካሄደ ነው፣ እባክዎ ትንሽ ይጠብቁ"
             }
         });
     </script>
