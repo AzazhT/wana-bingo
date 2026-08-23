@@ -558,6 +558,8 @@ io.on('connection', (socket) => {
 
                 let boardReleasedFlag = false;
                 
+                // ጨዋታው ገና በመጠባበቅ ላይ (waiting) ከሆነ ብቻ ቦርዱ ይለቀቃል፤ 
+                // ጨዋታው ከተጀመረ ግን (playing) ቦርዱም ሆነ ቁጥሩ/አክቲቭነቱ አይሰረዝም!
                 if (room.status === 'waiting') {
                     for (let bNum in room.selectedBoards) {
                         if (room.selectedBoards[bNum] === socket.id) {
