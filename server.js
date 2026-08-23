@@ -545,7 +545,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 💡 እዚህ ጋር ተስተካከለ፡ ተጫዋቹ ጆይን አድርጎ ጨዋታው ከጀመረ በኋላ (ወይም ቦርድ ይዞ) ሊቭ ቢል/ዲስኮኔክት ሲያደርግ ቦርዱ እንዳይጠፋ ተደርጓል።
+    // 💡 የተስተካከለ: ጨዋታው 'playing' (ከጀመረ) በኋላ ተጫዋቹ ቢወጣ/ዲስኮኔክት ቢል ቦርዱም ሆነ የብር መጠኑ ከቶም እንዳይቀነስ ተደርጓል።
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
         for (let roomId in activeRooms) {
@@ -557,9 +557,9 @@ io.on('connection', (socket) => {
                     delete room.tempSelections[socket.id];
                 }
 
-                // ጨዋታው 'waiting' በሆነበት ሰዓት ብቻ ፔጅ ሪፍሬሽ ወይም ሊቭ ሲሉ ቦርዱ እንዲለቀቅ ይደረጋል፤
-                // ነገር ግን ጨዋታው 'playing' ከገባ (ስታርት ካለ) ቦርዱ ከቶም እንዳይጠፋ ይደረጋል።
                 let boardReleasedFlag = false;
+                
+                // ጨዋታው 'waiting' በሆነበት ሰዓት ብቻ ቦርዱ ይሰረዛል/ይለቀቃል
                 if (room.status === 'waiting') {
                     for (let bNum in room.selectedBoards) {
                         if (room.selectedBoards[bNum] === socket.id) {
@@ -569,6 +569,7 @@ io.on('connection', (socket) => {
                         }
                     }
                 }
+                // ጨዋታው 'playing' ከሆነ ግን selectedBoards ላይ ያለው ባለቤትነት ከቶም አይሰረዝም (በዚህም ምክንያት activePlayersCount እና prizePool ከፍ ብለው ይቆያሉ)
 
                 let currentPrizePool = calculatePrizePool(room);
 
@@ -589,7 +590,7 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 10000;
+constPORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
