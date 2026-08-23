@@ -92,7 +92,6 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
-// የዊዝድሮው እና የዲፖዚት ጥያቄዎችን ሲቀበል details (ስልክ/አካውንት ቁጥር) እንዲይዝ ተደርጓል
 app.post('/api/request-transaction', async (req, res) => {
     const { identifier, type, amount, details } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
@@ -109,11 +108,35 @@ app.post('/api/request-transaction', async (req, res) => {
             }
         }
 
-        // transactions ሠንጠረዥ ላይ details (አካውንት ወይም ስልክ ቁጥር) እንዲቀመጥ ተደርጓል
         await pool.query(
             'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
             [tx_id, identifier, type, amount, details || '']
         );
+
+        const userRes = await pool.query('SELECT name, username, phone FROM users WHERE identifier = $1', [identifier]);
+        const user = userRes.rows[0] || {};
+
+        if (bot && ADMIN_CHAT_ID) {
+            let adminMsg = `🔔 **አዲስ የ ${type} ጥያቄ መጥቷል!**\n\n` +
+                           `🆔 TxID: ${tx_id}\n` +
+                           `👤 ስም: ${user.name || 'Unknown'} (@${user.username || 'none'})\n` +
+                           `📱 ስልክ: ${user.phone || 'N/A'}\n` +
+                           `💰 መጠን: ${amount} ብር\n` +
+                           `📝 መረጃ/ኤስኤምኤስ: ${details || 'N/A'}`;
+
+            bot.sendMessage(ADMIN_CHAT_ID, adminMsg, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}` },
+                            { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}` }
+                        ]
+                    ]
+                }
+            }).catch(err => console.error('Admin notify error:', err));
+        }
+
         res.json({ success: true, tx_id });
     } catch (err) {
         console.error(err);
@@ -217,7 +240,6 @@ if (bot) {
         }
     });
 
-    // አድሚኑ ጥያቄዎችን ሲመለከት የገባውን ስልክ ቁጥር ወይም አካውንት (details/phone) ከ N/A ይልቅ በግልጽ እንዲያሳይ ተደርጓል[cite: 9]
     bot.onText(/\/pending/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID) return;
@@ -238,12 +260,12 @@ if (bot) {
             bot.sendMessage(chatId, `📋 **የሚጠብቁ ጥያቄዎች (${pendingRes.rows.length}):**`, { parse_mode: 'Markdown' });
 
             for (let tx of pendingRes.rows) {
-                let userContact = tx.details || tx.phone || 'N/A';
                 let msgText = `🔔 የ ${tx.type} ጥያቄ\n` +
                             `🆔 TxID: ${tx.tx_id}\n` +
                             `👤 ስም: ${tx.name || 'Unknown'} (@${tx.username || 'none'})\n` +
-                            `📱 ስልክ/አካውንት: ${userContact}\n` +
-                            `💰 መጠን: ${tx.amount} ብር`;
+                            `📱 ስልክ: ${tx.phone || 'N/A'}\n` +
+                            `💰 መጠን: ${tx.amount} ብር\n` +
+                            `📝 መረጃ: ${tx.details || 'N/A'}`;
 
                 bot.sendMessage(chatId, msgText, {
                     reply_markup: {
@@ -424,7 +446,7 @@ function startGlobalLobbyCountdown(roomId) {
             if (room.players.size < 1 || selectedBoardsCount < 1) {
                 room.countdown = 30;
                 room.startTime = Date.now() + 30000;
-                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረطة ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
+                io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
             } else {
                 startRoomGame(roomId);
             }
