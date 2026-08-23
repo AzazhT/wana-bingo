@@ -17,22 +17,29 @@ app.use(express.json());
 app.use(express.static('public'));
 
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
-const ADMIN_CHAT_ID = '686733543';
-const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 
 let bot = null;
 if (TOKEN) {
     try {
+        // 409 Conflict ስህተትን ለመከላከል ፖሊንግ ከማድረጉ በፊት 
+        // ቴሌግራም ላይ ያሉትን አሮጌ ግንኙነቶች በ webHook ማጥፋት ወይም በቀላሉ ማስተካከል ይቻላል።
+        // ለጊዜው በ development/production ጊዜ ስህተቱ አፕሊኬሽኑን እንዳይዘጋው try-catch አድርገነዋል።
         bot = new TelegramBot(TOKEN, {  
             polling: {
-                interval: 300,
+                interval: 1000,
                 autoStart: true,
-                params: { timeout: 10 }
+                params: { timeout: 30 }
             } 
         });
         console.log('Telegram Bot started successfully!');
+        
         bot.on('polling_error', (error) => {
-            console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
+            // ስህተቱ ሲመጣ አፕ እንዳይወድቅ ሎጂክ 
+            if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
+                console.log('Telegram Polling Conflict (409): ሌላ ቦታ ቦርዱ እየሰራ ነው። ይህንን ችግር ለመቅረፍ Render ላይ ብቻ ሩን ያድርጉ ወይም ሌላ ቦታ የተከፈተውን ያጥፉ።');
+            } else {
+                console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
+            }
         });
     } catch (err) {
         console.error('Telegram Bot initialization error:', err);
@@ -187,7 +194,6 @@ function startRoomGame(roomId) {
     
     let finalPrizePool = calculatePrizePool(room);
     
-    // ጨዋታው መጀመሩን እና መቆለፉን (Lock) ለሁሉም በክፍሉ ውስጥ ላሉት እናሳውቃለን
     io.to(roomId).emit('gameStarted', { 
         message: 'ጨዋታው ጀምሯል! አዳዲስ መግቢያዎች ተዘግተዋል።',
         prizePool: finalPrizePool
@@ -218,7 +224,6 @@ io.on('connection', (socket) => {
         const betAmount = data && data.betAmount ? data.betAmount : '20';
         let room = getOrCreateLobby(betAmount);
 
-        // ጨዋታው ቀደም ብሎ ከጀመረ አዳዲስ ተጫዋቾችን ወደ ጨዋታው እንዳይገቡ እንከለክላለን
         if (room.status === 'playing') {
             socket.emit('gameAlreadyStarted', { 
                 message: 'ይህ ጨዋታ ጀምሯል! ከዚህ በኋላ ቁጥር መምረጥም ሆነ ወደ ጨዋታው መግባት አይቻልም።'
@@ -270,7 +275,6 @@ io.on('connection', (socket) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
 
-        // ጨዋታው ከተጀመረ (playing) ማንም ሰው ቦርድ ይዞ ወደ ውስጥ መግባት አይችልም
         if (!room || room.status !== 'waiting') {
             return socket.emit('gameAlreadyStarted', { message: 'ሰዓቱ አልቋል ወይም ጨዋታው ጀምሯል!' });
         }
@@ -291,7 +295,6 @@ io.on('connection', (socket) => {
         socket.emit('gameJoinSuccess', { boardNumber, prizePool: currentPrizePool });
     });
 
-    // ቢንጎ ሲጠየቅ ሰርቨሩ ላይ ቼክ ተደርጎ ውጤቱ ለዛው ክፍል (Room) ብቻ ይላካል
     socket.on('claimBingo', async (data) => {
         const { identifier, name, winAmount, roomId, boardNumber, winningLine } = data;
         let room = activeRooms[roomId];
@@ -313,7 +316,6 @@ io.on('connection', (socket) => {
                 console.error('Bingo claim error:', err);
             }
 
-            // ውጤቱን በዛው ክፍል (Room) ውስጥ ላሉ ንቁ ተጫዋቾች ብቻ እናሳያለን
             io.to(roomId).emit('gameOver', { 
                 subtitle: `${name} ጨዋታውን አሸንፏል!`,
                 winnerName: name,
@@ -325,7 +327,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
+        console.log('User connected:', socket.id);
         for (let roomId in activeRooms) {
             let room = activeRooms[roomId];
             if (room.players.has(socket.id)) {
@@ -341,7 +343,7 @@ io.on('connection', (socket) => {
                 }
 
                 let currentPrizePool = calculatePrizePool(room);
-                io.to(roomId).emit('playersUpdate', { 
+                io.to(roomId).emit('playersInstance', { 
                     playersCount: room.players.size,
                     activePlayersCount: getActivePlayersCount(room),
                     prizePool: currentPrizePool
