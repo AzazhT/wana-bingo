@@ -134,7 +134,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
                             `─────────────────────\n` +
                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -328,7 +328,8 @@ function getActivePlayersCount(room) {
         activeSocketIds.add(socketId);
     }
     let realCount = activeSocketIds.size;
-    return realCount < 50 ? realCount + 45 : realCount;
+    // 💡 ሎጂክ 1 ማስተካከያ፡ ከ 46 ጀምሮ ሳይሆን የተያዘውን ትክክለኛ ቁጥር በቀጥታ ከ 1 ጀምሮ እንዲቆጥር ተደረገ
+    return realCount;
 }
 
 function calculatePrizePool(room) {
@@ -428,6 +429,55 @@ function startGlobalLobbyCountdown(roomId) {
     }, 1000);
 }
 
+// 💡 ሄፐር ፋንክሽን፡ የቦርድ ፕሪንት የተሟላ ማሸነፍ (Bingo) ማረጋገጫ (ለቦቶች አውቶማቲክ አሸናፊነት)
+function checkCardHasBingo(card, drawnNums) {
+    let marked = Array(5).fill(false).map(() => Array(5).fill(false));
+    marked[2][2] = true; // የነፃው ቦታ
+
+    for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+            let val = card[r][c];
+            if (val === '*' || drawnNums.includes(val)) {
+                marked[r][c] = true;
+            }
+        }
+    }
+
+    let isBingo = false;
+    for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every(c => marked[r][c])) isBingo = true;
+    for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every(r => marked[r][c])) isBingo = true;
+    if ([0,1,2,3,4].every(i => marked[i][i])) isBingo = true;
+    if ([0,1,2,3,4].every(i => marked[i][4-i])) isBingo = true;
+
+    return isBingo;
+}
+
+// (አማራጭ የቦርድ ጀነሬተር በሰርቨር በኩል ለቦቶች ካርዶች ማረጋገጫ እንዲመች)
+function generateServerBingoCard() {
+    let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
+    let cols = [];
+    for(let c = 0; c < 5; c++) {
+        let col = [];
+        let min = ranges[c][0], max = ranges[c][1];
+        while(col.length < 5) {
+            let rand = Math.floor(Math.random() * (max - min + 1)) + min;
+            if(!col.includes(rand)) col.push(rand);
+        }
+        cols.push(col);
+    }
+    let card = [];
+    for(let r = 0; r < 5; r++) {
+        let row = [];
+        let c = 0;
+        while(c < 5) {
+            row.push(r === 2 && c === 2 ? "*" : cols[c][r]);
+            c++;
+        }
+        card.push(row);
+    }
+    return card;
+}
+
 function startRoomGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
@@ -440,6 +490,15 @@ function startRoomGame(roomId) {
         message: 'ጨዋታው ተጀምሯል!',
         prizePool: finalPrizePool
     });
+
+    // 💡 ሎጂክ 2 ማስተካከያ፡ የቦቶችን ካርዶች በሰርቨር በኩል ማዘጋጀት (አንድ ቦት ከነሱ እንዲያሸንፍ)
+    let roomBotCards = {};
+    for (let bNum in room.selectedBoards) {
+        let ownerId = room.selectedBoards[bNum];
+        if (ownerId && ownerId.startsWith('BOT_')) {
+            roomBotCards[ownerId] = { boardNumber: bNum, card: generateServerBingoCard() };
+        }
+    }
 
     room.gameInterval = setInterval(() => {
         if (room.drawnNumbers.length >= 75) {
@@ -459,6 +518,24 @@ function startRoomGame(roomId) {
 
         room.drawnNumbers.push(rand);
         io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
+
+        // 💡 ሎጂክ 2 ማስተካከያ፡ ጨዋታው ከጀመረ በኋላ ከተጠሩት ቁጥሮች ውስጥ ፌክ ፕሌየሮቹ (ቦቶች) ቢያንስ አንዱ ቢያሸንፍ (Bingo ቢል) ማረጋገጫና ማሳወቂያ
+        for (let botId in roomBotCards) {
+            let botData = roomBotCards[botId];
+            if (checkCardHasBingo(botData.card, room.drawnNumbers)) {
+                clearInterval(room.gameInterval);
+                if (room.timer) clearInterval(room.timer);
+                room.status = 'ended';
+
+                let botWinAmount = finalPrizePool;
+                io.to(roomId).emit('gameOver', { message: `🎉 ተጫዋች (Bot - Board #${botData.boardNumber}) BINGO አሸንፏል! ${botWinAmount} ብር ተሸልሟል።` });
+
+                setTimeout(() => {
+                    getOrCreateLobby(room.betAmount);
+                }, 3000);
+                return;
+            }
+        }
     }, 3000);
 }
 
