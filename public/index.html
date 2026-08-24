@@ -55,9 +55,15 @@
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
-        @keyframes modalSlideUp {
-            0% { transform: translateY(50px) scale(0.9); opacity: 0; }
-            100% { transform: translateY(0) scale(1); opacity: 1; }
+        @keyframes greenGlowPulse {
+            0% { color: var(--accent-amber); text-shadow: none; }
+            50% { color: #10b981; text-shadow: 0 0 10px rgba(16, 185, 129, 0.8), 0 0 20px rgba(16, 185, 129, 0.5); transform: scale(1.05); }
+            100% { color: var(--accent-amber); text-shadow: none; }
+        }
+
+        .timer-glowing-green {
+            animation: greenGlowPulse 1s infinite ease-in-out !important;
+            font-weight: 900 !important;
         }
 
         .header { 
@@ -490,12 +496,21 @@
 
                 if (gameStatus === 'playing') {
                     countdownElement.innerText = "ጨዋታው ተጀምሯል";
+                    countdownElement.classList.remove('timer-glowing-green');
                     if (startBtn) {
                         startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
                         startBtn.style.opacity = "0.5";
                     }
                 } else {
                     countdownElement.innerText = `${remaining}s`;
+                    
+                    // ከ 30 ሰከንድ በታች ሲሆን ሰዓቱ በአረንጓዴ ቀለም እንዲደምቅ ተደርጓል
+                    if (remaining <= 30) {
+                        countdownElement.classList.add('timer-glowing-green');
+                    } else {
+                        countdownElement.classList.remove('timer-glowing-green');
+                    }
+
                     if (startBtn) {
                         startBtn.innerText = "Start game (Join)";
                         startBtn.style.opacity = "1";
@@ -504,6 +519,7 @@
 
                 if (remaining <= 0 && gameStatus !== 'playing') {
                     countdownElement.innerText = "ጨዋታው ተጀምሯል";
+                    countdownElement.classList.remove('timer-glowing-green');
                 }
             }, 1000);
         }
@@ -511,6 +527,7 @@
         socket.on('gameStarted', (data) => {
             gameStatus = 'playing';
             document.getElementById('countdownText').innerText = "ጨዋታው ተጀምሯል";
+            document.getElementById('countdownText').classList.remove('timer-glowing-green');
             let startBtn = document.getElementById('btnStartGame');
             if (startBtn) {
                 startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
@@ -526,7 +543,7 @@
         socket.on('roomResetForNextRound', (data) => {
             gameStatus = 'waiting';
             globalStartTime = data.startTime;
-            roomSelectedBoards = data.selectedBoards || {};
+            roomSelectedBoards = data.selectedBoards || {}; // 🛑 የቀድሞዎቹ የተያዙ ቦርዶች ሙሉ በሙሉ ይጸዳሉ
             updateBoardsUI();
             let startBtn = document.getElementById('btnStartGame');
             if (startBtn) {
@@ -726,7 +743,6 @@
                 btn.innerText = i;
                 btn.onclick = () => {
                     if (gameStatus === 'playing') {
-                        // ጨዋታው በሂደት ላይ እያለ ማየት (Preview) ብቻ ይቻላል, አዲስ መግባት አይቻልም
                         if (roomSelectedBoards[i]) {
                             displayPreview(i);
                         } else {
