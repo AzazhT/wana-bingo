@@ -145,19 +145,13 @@
             font-size: 11px; 
             cursor: pointer; 
         }
+        /* ማስተካከያ 1: ተጠቃሚው የመረጠው ቦርድ በአረንጓዴ ከለር ብቻ ለራሱ ይታያል */
         .card-btn.active { 
             background: linear-gradient(135deg, #00ff87, #10b981) !important; 
             color: #000000 !important; 
             font-weight: 900;
             box-shadow: 0 0 12px rgba(0, 255, 135, 0.9); 
             border: 1px solid #ffffff !important; 
-        }
-        .card-btn.taken { 
-            background: linear-gradient(135deg, #ff003c, #cc0000) !important; 
-            color: #ffffff !important; 
-            cursor: not-allowed; 
-            opacity: 0.9; 
-            font-weight: 900;
         }
 
         .bottom-section { 
@@ -271,7 +265,8 @@
 
                 <div class="action-column">
                     <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ</button>
-                    <button class="btn-start-game" id="btnStartGame" onclick="goToGame()">Start game (Join)</button>
+                    <!-- ማስተካከያ 1: የስታርት በተን ጨዋታው እስኪዘጋጅ እና ሰዓቱ እስኪያልቅ ድረስ ተቆልፎ (Disabled) እንዲቆይ ተደርጓል -->
+                    <button class="btn-start-game" id="btnStartGame" onclick="goToGame()" disabled style="opacity: 0.5; cursor: not-allowed;">ጨዋታው በዝግጅት ላይ ነው...</button>
                 </div>
             </div>
 
@@ -405,7 +400,6 @@
         let currentRoomId = null;
         let drawnNumbers = [];
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
-        let roomSelectedBoards = {};
         let globalStartTime = null;
         let clientTimerInterval = null;
         let gameStatus = 'waiting';
@@ -462,10 +456,6 @@
             gameStatus = data.status || 'waiting';
             updateDerashUI(data);
             startClientCountdown();
-            if (data.selectedBoards) {
-                roomSelectedBoards = data.selectedBoards;
-                updateBoardsUI();
-            }
         });
 
         socket.on('countdownUpdate', (data) => {
@@ -474,6 +464,7 @@
             updateDerashUI(data);
         });
 
+        // 👈 **ማስተካከያ 1:** የስታርት በተን አያያዝ እና ሰዓት ቆጣሪ ሎጂክ
         function startClientCountdown() {
             if (clientTimerInterval) clearInterval(clientTimerInterval);
             clientTimerInterval = setInterval(() => {
@@ -485,17 +476,28 @@
 
                 if (gameStatus === 'playing') {
                     countdownElement.innerText = "ጨዋታው ተጀምሯል";
+                    if (startBtn) {
+                        startBtn.disabled = true;
+                        startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
+                        startBtn.style.opacity = "0.5";
+                        startBtn.style.cursor = "not-allowed";
+                    }
                 } else {
                     countdownElement.innerText = `${remaining}s`;
-                }
-
-                if (startBtn) {
-                    startBtn.innerText = "Start game (Join)";
-                    startBtn.style.opacity = "1";
-                }
-
-                if (remaining <= 0 && gameStatus !== 'playing') {
-                    countdownElement.innerText = "ጨዋታው ተጀምሯል";
+                    if (startBtn) {
+                        // ሰዓቱ እስኪያልቅ ወይም ጨዋታው ዝግጁ እስከሚሆን ድረስ በተኗ ተቆልፋ ትቆያለች
+                        if (remaining <= 0) {
+                            startBtn.disabled = false;
+                            startBtn.innerText = "Start game (Join)";
+                            startBtn.style.opacity = "1";
+                            startBtn.style.cursor = "pointer";
+                        } else {
+                            startBtn.disabled = true;
+                            startBtn.innerText = `ጨዋታው ሊጀምር ${remaining}ሰ ይቀረዋል...`;
+                            startBtn.style.opacity = "0.5";
+                            startBtn.style.cursor = "not-allowed";
+                        }
+                    }
                 }
             }, 1000);
         }
@@ -505,25 +507,30 @@
             document.getElementById('countdownText').innerText = "ጨዋታው ተጀምሯል";
             let startBtn = document.getElementById('btnStartGame');
             if (startBtn) {
-                startBtn.innerText = "Start game (Join)";
-                startBtn.style.opacity = "1";
+                startBtn.disabled = true;
+                startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
+                startBtn.style.opacity = "0.5";
+                startBtn.style.cursor = "not-allowed";
             }
             if (data && data.prizePool) {
                 currentDerashAmount = parseFloat(data.prizePool);
                 document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
             }
-            updateBoardsUI();
         });
 
         socket.on('roomResetForNextRound', (data) => {
             gameStatus = 'waiting';
             globalStartTime = data.startTime;
-            roomSelectedBoards = data.selectedBoards || {};
+            selectedCardId = null;
             updateBoardsUI();
+            displayPreview(null);
+            
             let startBtn = document.getElementById('btnStartGame');
             if (startBtn) {
-                startBtn.innerText = "Start game (Join)";
-                startBtn.style.opacity = "1";
+                startBtn.disabled = true;
+                startBtn.innerText = "ጨዋታው በዝግጅት ላይ ነው...";
+                startBtn.style.opacity = "0.5";
+                startBtn.style.cursor = "not-allowed";
             }
             startClientCountdown();
         });
@@ -532,16 +539,6 @@
             selectedCardId = data.boardNumber;
             updateBoardsUI();
             displayPreview(selectedCardId);
-        });
-
-        socket.on('boardSelected', (data) => {
-            roomSelectedBoards[data.boardNumber] = data.socketId;
-            updateBoardsUI();
-        });
-
-        socket.on('boardReleased', (data) => {
-            delete roomSelectedBoards[data.boardNumber];
-            updateBoardsUI();
         });
 
         socket.on('gameJoinSuccess', (data) => {
@@ -717,11 +714,11 @@
                 btn.id = `card-btn-${i}`;
                 btn.innerText = i;
                 btn.onclick = () => {
-                    // ጨዋታው በሂደት ላይ ቢሆንም እንኳ ተጠቃሚዎች ነፃ ቦርዶችን መምረጥ እንዲችሉ ተፈቅዷል
-                    if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
-                        alert('ይህ ቦርድ በሌላ ተጫዋች ወይም በቦት ተይዟል!');
+                    if (gameStatus === 'playing') {
+                        alert('ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም!');
                         return;
                     }
+                    // 👈 **ማስተካከያ 2:** Private Selection (ተጠቃሚው ሲመርጥ ለራሱ ብቻ በአረንጓዴ ከለር ይታያል እንጂ ለሌሎች Taken ተብሎ አይዘጋም)
                     socket.emit('selectBoardTemp', { roomId: currentRoomId, boardNumber: i });
                 };
                 cardsGrid.appendChild(btn);
@@ -735,15 +732,9 @@
             for(let i = 1; i <= 100; i++) {
                 const btn = document.getElementById(`card-btn-${i}`);
                 if(btn) {
-                    btn.classList.remove('active', 'taken');
-                    if(roomSelectedBoards[i]) {
-                        if(roomSelectedBoards[i] === socket.id) {
-                            btn.classList.add('active'); 
-                        } else {
-                            btn.classList.add('taken');  
-                        }
-                    } else if(selectedCardId !== null && i === selectedCardId) {
-                        btn.classList.add('active'); 
+                    btn.classList.remove('active');
+                    if(selectedCardId !== null && i === selectedCardId) {
+                        btn.classList.add('active'); // ተጠቃሚው የመረጠው ቦርድ ብቻ በአረንጓዴ ይደምቃል
                     }
                 }
             }
@@ -775,6 +766,9 @@
         }
 
         async function goToGame() {
+            if (gameStatus === 'playing') {
+                return alert('ጨዋታው በሂደት ላይ ነው! እባክዎ ቀጣዩ ዙር እስኪጀር ይጠብቁ።');
+            }
             if (selectedCardId === null) {
                 return alert('እባክዎ መጀመሪያ የቦርድ ቁጥር ይምረጡ!');
             }
