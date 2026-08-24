@@ -145,6 +145,7 @@
             font-size: 11px; 
             cursor: pointer; 
         }
+        /* ተጠቃሚው የመረጠው ቦርድ በአረንጓዴ ከለር ብቻ ለራሱ ይታያል (Private Selection) */
         .card-btn.active { 
             background: linear-gradient(135deg, #00ff87, #10b981) !important; 
             color: #000000 !important; 
@@ -264,7 +265,8 @@
 
                 <div class="action-column">
                     <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ</button>
-                    <button class="btn-start-game" id="btnStartGame" onclick="goToGame()" disabled style="opacity: 0.5; cursor: not-allowed;">ጨዋታው በዝግጅት ላይ ነው...</button>
+                    <!-- ጨዋታው እየቆጠረ ባለበት ሰዓት ስታርት በተኑ enable እንዲሆን እና ጨዋታው ሲጀምር disable እንዲሆን ተደርጓል -->
+                    <button class="btn-start-game" id="btnStartGame" onclick="goToGame()">Start game (Join)</button>
                 </div>
             </div>
 
@@ -462,6 +464,7 @@
             updateDerashUI(data);
         });
 
+        // ጨዋታው እየቆጠረ ባለበት ሰዓት ስታርት በተኑ enable ሆኖ እንዲቆይ፣ ዜሮ ሲሆን ወይም ጨዋታው ሲጀምር disable እንዲሆን የሚደረግበት ሎጂክ
         function startClientCountdown() {
             if (clientTimerInterval) clearInterval(clientTimerInterval);
             clientTimerInterval = setInterval(() => {
@@ -482,17 +485,11 @@
                 } else {
                     countdownElement.innerText = `${remaining}s`;
                     if (startBtn) {
-                        if (remaining <= 0) {
-                            startBtn.disabled = false;
-                            startBtn.innerText = "Start game (Join)";
-                            startBtn.style.opacity = "1";
-                            startBtn.style.cursor = "pointer";
-                        } else {
-                            startBtn.disabled = true;
-                            startBtn.innerText = `ጨዋታው ሊጀምር ${remaining}ሰ ይቀረዋል...`;
-                            startBtn.style.opacity = "0.5";
-                            startBtn.style.cursor = "not-allowed";
-                        }
+                        // ቆጠራው በሚካሄድበት ሰዓት (remaining > 0 ወይም ዜሮ ሲሆንም) ስታርት በተኑ ሁልጊዜ Enable ሆኖ እንዲቆይ ይደረጋል
+                        startBtn.disabled = false;
+                        startBtn.innerText = remaining > 0 ? `Start game (${remaining}s)` : "Start game (Join)";
+                        startBtn.style.opacity = "1";
+                        startBtn.style.cursor = "pointer";
                     }
                 }
             }, 1000);
@@ -503,6 +500,7 @@
             document.getElementById('countdownText').innerText = "ጨዋታው ተጀምሯል";
             let startBtn = document.getElementById('btnStartGame');
             if (startBtn) {
+                // ጨዋታው ከጀመረ በኋላ ስታርት በተኑ ሙሉ በሙሉ disable ይደረጋል
                 startBtn.disabled = true;
                 startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
                 startBtn.style.opacity = "0.5";
@@ -523,10 +521,10 @@
             
             let startBtn = document.getElementById('btnStartGame');
             if (startBtn) {
-                startBtn.disabled = true;
-                startBtn.innerText = "ጨዋታው በዝግጅት ላይ ነው...";
-                startBtn.style.opacity = "0.5";
-                startBtn.style.cursor = "not-allowed";
+                startBtn.disabled = false;
+                startBtn.innerText = "Start game (Join)";
+                startBtn.style.opacity = "1";
+                startBtn.style.cursor = "pointer";
             }
             startClientCountdown();
         });
@@ -714,6 +712,7 @@
                         alert('ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም!');
                         return;
                     }
+                    // የቦርድ ምርጫ ፕራይቬሲ (ተጠቃሚው ሲመርጥ ለራሱ ብቻ በአረንጓዴ ከለር ይታያል)
                     socket.emit('selectBoardTemp', { roomId: currentRoomId, boardNumber: i });
                 };
                 cardsGrid.appendChild(btn);
@@ -729,7 +728,7 @@
                 if(btn) {
                     btn.classList.remove('active');
                     if(selectedCardId !== null && i === selectedCardId) {
-                        btn.classList.add('active'); 
+                        btn.classList.add('active'); // ተጠቃሚው የመረጠው ቦርድ ብቻ በአረንጓዴ ይደምቃል
                     }
                 }
             }
