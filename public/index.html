@@ -554,7 +554,7 @@
             showGameStep('gameStepBet');
         }
 
-        // === አዲስ የተጨመረ ሎጂክ: 3 ጫወታዎች ሲሞሉ መጠበቅ ===
+        // === 1. 3 ጫወታዎች ሲሞሉ መጠበቅ ===
         socket.on('lobbyFull', (data) => {
             alert(data.message || "3 ጫወታዎች እየተጫወቱ ነው። አንዱ እስኪያልቅ እባክዎ ይጠብቁ!");
             showGameStep('gameStepBet');
@@ -593,7 +593,7 @@
             }, 1000);
         }
 
-        // === አዲስ የተጨመረ ሎጂክ: ጫወታ ሲጀምር ያልገቡ መግባት አለመቻል ===
+        // === 2. ጫወታ ሲጀምር ያልገቡ መግባት አለመቻል ===
         socket.on('gameStarted', (data) => {
             document.getElementById('countdownText').innerText = "Playing!";
             if (clientTimerInterval) clearInterval(clientTimerInterval);
@@ -606,14 +606,12 @@
             }
             updateBoardsUI();
 
-            // ተጫዋቹ ቦርድ ካልመረጠ (ዘግይቶ ከመጣ) ወደ Bet ስክሪን ይመለሳል
             if (selectedCardId === null) {
                 alert("ጨዋታው ጀምሯል! ለቀጣዩ ጨዋታ ይጠብቁ።");
                 showGameStep('gameStepBet');
                 return;
             }
 
-            // ተጫዋቹ ቦርድ ከመረጠ ግን ወደ Live ስክሪን ይሸጋገራል
             if (!document.getElementById('gameStepLive').classList.contains('active')) {
                 prepareLiveGameBoard();
                 showGameStep('gameStepLive');
@@ -627,6 +625,30 @@
         socket.on('roomFinished', (data) => {
             alert(data.message || '3ቱም ራውንዶች ተጠናቀዋል!');
             showGameStep('gameStepBet');
+        });
+
+        // === 3. አዲስ የተጨመረ: ለቀጣይ ራውንድ UI ማዘጋጀት ===
+        socket.on('roomResetForNextRound', (data) => {
+            drawnNumbers = [];
+            document.getElementById('recentCalls').innerHTML = '';
+            document.getElementById('currentCallCircle').innerText = '-';
+            document.getElementById('callCount').innerText = '0';
+            document.getElementById('calledGrid').innerHTML = ''; 
+            
+            if (data.currentRound && data.maxRounds) {
+                updateRoundUI(data.currentRound, data.maxRounds);
+            }
+            
+            roomSelectedBoards = data.selectedBoards || {};
+            updateBoardsUI();
+            
+            globalStartTime = data.startTime;
+            startClientCountdown();
+            
+            selectedCardId = null;
+            displayPreview(null);
+            showGameStep('gameStepCards');
+            initPage1();
         });
 
         socket.on('boardTempSelected', (data) => {
@@ -695,7 +717,7 @@
             document.getElementById('recentCalls').prepend(ball);
         });
 
-        // === አዲስ የተጨመረ ሎጂክ: ውጤት ለዚህ ጫወታ ተጫዋቾች ብቻ ይታያል (Isolated Win) ===
+        // === 4. ውጤት ለዚህ ጫወታ ተጫዋቾች ብቻ ይታያል (Isolated Win) ===
         socket.on('gameOver', (data) => {
             document.getElementById('winnerSubText').innerText = data.subtitle || "1 player has won the game";
             document.getElementById('modalWinnerName').innerText = data.winnerName || "Kenbo-Winner";
@@ -705,7 +727,6 @@
             renderModalWinningBoard(data.boardNumber || selectedCardId, data.winningLine);
             document.getElementById('winnerModal').style.display = 'flex';
             
-            // ለቀጣይ ጨዋታ ዝግጁ እንዲሆን ስቴቱን ማጽዳት
             selectedCardId = null;
             if (clientTimerInterval) clearInterval(clientTimerInterval);
         });
@@ -767,7 +788,6 @@
             selectedCardId = null; 
             showGameStep('gameStepCards');
             initPage1();
-            // ወደ ሎቢ ይላካል፣ ሰርቨሩ 30 ሴኮንድ ታይመሩን ይጀምራል ወይም ወደ አዲስ ያስገባል
             socket.emit('joinLobby', { 
                 betAmount: amount, 
                 identifier: currentUser.id, 
@@ -884,7 +904,6 @@
             }
         }
 
-        // === አዲስ የተጨመረ ረዳት ፈንክሽን: ለ Live ጫወታ ቦርዱን ለማዘጋጀት ===
         function prepareLiveGameBoard() {
             const calledGrid = document.getElementById('calledGrid');
             calledGrid.innerHTML = '';
@@ -931,7 +950,6 @@
             socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
             updateHeaderStats();
 
-            // ይህ ክፍል ወደ prepareLiveGameBoard() ተዛውሯል ስለዚህ እዚህ ላይ ማስቀመጥ አያስፈልግም, ነገር ግን ለማረጋገጫ ይቆያል
             prepareLiveGameBoard();
             showGameStep('gameStepLive');
         }
