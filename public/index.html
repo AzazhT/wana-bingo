@@ -55,6 +55,11 @@
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
+        @keyframes modalSlideUp {
+            0% { transform: translateY(50px) scale(0.9); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
         .header { 
             background: rgba(15, 23, 42, 0.85); 
             backdrop-filter: blur(12px);
@@ -145,13 +150,19 @@
             font-size: 11px; 
             cursor: pointer; 
         }
-        /* ተጠቃሚው የመረጠው ቦርድ በአረንጓዴ ከለር ብቻ ለራሱ ይታያል (Private Selection) */
         .card-btn.active { 
             background: linear-gradient(135deg, #00ff87, #10b981) !important; 
             color: #000000 !important; 
             font-weight: 900;
             box-shadow: 0 0 12px rgba(0, 255, 135, 0.9); 
             border: 1px solid #ffffff !important; 
+        }
+        .card-btn.taken { 
+            background: linear-gradient(135deg, #ff003c, #cc0000) !important; 
+            color: #ffffff !important; 
+            cursor: not-allowed; 
+            opacity: 0.9; 
+            font-weight: 900;
         }
 
         .bottom-section { 
@@ -265,7 +276,6 @@
 
                 <div class="action-column">
                     <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ</button>
-                    <!-- ጨዋታው እየቆጠረ ባለበት ሰዓት ስታርት በተኑ enable እንዲሆን እና ጨዋታው ሲጀምር disable እንዲሆን ተደርጓል -->
                     <button class="btn-start-game" id="btnStartGame" onclick="goToGame()">Start game (Join)</button>
                 </div>
             </div>
@@ -400,6 +410,7 @@
         let currentRoomId = null;
         let drawnNumbers = [];
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
+        let roomSelectedBoards = {};
         let globalStartTime = null;
         let clientTimerInterval = null;
         let gameStatus = 'waiting';
@@ -456,6 +467,10 @@
             gameStatus = data.status || 'waiting';
             updateDerashUI(data);
             startClientCountdown();
+            if (data.selectedBoards) {
+                roomSelectedBoards = data.selectedBoards;
+                updateBoardsUI();
+            }
         });
 
         socket.on('countdownUpdate', (data) => {
@@ -464,7 +479,6 @@
             updateDerashUI(data);
         });
 
-        // ጨዋታው እየቆጠረ ባለበት ሰዓት ስታርት በተኑ enable ሆኖ እንዲቆይ፣ ዜሮ ሲሆን ወይም ጨዋታው ሲጀምር disable እንዲሆን የሚደረግበት ሎጂክ
         function startClientCountdown() {
             if (clientTimerInterval) clearInterval(clientTimerInterval);
             clientTimerInterval = setInterval(() => {
@@ -477,20 +491,19 @@
                 if (gameStatus === 'playing') {
                     countdownElement.innerText = "ጨዋታው ተጀምሯል";
                     if (startBtn) {
-                        startBtn.disabled = true;
                         startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
                         startBtn.style.opacity = "0.5";
-                        startBtn.style.cursor = "not-allowed";
                     }
                 } else {
                     countdownElement.innerText = `${remaining}s`;
                     if (startBtn) {
-                        // ቆጠራው በሚካሄድበት ሰዓት (remaining > 0 ወይም ዜሮ ሲሆንም) ስታርት በተኑ ሁልጊዜ Enable ሆኖ እንዲቆይ ይደረጋል
-                        startBtn.disabled = false;
-                        startBtn.innerText = remaining > 0 ? `Start game (${remaining}s)` : "Start game (Join)";
+                        startBtn.innerText = "Start game (Join)";
                         startBtn.style.opacity = "1";
-                        startBtn.style.cursor = "pointer";
                     }
+                }
+
+                if (remaining <= 0 && gameStatus !== 'playing') {
+                    countdownElement.innerText = "ጨዋታው ተጀምሯል";
                 }
             }, 1000);
         }
@@ -500,31 +513,25 @@
             document.getElementById('countdownText').innerText = "ጨዋታው ተጀምሯል";
             let startBtn = document.getElementById('btnStartGame');
             if (startBtn) {
-                // ጨዋታው ከጀመረ በኋላ ስታርት በተኑ ሙሉ በሙሉ disable ይደረጋል
-                startBtn.disabled = true;
                 startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
                 startBtn.style.opacity = "0.5";
-                startBtn.style.cursor = "not-allowed";
             }
             if (data && data.prizePool) {
                 currentDerashAmount = parseFloat(data.prizePool);
                 document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
             }
+            updateBoardsUI();
         });
 
         socket.on('roomResetForNextRound', (data) => {
             gameStatus = 'waiting';
             globalStartTime = data.startTime;
-            selectedCardId = null;
+            roomSelectedBoards = data.selectedBoards || {};
             updateBoardsUI();
-            displayPreview(null);
-            
             let startBtn = document.getElementById('btnStartGame');
             if (startBtn) {
-                startBtn.disabled = false;
                 startBtn.innerText = "Start game (Join)";
                 startBtn.style.opacity = "1";
-                startBtn.style.cursor = "pointer";
             }
             startClientCountdown();
         });
@@ -533,6 +540,16 @@
             selectedCardId = data.boardNumber;
             updateBoardsUI();
             displayPreview(selectedCardId);
+        });
+
+        socket.on('boardSelected', (data) => {
+            roomSelectedBoards[data.boardNumber] = data.socketId;
+            updateBoardsUI();
+        });
+
+        socket.on('boardReleased', (data) => {
+            delete roomSelectedBoards[data.boardNumber];
+            updateBoardsUI();
         });
 
         socket.on('gameJoinSuccess', (data) => {
@@ -709,10 +726,18 @@
                 btn.innerText = i;
                 btn.onclick = () => {
                     if (gameStatus === 'playing') {
-                        alert('ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም!');
+                        // ጨዋታው በሂደት ላይ እያለ ማየት (Preview) ብቻ ይቻላል, አዲስ መግባት አይቻልም
+                        if (roomSelectedBoards[i]) {
+                            displayPreview(i);
+                        } else {
+                            alert('ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም! ነገር ግን የያዙትን ማየት ይችላሉ።');
+                        }
                         return;
                     }
-                    // የቦርድ ምርጫ ፕራይቬሲ (ተጠቃሚው ሲመርጥ ለራሱ ብቻ በአረንጓዴ ከለር ይታያል)
+                    if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
+                        alert('ይህ ቦርድ በሌላ ተጫዋች ወይም በቦት ተይዟል!');
+                        return;
+                    }
                     socket.emit('selectBoardTemp', { roomId: currentRoomId, boardNumber: i });
                 };
                 cardsGrid.appendChild(btn);
@@ -726,9 +751,15 @@
             for(let i = 1; i <= 100; i++) {
                 const btn = document.getElementById(`card-btn-${i}`);
                 if(btn) {
-                    btn.classList.remove('active');
-                    if(selectedCardId !== null && i === selectedCardId) {
-                        btn.classList.add('active'); // ተጠቃሚው የመረጠው ቦርድ ብቻ በአረንጓዴ ይደምቃል
+                    btn.classList.remove('active', 'taken');
+                    if(roomSelectedBoards[i]) {
+                        if(roomSelectedBoards[i] === socket.id) {
+                            btn.classList.add('active'); 
+                        } else {
+                            btn.classList.add('taken');  
+                        }
+                    } else if(selectedCardId !== null && i === selectedCardId) {
+                        btn.classList.add('active'); 
                     }
                 }
             }
