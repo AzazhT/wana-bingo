@@ -227,7 +227,6 @@ if (bot) {
     });
 }
 
-// --- CONTINUOUS GAME & MULTI-ROOM MANAGEMENT ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
@@ -501,7 +500,7 @@ io.on('connection', (socket) => {
             startTime: room.startTime,
             status: room.status,
             reservedNumbers: room.reservedNumbers,
-            selectedBoards: {}, // 👈 **ማስተካከያ 2:** ሌሎች ሰዎች የመረጡት ቦርድ ለሌላው እንደተያዘ (Taken/Red) ሆኖ እንዳይወጣ ባክኤንዱ አጠቃላይ የተመረጡትን ዝርዝር ባዶ ወይም ለግለሰቡ ብቻ እንዲሆን ይደረጋል
+            selectedBoards: {}, 
             activePlayersCount: getActivePlayersCount(room),
             prizePool: currentPrizePool
         });
@@ -522,7 +521,6 @@ io.on('connection', (socket) => {
         }
 
         if (room && room.status === 'waiting') {
-            // **Private Selection:** ተጠቃሚው ሲመርጥ ለራሱ ብቻ ይመረጣል እንጂ ለሌሎች እንደተያዘ (Taken) አናሳይም
             if (!room.tempSelections) room.tempSelections = {};
             room.tempSelections[socket.id] = boardNumber;
 
