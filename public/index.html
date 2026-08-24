@@ -55,9 +55,10 @@
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
-        @keyframes modalSlideUp {
-            0% { transform: translateY(50px) scale(0.9); opacity: 0; }
-            100% { transform: translateY(0) scale(1); opacity: 1; }
+        @keyframes floatBall {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(5deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
         }
 
         .header { 
@@ -118,13 +119,37 @@
         .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
         .header-box p { font-size: 13px; color: var(--text-sub); }
         
-        .bet-selection-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+        /* Welcome / Entertainment Section Added Here */
+        .welcome-promo-box {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(14, 165, 233, 0.15));
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            padding: 14px;
+            border-radius: 14px;
+            margin-top: 16px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        .welcome-promo-box h4 {
+            color: var(--primary-cyan);
+            font-size: 14px;
+            font-weight: 900;
+            margin-bottom: 4px;
+        }
+        .welcome-promo-box p {
+            color: var(--text-sub);
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .bet-selection-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
         .bet-grid-btn { 
             padding: 16px; font-size: 18px; font-weight: 800; 
             background: var(--card-bg); color: var(--accent-amber); 
             border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; 
             cursor: pointer; text-align: center; width: 100%; 
+            transition: transform 0.2s;
         }
+        .bet-grid-btn:hover { transform: scale(1.02); border-color: var(--accent-amber); }
 
         .top-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
         .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; }
@@ -203,18 +228,18 @@
 
         .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; overflow-y: auto; }
         .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.02); }
-        .grid-num.called { background: linear-gradient(135deg, #ff2a5f, #e11d48); color: #ffffff; font-weight: 900; }
+        .grid-num.called { background: linear-gradient(135deg, #ff2a5f, #e11d48); color: #ffffff; font-weight: 900; animation: floatBall 2s infinite ease-in-out; }
         .grid-num.called.latest-call { background: linear-gradient(135deg, #ff003c, #ff4d6d) !important; color: #ffffff !important; animation: latestCallPulse 1.2s infinite ease-in-out; border: 1px solid #ffffff; }
 
         .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; height: 100%; }
         .countdown-box { background: var(--card-bg); color: var(--text-main); padding: 8px 10px; border-radius: 10px; display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; border: 1px solid var(--card-border); }
         .current-call-box { background: var(--card-bg); padding: 8px 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--primary-cyan); }
         .call-text { font-size: 11px; font-weight: 800; color: var(--text-sub); }
-        .call-circle { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; font-weight: 900; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
-        .call-circle.animate { animation: callPop 0.4s ease-out; }
+        .call-circle { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; font-weight: 900; padding: 6px 12px; border-radius: 20px; font-size: 14px; animation: floatBall 1.5s infinite ease-in-out; }
+        .call-circle.animate { animation: callPop 0.4s ease-out, floatBall 1.5s infinite ease-in-out; }
 
         .recent-calls { display: flex; gap: 4px; overflow-x: auto; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 8px; min-height: 32px; align-items: center; border: 1px solid var(--card-border); }
-        .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; }
+        .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; animation: popIn 0.3s ease-out; }
 
         .user-board { background: var(--card-bg); padding: 8px; border-radius: 12px; border: 1px solid var(--card-border); flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; margin-top: 4px; }
@@ -224,7 +249,7 @@
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 2000; padding: 16px; }
         .modal-card { background: linear-gradient(135deg, #1e1b4b, #0f172a); width: 100%; max-width: 360px; padding: 20px; border-radius: 20px; text-align: center; border: 1px solid var(--accent-purple); color: #fff; }
-        .winner-title-box { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; padding: 12px; border-radius: 12px; font-size: 24px; font-weight: 900; margin-bottom: 8px; }
+        .winner-title-box { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; padding: 12px; border-radius: 12px; font-size: 24px; font-weight: 900; margin-bottom: 8px; animation: pulseGlow 1.5s infinite; }
         .winner-subtitle { font-size: 13px; font-weight: 700; color: #e9d5ff; margin-bottom: 14px; }
         .modal-board-wrapper { background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; margin-bottom: 14px; border: 1px solid rgba(168, 85, 247, 0.3); }
         .modal-bingo-header { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-bottom: 4px; font-weight: 900; font-size: 11px; }
@@ -257,6 +282,12 @@
                     <button class="bet-grid-btn" onclick="selectBet(50)">50 ብር</button>
                     <button class="bet-grid-btn" onclick="selectBet(100)">100 ብር</button>
                     <button class="bet-grid-btn" onclick="selectBet(500)">500 ብር</button>
+                </div>
+
+                <!-- የቢንጎ መዝናኛነት እና ደስታ የሚገልጽ 웰컴 ጽሑፍ (Welcome Text) -->
+                <div class="welcome-promo-box">
+                    <h4>✨ የቢንጎ ማዕበል እና ዕድልዎ! ✨</h4>
+                    <p>በደስታ የተሞላውን የቢንጎ ጨዋታ ይቀላቀሉ! አዕምሮዎን እያዝናኑ፣ ቁጥሮችን እየተከታተሉ ትልቅ ሽልማት አሸናፊ ይሁኑ። መልካም ዕድል!</p>
                 </div>
             </div>
 
@@ -415,6 +446,20 @@
         let clientTimerInterval = null;
         let gameStatus = 'waiting';
 
+        // 🔊 ቁጥሮች በድምጽ የሚጠሩበት פונקሽን (Text-to-Speech)
+        function speakNumber(textToSpeak) {
+            if ('speechSynthesis' in window) {
+                // ማንኛውንም ያለፈ ድምፅ ማቆም
+                window.speechSynthesis.cancel();
+                let utterance = new SpeechSynthesisUtterance(textToSpeak);
+                utterance.rate = 1.0; // የንግግሩ ፍጥነት
+                utterance.pitch = 1.1; // የድምፅ ከፍታ
+                // እንግሊዝኛ ድምፅ መጠቀም የተሻለ  pronunciations ይሰጣል (ለምሳሌ B 12)
+                utterance.lang = 'en-US'; 
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
         window.addEventListener('DOMContentLoaded', async () => {
             await fetchUserData();
         });
@@ -572,6 +617,9 @@
             let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
             let callText = `${letter}-${rand}`;
             
+            // 🔊 ቁጥሩ ሲጠራ በድምጽ እንዲናገር ማድረግ
+            speakNumber(`${letter} ${rand}`);
+
             const callCircle = document.getElementById('currentCallCircle');
             callCircle.innerText = callText;
             callCircle.classList.remove('animate');
@@ -603,6 +651,7 @@
         });
 
         socket.on('gameOver', (data) => {
+            speakNumber("Bingo! Game Over!");
             document.getElementById('winnerSubText').innerText = data.subtitle || "1 player has won the game";
             document.getElementById('modalWinnerName').innerText = data.winnerName || "Kenbo-Winner";
             document.getElementById('modalBoardNumText').innerText = `Board number ${data.boardNumber || selectedCardId}`;
@@ -726,7 +775,6 @@
                 btn.innerText = i;
                 btn.onclick = () => {
                     if (gameStatus === 'playing') {
-                        // ጨዋታው በሂደት ላይ እያለ ማየት (Preview) ብቻ ይቻላል, አዲስ መግባት አይቻልም
                         if (roomSelectedBoards[i]) {
                             displayPreview(i);
                         } else {
