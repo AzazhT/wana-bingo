@@ -29,6 +29,35 @@
             padding-bottom: 65px; 
             user-select: none; 
             min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 🌟 የቁጥሮች ፍሰት (Falling Numbers Pattern) ዲዛይን */
+        .falling-numbers-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+            opacity: 0.12; /* በደበዘዘ መልኩ እንዲታይ */
+        }
+        .falling-num {
+            position: absolute;
+            top: -50px;
+            color: var(--primary-cyan);
+            font-weight: 900;
+            font-size: 16px;
+            animation: fallDown linear infinite;
+        }
+        @keyframes fallDown {
+            0% { transform: translateY(-50px); opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateY(105vh); opacity: 0; }
         }
         
         @keyframes popIn {
@@ -79,7 +108,7 @@
         .logo { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #00f2fe, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 6px; }
         .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.3); }
         
-        .container { padding: 8px; max-width: 500px; margin: 0 auto; }
+        .container { padding: 8px; max-width: 500px; margin: 0 auto; position: relative; z-index: 10; }
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         
@@ -119,7 +148,7 @@
         .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
         .header-box p { font-size: 13px; color: var(--text-sub); }
         
-        /* Welcome / Entertainment Section Added Here */
+        /* Welcome / Entertainment Section */
         .welcome-promo-box {
             background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(14, 165, 233, 0.15));
             border: 1px solid rgba(168, 85, 247, 0.3);
@@ -260,9 +289,35 @@
         .modal-footer-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 11px; background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 8px; }
         .modal-badge-name { background: #0d9488; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 800; }
         .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; }
+
+        /* 🌟 የተሻሻለ ማራኪ የዲፖዚት እና ዊዝድሮ ሲስተም ስታይል */
+        .wallet-banner {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(2, 132, 199, 0.2));
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            padding: 14px;
+            border-radius: 14px;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .wallet-banner h4 { color: var(--accent-green); font-size: 15px; font-weight: 900; margin-bottom: 4px; }
+        .wallet-banner p { color: var(--text-sub); font-size: 12px; }
+        
+        .instruction-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid var(--accent-amber);
+            padding: 10px;
+            font-size: 11px;
+            color: var(--text-sub);
+            border-radius: 4px;
+            margin: 8px 0;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
+
+    <!-- 🌟 የቁጥሮች ፍሰት (Falling Numbers Pattern) ዳራ -->
+    <div class="falling-numbers-bg" id="fallingNumbersContainer"></div>
 
     <div class="header" id="mainHeader">
         <div class="logo">🎲 <span>Wana Bingo</span></div>
@@ -284,7 +339,6 @@
                     <button class="bet-grid-btn" onclick="selectBet(500)">500 ብር</button>
                 </div>
 
-                <!-- የቢንጎ መዝናኛነት እና ደስታ የሚገልጽ 웰컴 ጽሑፍ (Welcome Text) -->
                 <div class="welcome-promo-box">
                     <h4>✨ የቢንጎ ማዕበል እና ዕድልዎ! ✨</h4>
                     <p>በደስታ የተሞላውን የቢንጎ ጨዋታ ይቀላቀሉ! አዕምሮዎን እያዝናኑ፣ ቁጥሮችን እየተከታተሉ ትልቅ ሽልማት አሸናፊ ይሁኑ። መልካም ዕድል!</p>
@@ -357,25 +411,37 @@
             </div>
         </div>
 
+        <!-- 🌟 የተሻሻለ ማራኪ ዋሌት (Deposit & Withdraw System) -->
         <div id="walletTab" class="tab-content">
+            <div class="wallet-banner">
+                <h4>⚡ ፈጣን የክፍያ ማዕከል ⚡</h4>
+                <p>ገንዘብዎን ደህንነቱ በተጠበቀ ሁኔታ ያስገቡ እና ወዲያውኑ ያውጡ!</p>
+            </div>
+
             <div class="card">
                 <h3>💳 ብር ገቢ ማድረግ (Deposit)</h3>
-                <p style="font-size: 12px; color: var(--text-sub); margin: 6px 0;">Telebirr Number: <b>0915503379 (Mulualem)</b></p>
-                <input type="number" id="depAmount" placeholder="የብር መጠን (ETB)">
-                <textarea id="depSMS" rows="3" placeholder="የቴሌብር SMS እዚህ ይልጠፉ"></textarea>
-                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #10b981, #059669);" onclick="submitDeposit()">ገቢ አድርግ</button>
+                <div class="instruction-box">
+                    1. ከታች ባለው የቴሌብር ቁጥር ገንዘብ ያስተላልፉ።<br>
+                    2. የደረሰዎትን የቴሌብር SMS ሙሉውን ኮፒ በማድረግ ከታች ባለው ሳጥን ውስጥ ይለጥፉ።
+                </div>
+                <p style="font-size: 13px; color: var(--accent-amber); margin: 6px 0;">Telebirr Account: <b>0915503379 (Mulualem)</b></p>
+                <input type="number" id="depAmount" placeholder="የተላለፈው የብር መጠን (ETB)">
+                <textarea id="depSMS" rows="3" placeholder="የቴሌብር SMS እዚህ ይልጠፉ (ለምሳሌ: You have transferred...)"></textarea>
+                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #10b981, #059669);" onclick="submitDeposit()">ገቢ አድርግ (Verify Deposit)</button>
             </div>
 
             <div class="card" style="margin-top: 14px;">
                 <h3>💸 ገንዘብ ማውጣት (Withdraw)</h3>
-                <p style="font-size: 12px; color: var(--text-sub); margin: 6px 0;">ያሸነፉትን ገንዘብ ወደ አካውንትዎ ያስተላልፉ።</p>
+                <div class="instruction-box">
+                    ያሸነፉትን ገንዘብ በቀላሉ ወደ ባንክ ወይም ቴሌብር አካውንትዎ ማስተላለፍ ይችላሉ።
+                </div>
                 <select id="withdrawMethod">
                     <option value="Telebirr">ቴሌብር (Telebirr)</option>
                     <option value="CBE">የኢትዮጵያ ንግድ ባንክ (CBE)</option>
                 </select>
                 <input type="number" id="withdrawAmount" placeholder="የሚወጣው የብር መጠን (ETB)">
-                <input type="text" id="withdrawAccountDetails" placeholder="የባንክ አካውንት ቁጥር ወይም ስልክ ቁጥር">
-                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #ff2a5f, #e11d48);" onclick="submitWithdraw()">ወጪ አድርግ (Withdraw)</button>
+                <input type="text" id="withdrawAccountDetails" placeholder="የባንክ አካውንት ቁጥር ወይም የስልክ ቁጥር">
+                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #ff2a5f, #e11d48);" onclick="submitWithdraw()">ወጪ አድርግ (Request Withdraw)</button>
             </div>
         </div>
 
@@ -446,21 +512,37 @@
         let clientTimerInterval = null;
         let gameStatus = 'waiting';
 
-        // 🔊 ቁጥሮች በድምጽ የሚጠሩበት פונקሽን (Text-to-Speech)
+        // 🌟 የቁጥሮች ፍሰት (Falling Numbers Background Animation Generator)
+        function initFallingNumbers() {
+            const container = document.getElementById('fallingNumbersContainer');
+            const bingoTerms = ['B-12', 'I-24', 'N-33', 'G-50', 'O-71', 'B-5', 'I-19', 'N-42', 'G-58', 'O-65', 'B-9', 'I-28'];
+            const columnCount = 12;
+
+            for (let i = 0; i < columnCount; i++) {
+                const span = document.createElement('div');
+                span.className = 'falling-num';
+                span.innerText = bingoTerms[Math.floor(Math.random() * bingoTerms.length)];
+                span.style.left = `${(i * (100 / columnCount)) + Math.random() * 5}%`;
+                span.style.animationDuration = `${6 + Math.random() * 7}s`;
+                span.style.animationDelay = `${Math.random() * 5}s`;
+                container.appendChild(span);
+            }
+        }
+
+        // 🔊 ቁጥሮች በድምጽ የሚጠሩበት פונקציה (Text-to-Speech)
         function speakNumber(textToSpeak) {
             if ('speechSynthesis' in window) {
-                // ማንኛውንም ያለፈ ድምፅ ማቆም
                 window.speechSynthesis.cancel();
                 let utterance = new SpeechSynthesisUtterance(textToSpeak);
-                utterance.rate = 1.0; // የንግግሩ ፍጥነት
-                utterance.pitch = 1.1; // የድምፅ ከፍታ
-                // እንግሊዝኛ ድምፅ መጠቀም የተሻለ  pronunciations ይሰጣል (ለምሳሌ B 12)
+                utterance.rate = 1.0;
+                utterance.pitch = 1.1;
                 utterance.lang = 'en-US'; 
                 window.speechSynthesis.speak(utterance);
             }
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
+            initFallingNumbers();
             await fetchUserData();
         });
 
@@ -617,7 +699,6 @@
             let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
             let callText = `${letter}-${rand}`;
             
-            // 🔊 ቁጥሩ ሲጠራ በድምጽ እንዲናገር ማድረግ
             speakNumber(`${letter} ${rand}`);
 
             const callCircle = document.getElementById('currentCallCircle');
@@ -957,13 +1038,15 @@
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount, sms: smsText })
                 });
                 const data = await res.json();
                 if(data.success) {
                     alert(`የዲፖዚት ጥያቄዎ ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('depAmount').value = '';
                     document.getElementById('depSMS').value = '';
+                } else {
+                    alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
                 }
             } catch(e) { alert('ስህተት ተፈጥሯል።'); }
         }
@@ -980,7 +1063,7 @@
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, method, details })
                 });
                 const data = await res.json();
                 if(data.success) {
@@ -1000,7 +1083,7 @@
                         await fetch('/api/update-phone', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ identifier: currentUser.id, phone: contact.phone_number })
+                            body: `{"identifier":"${currentUser.id}","phone":"${contact.phone_number}"}`
                         });
                         alert('ስልክ ቁጥርዎ ተመዝግቧል!');
                         fetchUserData();
