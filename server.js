@@ -290,7 +290,7 @@ function resetRoomForNextGame(roomId) {
 
     room.drawnNumbers = [];
     room.reservedNumbers = {};
-    room.selectedBoards = {}; 
+    room.selectedBoards = {}; // 🛑 የተያዙት ቦርዶች ሙሉ በሙሉ እንዲጸዱ ተደርጓል
     room.tempSelections = {};
     room.status = 'waiting';
     room.countdown = 30;
