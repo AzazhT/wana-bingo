@@ -43,7 +43,7 @@
             pointer-events: none;
             z-index: 0;
             overflow: hidden;
-            opacity: 0.12; /* በደበዘዘ መልኩ እንዲታይ */
+            opacity: 0.12;
         }
         .falling-num {
             position: absolute;
@@ -73,9 +73,9 @@
         }
 
         @keyframes latestCallPulse {
-            0% { transform: scale(1); box-shadow: 0 0 8px #ff2a5f; }
-            50% { transform: scale(1.25); box-shadow: 0 0 20px #ff2a5f, 0 0 10px #ffffff; background: #ff003c; color: #fff; z-index: 10; }
-            100% { transform: scale(1.1); box-shadow: 0 0 12px #ff2a5f; }
+            0% { transform: scale(1); box-shadow: 0 0 8px #00f2fe; }
+            50% { transform: scale(1.2); box-shadow: 0 0 25px #00f2fe, 0 0 10px #ffffff; background: #00f2fe; color: #070a12; z-index: 10; }
+            100% { transform: scale(1.1); box-shadow: 0 0 12px #00f2fe; }
         }
 
         @keyframes callPop {
@@ -148,7 +148,6 @@
         .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
         .header-box p { font-size: 13px; color: var(--text-sub); }
         
-        /* Welcome / Entertainment Section */
         .welcome-promo-box {
             background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(14, 165, 233, 0.15));
             border: 1px solid rgba(168, 85, 247, 0.3);
@@ -256,9 +255,15 @@
         .o-header { background: var(--accent-purple); color: #fff; border-radius: 4px; padding: 4px 0; }
 
         .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; overflow-y: auto; }
+        
+        /* መደበኛ የቦርዱ ሳጥኖች ስታይል */
         .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.02); }
-        .grid-num.called { background: linear-gradient(135deg, #ff2a5f, #e11d48); color: #ffffff; font-weight: 900; animation: floatBall 2s infinite ease-in-out; }
-        .grid-num.called.latest-call { background: linear-gradient(135deg, #ff003c, #ff4d6d) !important; color: #ffffff !important; animation: latestCallPulse 1.2s infinite ease-in-out; border: 1px solid #ffffff; }
+        
+        /* 1. ቀደም ብሎ ተጠርቶ ያለፈ ቁጥር (ደብዘዝ ያለ እና የጠቆረ) */
+        .grid-num.called { background: rgba(255, 42, 95, 0.25) !important; color: rgba(255, 255, 255, 0.4) !important; font-weight: 700 !important; animation: none !important; }
+        
+        /* 2. አሁን አዲስ የተጠራችው ቁጥር (በልዩ ከለር እና በከፍተኛ ድምቀት የምትታይ) */
+        .grid-num.called.latest-call { background: linear-gradient(135deg, #00f2fe, #0284c7) !important; color: #070a12 !important; font-weight: 900 !important; animation: latestCallPulse 1.2s infinite ease-in-out !important; border: 2px solid #ffffff !important; opacity: 1 !important; }
 
         .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; height: 100%; }
         .countdown-box { background: var(--card-bg); color: var(--text-main); padding: 8px 10px; border-radius: 10px; display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; border: 1px solid var(--card-border); }
@@ -290,7 +295,6 @@
         .modal-badge-name { background: #0d9488; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 800; }
         .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; }
 
-        /* 🌟 የተሻሻለ ማራኪ የዲፖዚት እና ዊዝድሮ ሲስተም ስታይል */
         .wallet-banner {
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(2, 132, 199, 0.2));
             border: 1px solid rgba(16, 185, 129, 0.4);
@@ -316,7 +320,6 @@
 </head>
 <body>
 
-    <!-- 🌟 የቁጥሮች ፍሰት (Falling Numbers Pattern) ዳራ -->
     <div class="falling-numbers-bg" id="fallingNumbersContainer"></div>
 
     <div class="header" id="mainHeader">
@@ -411,7 +414,6 @@
             </div>
         </div>
 
-        <!-- 🌟 የተሻሻለ ማራኪ ዋሌት (Deposit & Withdraw System) -->
         <div id="walletTab" class="tab-content">
             <div class="wallet-banner">
                 <h4>⚡ ፈጣን የክፍያ ማዕከል ⚡</h4>
@@ -512,7 +514,6 @@
         let clientTimerInterval = null;
         let gameStatus = 'waiting';
 
-        // 🌟 የቁጥሮች ፍሰት (Falling Numbers Background Animation Generator)
         function initFallingNumbers() {
             const container = document.getElementById('fallingNumbersContainer');
             const bingoTerms = ['B-12', 'I-24', 'N-33', 'G-50', 'O-71', 'B-5', 'I-19', 'N-42', 'G-58', 'O-65', 'B-9', 'I-28'];
@@ -529,7 +530,6 @@
             }
         }
 
-        // 🔊 ቁጥሮች በድምጽ የሚጠሩበት פונקציה (Text-to-Speech)
         function speakNumber(textToSpeak) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -691,6 +691,7 @@
 
         socket.on('boardSelectError', (data) => { alert(data.message); });
 
+        // 🌟 የተስተካከለው የቁጥር ጥሪ መቀበያ ሎጂክ (Latest call vs Called numbers styling)
         socket.on('numberDrawn', (data) => {
             let rand = data.number;
             drawnNumbers = data.drawnHistory || [];
@@ -707,6 +708,7 @@
             void callCircle.offsetWidth;
             callCircle.classList.add('animate');
 
+            // ከዚህ በፊት የነበሩትን ሁሉንም 'latest-call' እና ሌሎች ስታይሎች እናጸዳለን
             document.querySelectorAll('.grid-num').forEach(el => {
                 el.classList.remove('latest-call');
                 if(el.dataset.num) {
@@ -714,15 +716,21 @@
                 }
             });
 
+            // የተጠሩትን ቁጥሮች በሙሉ በ 'called' (ደብዘዝ ያለ) ስታይል እናስቀምጣለን
             drawnNumbers.forEach(n => {
                 let cell = document.getElementById(`grid-num-${n}`);
-                if (cell) cell.classList.add('called');
+                if (cell) {
+                    cell.classList.add('called');
+                    cell.classList.remove('latest-call');
+                }
             });
 
+            // አሁን አዲስ የተጠራችውን ቁጥር ብቻ በ 'latest-call' (ለየት ባለ ከለር እና አኒሜሽን) እናሰላለን
             let latestCell = document.getElementById(`grid-num-${rand}`);
             if (latestCell) {
+                latestCell.classList.remove('called');
                 latestCell.classList.add('called', 'latest-call');
-                latestCell.innerText = `*${rand}*`;
+                latestCell.innerText = `${rand}`;
             }
 
             let ball = document.createElement('div');
