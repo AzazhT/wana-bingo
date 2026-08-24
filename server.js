@@ -178,7 +178,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
                             `─────────────────────\n` +
                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -501,7 +501,7 @@ io.on('connection', (socket) => {
             startTime: room.startTime,
             status: room.status,
             reservedNumbers: room.reservedNumbers,
-            selectedBoards: {}, 
+            selectedBoards: room.selectedBoards,
             activePlayersCount: getActivePlayersCount(room),
             prizePool: currentPrizePool
         });
@@ -522,6 +522,10 @@ io.on('connection', (socket) => {
         }
 
         if (room && room.status === 'waiting') {
+            if (room.selectedBoards[boardNumber]) {
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
+            }
+
             if (!room.tempSelections) room.tempSelections = {};
             room.tempSelections[socket.id] = boardNumber;
 
@@ -538,6 +542,22 @@ io.on('connection', (socket) => {
         }
 
         if (room && room.status === 'waiting') {
+            if (room.selectedBoards[boardNumber]) {
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
+            }
+
+            let previousBoard = null;
+            for (let bNum in room.selectedBoards) {
+                if (room.selectedBoards[bNum] === socket.id) {
+                    previousBoard = bNum;
+                    delete room.selectedBoards[bNum];
+                }
+            }
+
+            if (previousBoard) {
+                io.to(roomId).emit('boardReleased', { boardNumber: previousBoard });
+            }
+
             room.selectedBoards[boardNumber] = socket.id;
             room.playerNames[socket.id] = name || 'Player';
 
@@ -547,6 +567,7 @@ io.on('connection', (socket) => {
             
             let currentPrizePool = calculatePrizePool(room);
 
+            io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
             io.to(roomId).emit('activePlayersUpdate', { 
                 activePlayersCount: getActivePlayersCount(room),
                 prizePool: currentPrizePool 
@@ -603,12 +624,30 @@ io.on('connection', (socket) => {
                     delete room.tempSelections[socket.id];
                 }
 
+                let boardReleasedFlag = false;
+                if (room.status === 'waiting') {
+                    for (let bNum in room.selectedBoards) {
+                        if (room.selectedBoards[bNum] === socket.id) {
+                            delete room.selectedBoards[bNum];
+                            boardReleasedFlag = true;
+                            io.to(roomId).emit('boardReleased', { boardNumber: bNum });
+                        }
+                    }
+                }
+
                 let currentPrizePool = calculatePrizePool(room);
                 io.to(room.roomId).emit('playersUpdate', { 
                     playersCount: room.players.size,
                     activePlayersCount: getActivePlayersCount(room),
                     prizePool: currentPrizePool
                 });
+
+                if (boardReleasedFlag) {
+                    io.to(room.roomId).emit('activePlayersUpdate', { 
+                        activePlayersCount: getActivePlayersCount(room),
+                        prizePool: currentPrizePool 
+                    });
+                }
             }
         }
     });
