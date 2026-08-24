@@ -122,6 +122,9 @@ app.post('/api/request-transaction', async (req, res) => {
             if (currentBalance < parseFloat(amount)) {
                 return res.json({ success: false, message: 'በዋሌትዎ ውስጥ ያለው ብር በቂ አይደለም!' });
             }
+            // ለወጪ ጥያቄ በሚገባበት ሰዓት ቀድሞ ከባላንስ መቀነስ ይቻላል (ወይም በአፕሩቭ ጊዜ)
+            let newBalance = currentBalance - parseFloat(amount);
+            await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, identifier]);
         }
 
         await pool.query(
@@ -146,8 +149,8 @@ app.post('/api/request-transaction', async (req, res) => {
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}` },
-                                { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}` }
+                                { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}_${type}` },
+                                { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}_${identifier}_${amount}_${type}` }
                             ]
                         ]
                     }
@@ -178,7 +181,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
                             `─────────────────────\n` +
                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -223,6 +226,61 @@ if (bot) {
         } catch (err) {
             console.error(err);
             bot.sendMessage(chatId, 'የሰርቨር ስህተት አጋጥሟል።');
+        }
+    });
+
+    // --- አድሚኑ Approve ወይም Reject ሲያደርግ የሚሰራው ክፍል (Callback Query Handler) ---
+    bot.on('callback_query', async (callbackQuery) => {
+        const action = callbackQuery.data;
+        const msg = callbackQuery.message;
+        const parts = action.split('_');
+        const status = parts[0]; // approve ወይም reject
+        const tx_id = parts[1];
+        const identifier = parts[2];
+        const amount = parseFloat(parts[3]);
+        const type = parts[4]; // DEPOSIT ወይም WITHDRAW
+
+        try {
+            if (status === 'approve') {
+                if (type === 'DEPOSIT') {
+                    // ಡೆፖዚት ከሆነ ተጠቃሚው አካውንት ላይ ብሩን መጨመር
+                    const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                    if (userRes.rows.length > 0) {
+                        let currentBal = parseFloat(userRes.rows[0].balance);
+                        let newBal = currentBal + amount;
+                        await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
+                    }
+                }
+                // ለሁለቱም ትራንዛክሽን handled true ማድረግ
+                await pool.query('UPDATE transactions SET handled = TRUE WHERE tx_id = $1', [tx_id]);
+
+                await bot.editMessageText(`✅ **ይህ ጥያቄ (${tx_id}) በአድሚኑ ጸድቋል (Approved)!**`, {
+                    chat_id: msg.chat.id,
+                    message_id: msg.message_id,
+                    parse_mode: 'Markdown'
+                });
+            } else if (status === 'reject') {
+                if (type === 'WITHDRAW') {
+                    // ወጪ ጥያቄ ውድቅ ከተደረገ የተቆረጠውን ብር ተጠቃሚው ላይ መልሶ መክተት
+                    const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                    if (userRes.rows.length > 0) {
+                        let currentBal = parseFloat(userRes.rows[0].balance);
+                        let newBal = currentBal + amount;
+                        await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
+                    }
+                }
+                await pool.query('UPDATE transactions SET handled = TRUE WHERE tx_id = $1', [tx_id]);
+
+                await bot.editMessageText(`❌ **ይህ ጥያቄ (${tx_id}) ተሰርዟል (Rejected)!**`, {
+                    chat_id: msg.chat.id,
+                    message_id: msg.message_id,
+                    parse_mode: 'Markdown'
+                });
+            }
+            await bot.answerCallbackQuery(callbackQuery.id, { text: 'ተከናውኗል!' });
+        } catch (err) {
+            console.error('Error handling callback query:', err);
+            bot.answerCallbackQuery(callbackQuery.id, { text: 'ስህተት ተፈጥሯል!' });
         }
     });
 }
@@ -501,7 +559,7 @@ io.on('connection', (socket) => {
             startTime: room.startTime,
             status: room.status,
             reservedNumbers: room.reservedNumbers,
-            selectedBoards: {}, 
+            selectedBoards: room.selectedBoards,
             activePlayersCount: getActivePlayersCount(room),
             prizePool: currentPrizePool
         });
@@ -522,6 +580,10 @@ io.on('connection', (socket) => {
         }
 
         if (room && room.status === 'waiting') {
+            if (room.selectedBoards[boardNumber]) {
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
+            }
+
             if (!room.tempSelections) room.tempSelections = {};
             room.tempSelections[socket.id] = boardNumber;
 
@@ -538,6 +600,22 @@ io.on('connection', (socket) => {
         }
 
         if (room && room.status === 'waiting') {
+            if (room.selectedBoards[boardNumber]) {
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
+            }
+
+            let previousBoard = null;
+            for (let bNum in room.selectedBoards) {
+                if (room.selectedBoards[bNum] === socket.id) {
+                    previousBoard = bNum;
+                    delete room.selectedBoards[bNum];
+                }
+            }
+
+            if (previousBoard) {
+                io.to(roomId).emit('boardReleased', { boardNumber: previousBoard });
+            }
+
             room.selectedBoards[boardNumber] = socket.id;
             room.playerNames[socket.id] = name || 'Player';
 
@@ -547,6 +625,7 @@ io.on('connection', (socket) => {
             
             let currentPrizePool = calculatePrizePool(room);
 
+            io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
             io.to(roomId).emit('activePlayersUpdate', { 
                 activePlayersCount: getActivePlayersCount(room),
                 prizePool: currentPrizePool 
@@ -603,12 +682,30 @@ io.on('connection', (socket) => {
                     delete room.tempSelections[socket.id];
                 }
 
+                let boardReleasedFlag = false;
+                if (room.status === 'waiting') {
+                    for (let bNum in room.selectedBoards) {
+                        if (room.selectedBoards[bNum] === socket.id) {
+                            delete room.selectedBoards[bNum];
+                            boardReleasedFlag = true;
+                            io.to(roomId).emit('boardReleased', { boardNumber: bNum });
+                        }
+                    }
+                }
+
                 let currentPrizePool = calculatePrizePool(room);
                 io.to(room.roomId).emit('playersUpdate', { 
                     playersCount: room.players.size,
                     activePlayersCount: getActivePlayersCount(room),
                     prizePool: currentPrizePool
                 });
+
+                if (boardReleasedFlag) {
+                    io.to(room.roomId).emit('activePlayersUpdate', { 
+                        activePlayersCount: getActivePlayersCount(room),
+                        prizePool: currentPrizePool 
+                    });
+                }
             }
         }
     });
