@@ -486,7 +486,7 @@
         let currentDerashAmount = 0.0;
         
         let allCardsData = {};
-        let selectedCardId = null; 
+        let selectedCardId = null;
         let currentRoomId = null;
         let drawnNumbers = [];
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
@@ -554,6 +554,12 @@
             showGameStep('gameStepBet');
         }
 
+        // === አዲስ የተጨመረ ሎጂክ: 3 ጫወታዎች ሲሞሉ መጠበቅ ===
+        socket.on('lobbyFull', (data) => {
+            alert(data.message || "3 ጫወታዎች እየተጫወቱ ነው። አንዱ እስኪያልቅ እባክዎ ይጠብቁ!");
+            showGameStep('gameStepBet');
+        });
+
         socket.on('playersUpdate', (data) => { if (data) updateDerashUI(data); });
         socket.on('activePlayersUpdate', (data) => { if (data) updateDerashUI(data); });
 
@@ -580,12 +586,16 @@
                 if (!globalStartTime) return;
                 let remaining = Math.max(0, Math.floor((globalStartTime - Date.now()) / 1000));
                 document.getElementById('countdownText').innerText = `${remaining}s`;
-                if (remaining <= 0) clearInterval(clientTimerInterval);
+                if (remaining <= 0) {
+                    clearInterval(clientTimerInterval);
+                    document.getElementById('countdownText').innerText = "Starting...";
+                }
             }, 1000);
         }
 
+        // === አዲስ የተጨመረ ሎጂክ: ጫወታ ሲጀምር ያልገቡ መግባት አለመቻል ===
         socket.on('gameStarted', (data) => {
-            document.getElementById('countdownText').innerText = "Started!";
+            document.getElementById('countdownText').innerText = "Playing!";
             if (clientTimerInterval) clearInterval(clientTimerInterval);
             if (data && data.prizePool) {
                 currentDerashAmount = parseFloat(data.prizePool);
@@ -596,12 +606,17 @@
             }
             updateBoardsUI();
 
-            const liveStepActive = document.getElementById('gameStepLive').classList.contains('active');
-            const cardsStepActive = document.getElementById('gameStepCards').classList.contains('active');
-            
-            // ጨዋታው ሲጀምር ቦርድ ገና ሳይመርጥ ካርዶች ስክሪን ላይ የነበረ ተጫዋች ወደ መጀመሪያው (Bet Step) ይመለሳል
-            if (cardsStepActive && selectedCardId === null) {
-                autoClearAndRedirect('ጨዋታው ጀምሯል! እባክዎ ቀጣዩን ራውንድ ይጠብቁ።');
+            // ተጫዋቹ ቦርድ ካልመረጠ (ዘግይቶ ከመጣ) ወደ Bet ስክሪን ይመለሳል
+            if (selectedCardId === null) {
+                alert("ጨዋታው ጀምሯል! ለቀጣዩ ጨዋታ ይጠብቁ።");
+                showGameStep('gameStepBet');
+                return;
+            }
+
+            // ተጫዋቹ ቦርድ ከመረጠ ግን ወደ Live ስክሪን ይሸጋገራል
+            if (!document.getElementById('gameStepLive').classList.contains('active')) {
+                prepareLiveGameBoard();
+                showGameStep('gameStepLive');
             }
         });
 
@@ -680,6 +695,7 @@
             document.getElementById('recentCalls').prepend(ball);
         });
 
+        // === አዲስ የተጨመረ ሎጂክ: ውጤት ለዚህ ጫወታ ተጫዋቾች ብቻ ይታያል (Isolated Win) ===
         socket.on('gameOver', (data) => {
             document.getElementById('winnerSubText').innerText = data.subtitle || "1 player has won the game";
             document.getElementById('modalWinnerName').innerText = data.winnerName || "Kenbo-Winner";
@@ -688,6 +704,10 @@
             
             renderModalWinningBoard(data.boardNumber || selectedCardId, data.winningLine);
             document.getElementById('winnerModal').style.display = 'flex';
+            
+            // ለቀጣይ ጨዋታ ዝግጁ እንዲሆን ስቴቱን ማጽዳት
+            selectedCardId = null;
+            if (clientTimerInterval) clearInterval(clientTimerInterval);
         });
 
         function renderModalWinningBoard(boardNum, winningLine) {
@@ -747,7 +767,12 @@
             selectedCardId = null; 
             showGameStep('gameStepCards');
             initPage1();
-            socket.emit('joinLobby', { betAmount: amount });
+            // ወደ ሎቢ ይላካል፣ ሰርቨሩ 30 ሴኮንድ ታይመሩን ይጀምራል ወይም ወደ አዲስ ያስገባል
+            socket.emit('joinLobby', { 
+                betAmount: amount, 
+                identifier: currentUser.id, 
+                name: currentUser.first_name 
+            });
         }
 
         function goToBetStep() { 
@@ -859,26 +884,8 @@
             }
         }
 
-        async function goToGame() {
-            if (selectedCardId === null) {
-                return alert('እባክዎ መጀመሪያ የቦርድ ቁጥር ይምረጡ!');
-            }
-            if (userWallet < currentBet) return alert('በቂ ባላንስ የለዎትም!');
-            
-            try {
-                const res = await fetch('/api/place-bet', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, amount: currentBet })
-                });
-                const data = await res.json();
-                if (!data.success) return alert(data.message);
-                userWallet = data.newBalance;
-            } catch (e) { return alert('የኔትወርክ ስህተት።'); }
-
-            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
-            updateHeaderStats();
-
+        // === አዲስ የተጨመረ ረዳት ፈንክሽን: ለ Live ጫወታ ቦርዱን ለማዘጋጀት ===
+        function prepareLiveGameBoard() {
             const calledGrid = document.getElementById('calledGrid');
             calledGrid.innerHTML = '';
             for (let row = 0; row < 15; row++) {
@@ -902,7 +909,30 @@
             document.getElementById('currentCallCircle').innerText = '-';
             document.getElementById('callCount').innerText = '0';
             document.getElementById('boardFooterText').innerText = `Board number ${selectedCardId}`;
+        }
 
+        async function goToGame() {
+            if (selectedCardId === null) {
+                return alert('እባክዎ መጀመሪያ የቦርድ ቁጥር ይምረጡ!');
+            }
+            if (userWallet < currentBet) return alert('በቂ ባላንስ የለዎትም!');
+            
+            try {
+                const res = await fetch('/api/place-bet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: currentUser.id, amount: currentBet })
+                });
+                const data = await res.json();
+                if (!data.success) return alert(data.message);
+                userWallet = data.newBalance;
+            } catch (e) { return alert('የኔትወርክ ስህተት።'); }
+
+            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
+            updateHeaderStats();
+
+            // ይህ ክፍል ወደ prepareLiveGameBoard() ተዛውሯል ስለዚህ እዚህ ላይ ማስቀመጥ አያስፈልግም, ነገር ግን ለማረጋገጫ ይቆያል
+            prepareLiveGameBoard();
             showGameStep('gameStepLive');
         }
 
@@ -1002,7 +1032,7 @@
                 });
                 const data = await res.json();
                 if(data.success) {
-                    alert(`የዊዝድሮው ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
+                    alert(`የዊዝድሮው ጥያቄዎ በአዎንታዊ ሁኔታ ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('withdrawAmount').value = '';
                     document.getElementById('withdrawAccountDetails').value = '';
                 } else {
