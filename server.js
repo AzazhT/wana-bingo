@@ -135,11 +135,11 @@ app.post('/api/request-transaction', async (req, res) => {
                 let userInfo = userRes.rows[0] || {};
                 
                 let msgText = `🔔 አዲስ የ ${type} ጥያቄ ገብቷል!\n` +
-                            `🆔 TxID: ${tx_id}\n` +
-                            `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
-                            `📱 ስልክ: ${userInfo.phone || 'N/A'}\n` +
-                            `💰 መጠን: ${amount} ብር\n` +
-                            `🏦 ባንክ/አካውንት: ${details || 'N/A'}`;
+                              `🆔 TxID: ${tx_id}\n` +
+                              `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
+                              `📱 ስልክ: ${userInfo.phone || 'N/A'}\n` +
+                              `💰 መጠን: ${amount} ብር\n` +
+                              `🏦 ባንክ/አካውንት: ${details || 'N/A'}`;
 
                 await bot.sendMessage(ADMIN_CHAT_ID, msgText, {
                     parse_mode: 'Markdown',
