@@ -51,72 +51,6 @@
 
         @keyframes callPop {
             0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
-            50% { transform: scale(1.2) rotateበጣም ጥሩ! አሁን የጠየቅከውን ሎጂክ በትክክል ተረድቼያለሁ።
-
-**የተረጉት ዋና ስተካከያዎች፡**
-1.  **Timer Location:** "Lobby Timer" ተግዷል። ቆጠራው አሁን በ `ROUND` ቦታ ላይ ይታያል (ለምሳሌ `30s`)። ወታው ሲምር `Playing!` ይል እና ቀለሙ ወደ አረንጓዴ ቀየራል።
-2.  **Selection Lock:** ጫወታው ከጀመረ በላ (`status === 'playing'`) ቦርዶችን መምረጥ አይቻልም። "Start Game" ልፉም ይፋል (Dissabled)
-3.  **Preview Mode:** ጫወታው እየተጫወተ ሳለ ተጫዋ ቦርዱን መርጦ ይዘቱን ማየት ይችላል (Preview)፣ ነገር ግን አዲስ ቦርድ መምረጥ አይችልም
-4.  **Auto-Restart:** ወታው ሲያልቅ፣ ሰርቨ ወዲያውኑ ቀጣዩ ራውንድ ቆጠራውን ይጀምራል።
-
-### 🛠️ የተሟ እና የተስተካከለ `index.html` (Frontend)
-
-ይህንን ኮድ ሙሉውን ኮፒ አድርህ በ `index.html` ውስ አስገባ።
-
-```html
-<!DOCTYPE html>
-<html lang="am">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Wana Bingo Pro</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-dark: #070a12;
-            --card-bg: rgba(22, 30, 49, 0.75);
-            --card-border: rgba(255, 255, 255, 0.15);
-            --primary-cyan: #00f2fe;
-            --accent-green: #10b981;
-            --accent-amber: #f59e0b;
-            --accent-rose: #ff2a5f;
-            --accent-purple: #a855f7;
-            --text-main: #ffffff;
-            --text-sub: #94a3b8;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; }
-        
-        body { 
-            background: radial-gradient(circle at top, #111827 0%, #070a12 100%); 
-            color: var(--text-main); 
-            padding-bottom: 65px; 
-            user-select: none; 
-            min-height: 100vh;
-        }
-        
-        @keyframes popIn {
-            0% { transform: scale(0.6); opacity: 0; }
-            80% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); }
-        }
-
-        @keyframes pulseGlow {
-            0% { box-shadow: 0 0 10px rgba(255, 42, 95, 0.4); }
-            50% { box-shadow: 0 0 25px rgba(255, 42, 95, 0.9), 0 0 10px rgba(255, 255, 255, 0.8); }
-            100% { box-shadow: 0 0 10px rgba(255, 42, 95, 0.4); }
-        }
-
-        @keyframes latestCallPulse {
-            0% { transform: scale(1); box-shadow: 0 0 8px #ff2a5f; }
-            50% { transform: scale(1.25); box-shadow: 0 0 20px #ff2a5f, 0 0 10px #ffffff; background: #ff003c; color: #fff; z-index: 10; }
-            100% { transform: scale(1.1); box-shadow: 0 0 12px #ff2a5f; }
-        }
-
-        @keyframes callPop {
-            0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
             50% { transform: scale(1.2) rotate(5deg); }
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
@@ -142,8 +76,7 @@
         .header.hidden { display: none !important; }
 
         .logo { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #00f2fe, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 6px; }
-        .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.3); transition: transform 0.2s; }
-        .balance-badge:active { transform: scale(0.95); }
+        .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.3); }
         
         .container { padding: 8px; max-width: 500px; margin: 0 auto; }
         .tab-content { display: none; }
@@ -160,35 +93,26 @@
         }
         .nav-item { color: var(--text-sub); text-decoration: none; font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; flex: 1; transition: all 0.2s ease; }
         .nav-item.active { color: var(--primary-cyan); transform: translateY(-2px); }
-        .nav-icon { font-size: 18px; margin-bottom: 2px; transition: transform 0.2s; }
-        .nav-item.active .nav-icon { transform: scale(1.2); }
+        .nav-icon { font-size: 18px; margin-bottom: 2px; }
 
         .card { background: var(--card-bg); backdrop-filter: blur(8px); padding: 16px; border-radius: 16px; margin-bottom: 12px; border: 1px solid var(--card-border); }
-        .btn { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 800; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3); transition: all 0.2s ease; }
-        .btn:active { transform: scale(0.97); }
-        .btn:disabled { background: #555; cursor: not-allowed; opacity: 0.7; } /* Disabled Button Style */
+        .btn { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none; padding: 12px; border-radius: 10px; width: 100%; font-size: 15px; cursor: pointer; font-weight: 800; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3); }
         
         .bottom-actions-wrapper { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; width: 100%; }
         .btn-bingo-small { 
             background: linear-gradient(135deg, #ff2a5f, #e11d48); 
             font-size: 16px; padding: 12px; border-radius: 12px; 
-            box-shadow: 0 4px 20px rgba(255, 42, 95, 0.4); 
             cursor: pointer; color: #fff; font-weight: 900; border: none; text-align: center; width: 100%; 
-            letter-spacing: 1px; transition: all 0.15s ease;
             animation: pulseGlow 2s infinite ease-in-out;
         }
-        .btn-bingo-small:active { transform: scale(0.95); }
         .btn-leave-small { 
             background: rgba(255, 42, 95, 0.1); 
             font-size: 11px; padding: 6px 12px; border-radius: 8px; 
             cursor: pointer; color: #fda4af; font-weight: 700; 
             border: 1px solid rgba(255, 42, 95, 0.3); text-align: center; align-self: flex-end; 
-            transition: background 0.2s;
         }
-        .btn-leave-small:active { background: rgba(255, 42, 95, 0.2); }
         
-        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); color: #fff; border-radius: 10px; outline: none; font-weight: 600; transition: border-color 0.2s; }
-        input:focus, textarea:focus, select:focus { border-color: var(--primary-cyan); }
+        input, textarea, select { width: 100%; padding: 12px; margin-top: 8px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); color: #fff; border-radius: 10px; outline: none; font-weight: 600; }
 
         .header-box { text-align: center; padding: 16px 0; }
         .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
@@ -200,13 +124,10 @@
             background: var(--card-bg); color: var(--accent-amber); 
             border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; 
             cursor: pointer; text-align: center; width: 100%; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .bet-grid-btn:active { transform: scale(0.97); background: rgba(245, 158, 11, 0.15); }
 
-        .top-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
-        .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; transition: transform 0.2s; }
+        .top-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; }
         .stat-card span { display: block; font-size: 13px; color: #fff; margin-top: 2px; font-weight: 900; }
 
         .cards-grid { 
@@ -228,28 +149,20 @@
             font-weight: 800; 
             font-size: 11px; 
             cursor: pointer; 
-            transition: all 0.15s ease;
         }
-        .card-btn:active { transform: scale(0.85); }
-
         .card-btn.active { 
             background: linear-gradient(135deg, #00ff87, #10b981) !important; 
             color: #000000 !important; 
             font-weight: 900;
             box-shadow: 0 0 12px rgba(0, 255, 135, 0.9); 
             border: 1px solid #ffffff !important; 
-            transform: scale(1.08); 
-            z-index: 2; 
         }
-
         .card-btn.taken { 
             background: linear-gradient(135deg, #ff003c, #cc0000) !important; 
             color: #ffffff !important; 
             cursor: not-allowed; 
             opacity: 0.9; 
             font-weight: 900;
-            border: 1px solid #ff4d6d !important; 
-            box-shadow: 0 0 8px rgba(255, 0, 60, 0.7);
         }
 
         .bottom-section { 
@@ -258,46 +171,27 @@
             padding: 8px 10px; 
             border-radius: 10px; 
             border: 1px solid rgba(168, 85, 247, 0.3); 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            display: flex; flex-direction: column; align-items: center;
         }
-        .preview-label { font-size: 10px; font-weight: 800; color: #c084fc; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .preview-label { font-size: 10px; font-weight: 800; color: #c084fc; margin-bottom: 4px; text-transform: uppercase; }
         .preview-ticket { 
-            display: grid; 
-            grid-template-columns: repeat(5, 1fr); 
-            gap: 3px; 
-            background: rgba(0, 0, 0, 0.4); 
-            padding: 5px; 
-            border-radius: 6px; 
-            width: 100%; 
-            max-width: 240px; 
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; 
+            background: rgba(0, 0, 0, 0.4); padding: 5px; border-radius: 6px; width: 100%; max-width: 240px; 
         }
         .preview-cell { 
-            background: rgba(126, 34, 206, 0.25); 
-            color: #f3e8ff; 
-            font-size: 11px; 
-            font-weight: 800; 
-            text-align: center; 
-            padding: 4px 0; 
-            border-radius: 3px; 
-            border: 1px solid rgba(168, 85, 247, 0.2); 
-            animation: popIn 0.2s ease-out;
+            background: rgba(126, 34, 206, 0.25); color: #f3e8ff; font-size: 11px; font-weight: 800; 
+            text-align: center; padding: 4px 0; border-radius: 3px; border: 1px solid rgba(168, 85, 247, 0.2); 
         }
-        .preview-cell.free { background: var(--accent-green); color: #fff; border-color: #34d399; font-weight: 900; }
+        .preview-cell.free { background: var(--accent-green); color: #fff; font-weight: 900; }
 
         .action-column { display: flex; gap: 8px; margin-top: 8px; width: 100%; }
-        .btn-start-game { flex: 2; background: linear-gradient(135deg, var(--primary-cyan), #0284c7); color: #070a12; border: none; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 900; text-align: center; box-shadow: 0 4px 12px rgba(0, 242, 254, 0.3); transition: all 0.2s; }
-        .btn-start-game:active { transform: scale(0.96); }
-        .btn-back-small { flex: 1; background: rgba(255, 255, 255, 0.05); color: var(--accent-amber); border: 1px solid var(--card-border); padding: 10px; border-radius: 10px; font-size: 12px; cursor: pointer; font-weight: 700; text-align: center; transition: all 0.2s; }
-        .btn-back-small:active { transform: scale(0.96); }
+        .btn-start-game { flex: 2; background: linear-gradient(135deg, var(--primary-cyan), #0284c7); color: #070a12; border: none; padding: 10px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 900; text-align: center; }
+        .btn-back-small { flex: 1; background: rgba(255, 255, 255, 0.05); color: var(--accent-amber); border: 1px solid var(--card-border); padding: 10px; border-radius: 10px; font-size: 12px; cursor: pointer; font-weight: 700; text-align: center; }
 
         .game-layout { display: flex; gap: 8px; justify-content: space-between; height: calc(100vh - 210px); min-height: 420px; }
-        
         .called-grid-container { 
             background: var(--card-bg); padding: 8px; border-radius: 12px; 
-            width: 48%; border: 1px solid var(--card-border); 
-            display: flex; flex-direction: column; height: 100%; overflow: hidden;
+            width: 48%; border: 1px solid var(--card-border); display: flex; flex-direction: column; height: 100%; overflow: hidden;
         }
         .bingo-header-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-bottom: 6px; text-align: center; font-weight: 900; font-size: 11px; }
         
@@ -308,78 +202,39 @@
         .o-header { background: var(--accent-purple); color: #fff; border-radius: 4px; padding: 4px 0; }
 
         .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; overflow-y: auto; }
-        .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.02); transition: all 0.2s; }
-        
-        .grid-num.called { 
-            background: linear-gradient(135deg, #ff2a5f, #e11d48); 
-            color: #ffffff; font-size: 12px; font-weight: 900; 
-            box-shadow: 0 0 8px rgba(255, 42, 95, 0.8); 
-        }
-
-        .grid-num.called.latest-call { 
-            background: linear-gradient(135deg, #ff003c, #ff4d6d) !important; 
-            color: #ffffff !important; 
-            font-size: 13px !important; 
-            font-weight: 900 !important; 
-            animation: latestCallPulse 1.2s infinite ease-in-out;
-            border: 1px solid #ffffff;
-        }
+        .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.02); }
+        .grid-num.called { background: linear-gradient(135deg, #ff2a5f, #e11d48); color: #ffffff; font-weight: 900; }
+        .grid-num.called.latest-call { background: linear-gradient(135deg, #ff003c, #ff4d6d) !important; color: #ffffff !important; animation: latestCallPulse 1.2s infinite ease-in-out; border: 1px solid #ffffff; }
 
         .right-panel { width: 50%; display: flex; flex-direction: column; gap: 6px; height: 100%; }
         .countdown-box { background: var(--card-bg); color: var(--text-main); padding: 8px 10px; border-radius: 10px; display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; border: 1px solid var(--card-border); }
-        .current-call-box { background: var(--card-bg); padding: 8px 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--primary-cyan); box-shadow: 0 0 10px rgba(0, 242, 254, 0.15); }
+        .current-call-box { background: var(--card-bg); padding: 8px 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--primary-cyan); }
         .call-text { font-size: 11px; font-weight: 800; color: var(--text-sub); }
-        .call-circle { 
-            background: linear-gradient(135deg, var(--accent-amber), #f97316); 
-            color: #000; font-weight: 900; padding: 6px 12px; border-radius: 20px; font-size: 14px; 
-            box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
-            transition: all 0.2s;
-        }
+        .call-circle { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; font-weight: 900; padding: 6px 12px; border-radius: 20px; font-size: 14px; }
         .call-circle.animate { animation: callPop 0.4s ease-out; }
 
         .recent-calls { display: flex; gap: 4px; overflow-x: auto; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 8px; min-height: 32px; align-items: center; border: 1px solid var(--card-border); }
-        .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; animation: popIn 0.25s ease-out; }
+        .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; }
 
         .user-board { background: var(--card-bg); padding: 8px; border-radius: 12px; border: 1px solid var(--card-border); flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; margin-top: 4px; }
-        .board-cell { 
-            background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-weight: 800; 
-            display: flex; align-items: center; justify-content: center; border-radius: 4px; 
-            cursor: pointer; border: 1px solid var(--card-border); 
-            transition: all 0.15s ease;
-        }
-        .board-cell:active { transform: scale(0.9); }
-        .board-cell.free, .board-cell.marked { 
-            background: var(--accent-green); color: white; border-color: #34d399; 
-            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); 
-            animation: popIn 0.2s ease-out;
-        }
+        .board-cell { background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; border: 1px solid var(--card-border); }
+        .board-cell.free, .board-cell.marked { background: var(--accent-green); color: white; border-color: #34d399; }
         .board-footer { text-align: center; font-size: 10px; color: var(--text-sub); margin-top: 4px; font-weight: 800; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 2000; padding: 16px; }
-        .modal-card { 
-            background: linear-gradient(135deg, #1e1b4b, #0f172a); 
-            width: 100%; max-width: 360px; padding: 20px; border-radius: 20px; 
-            text-align: center; border: 1px solid var(--accent-purple); color: #fff; 
-            box-shadow: 0 10px 35px rgba(168, 85, 247, 0.3); 
-            animation: modalSlideUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .winner-title-box { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; padding: 12px; border-radius: 12px; font-size: 24px; font-weight: 900; margin-bottom: 8px; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4); }
+        .modal-card { background: linear-gradient(135deg, #1e1b4b, #0f172a); width: 100%; max-width: 360px; padding: 20px; border-radius: 20px; text-align: center; border: 1px solid var(--accent-purple); color: #fff; }
+        .winner-title-box { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; padding: 12px; border-radius: 12px; font-size: 24px; font-weight: 900; margin-bottom: 8px; }
         .winner-subtitle { font-size: 13px; font-weight: 700; color: #e9d5ff; margin-bottom: 14px; }
-        
         .modal-board-wrapper { background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; margin-bottom: 14px; border: 1px solid rgba(168, 85, 247, 0.3); }
         .modal-bingo-header { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-bottom: 4px; font-weight: 900; font-size: 11px; }
         .modal-board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
-        
         .modal-cell { background: rgba(255,255,255,0.05); color: #f3e8ff; font-size: 12px; font-weight: 800; text-align: center; padding: 8px 0; border-radius: 4px; }
-        .modal-cell.win-orange { background: #f97316 !important; color: #fff !important; box-shadow: 0 0 8px #f97316; }
-        .modal-cell.win-green { background: var(--accent-green) !important; color: #fff !important; box-shadow: 0 0 8px var(--accent-green); }
-
+        .modal-cell.win-orange { background: #f97316 !important; color: #fff !important; }
+        .modal-cell.win-green { background: var(--accent-green) !important; color: #fff !important; }
         .modal-footer-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 11px; background: rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 8px; }
         .modal-badge-name { background: #0d9488; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 800; }
-        
-        .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); }
-        .play-again-btn:active { transform: scale(0.97); }
+        .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -394,8 +249,8 @@
             
             <div id="gameStepBet" class="game-step active">
                 <div class="header-box">
-                    <h2>እንኳን ወደ Wana Bingo በደህና መ!</h2>
-                    <p>ለመጀመር የሚፈልጉትን የጨዋ ዋጋ ይምረ፡</p>
+                    <h2>እንኳን ወደ Wana Bingo በደህና መጡ!</h2>
+                    <p>ለመጀመር የሚፈልጉትን የጨዋታ ዋጋ ይምረጡ፡</p>
                 </div>
                 <div class="bet-selection-grid">
                     <button class="bet-grid-btn" onclick="selectBet(20)">20 ብር</button>
@@ -406,11 +261,9 @@
             </div>
 
             <div id="gameStepCards" class="game-step">
-                <div class="top-stats">
+                <div class="top-stats" style="grid-template-columns: repeat(3, 1fr);">
                     <div class="stat-card">Wallet<span id="walletDisplay">0.00</span></div>
                     <div class="stat-card">Bet<span id="betDisplay">20</span></div>
-                    <!-- === Timer is now here === -->
-                    <div class="stat-card">Round<span id="roundDisplay" style="color: var(--accent-amber);">30s</span></div>
                     <div class="stat-card">Active<span id="activePlayersDisplay">0</span></div>
                 </div>
 
@@ -423,17 +276,15 @@
 
                 <div class="action-column">
                     <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ</button>
-                    <!-- === Start Button with ID for Locking === -->
-                    <button class="btn-start-game" id="startGameBtn" onclick="goToGame()">Start game (Join)</button>
+                    <button class="btn-start-game" id="btnStartGame" onclick="goToGame()">Start game (Join)</button>
                 </div>
             </div>
 
             <div id="gameStepLive" class="game-step">
-                <div class="top-stats" style="grid-template-columns: repeat(5, 1fr); gap: 4px;">
+                <div class="top-stats" style="grid-template-columns: repeat(4, 1fr); gap: 4px;">
                     <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Room<span id="gameIdDisplay" style="font-size: 11px;">--</span></div>
                     <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Derash<span id="derashDisplay" style="font-size: 11px; color: var(--accent-green);">0.0</span></div>
                     <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Active<span id="activePlayersDisplayLive" style="font-size: 11px;">0</span></div>
-                    <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Round<span id="liveRoundDisplay" style="font-size: 11px; color: var(--accent-amber);">30s</span></div>
                     <div class="stat-card" style="padding: 6px 2px; font-size: 9px;">Call<span id="callCount" style="font-size: 11px; color: var(--accent-amber);">0</span></div>
                 </div>
 
@@ -446,6 +297,11 @@
                     </div>
 
                     <div class="right-panel">
+                        <div class="countdown-box">
+                            <span>Lobby Timer</span>
+                            <span id="countdownText" style="color:var(--accent-amber);">30s</span>
+                        </div>
+
                         <div class="current-call-box">
                             <span class="call-text">Current Call</span>
                             <div class="call-circle" id="currentCallCircle">-</div>
@@ -472,22 +328,22 @@
 
         <div id="walletTab" class="tab-content">
             <div class="card">
-                <h3>💳 ብር ገ ማድረግ (Deposit)</h3>
+                <h3>💳 ብር ገቢ ማድረግ (Deposit)</h3>
                 <p style="font-size: 12px; color: var(--text-sub); margin: 6px 0;">Telebirr Number: <b>0915503379 (Mulualem)</b></p>
                 <input type="number" id="depAmount" placeholder="የብር መጠን (ETB)">
-                <textarea id="depSMS" rows="3" placeholder="የቴብር SMS እዚህ ይልጠፉ"></textarea>
-                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #10b981, #059669);" onclick="submitDeposit()">ገቢ አድር</button>
+                <textarea id="depSMS" rows="3" placeholder="የቴሌብር SMS እዚህ ይልጠፉ"></textarea>
+                <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #10b981, #059669);" onclick="submitDeposit()">ገቢ አድርግ</button>
             </div>
 
             <div class="card" style="margin-top: 14px;">
-                <h3>💸 ንዘብ ማውት (Withdraw)</h3>
-                <p style="font-size: 12px; color: var(--text-sub); margin: 6px 0;">ያሸነፉትን ንዘብ ወደ አካውንትዎ ያስተላልፉ።</p>
+                <h3>💸 ገንዘብ ማውጣት (Withdraw)</h3>
+                <p style="font-size: 12px; color: var(--text-sub); margin: 6px 0;">ያሸነፉትን ገንዘብ ወደ አካውንትዎ ያስተላልፉ።</p>
                 <select id="withdrawMethod">
-                    <option value="Telebirr">ቴሌር (Telebirr)</option>
-                    <option value="CBE">የኢትዮጵያ ንግድ ንክ (CBE)</option>
+                    <option value="Telebirr">ቴሌብር (Telebirr)</option>
+                    <option value="CBE">የኢትዮጵያ ንግድ ባንክ (CBE)</option>
                 </select>
-                <input type="number" id="withdrawAmount" placeholder="የሚወው የብር መጠን (ETB)">
-                <input type="text" id="withdrawAccountDetails" placeholder="የባንክ አካውንት ቁር ወይም ስልክ ቁጥር">
+                <input type="number" id="withdrawAmount" placeholder="የሚወጣው የብር መጠን (ETB)">
+                <input type="text" id="withdrawAccountDetails" placeholder="የባንክ አካውንት ቁጥር ወይም ስልክ ቁጥር">
                 <button class="btn" style="margin-top: 12px; background: linear-gradient(135deg, #ff2a5f, #e11d48);" onclick="submitWithdraw()">ወጪ አድርግ (Withdraw)</button>
             </div>
         </div>
@@ -498,7 +354,7 @@
                 <p style="margin-top: 12px;">ስም: <b id="profName">--</b></p>
                 <p style="margin-top: 8px;">ID: <b id="profId">--</b></p>
                 <p style="margin-top: 8px;">ስልክ: <b id="profPhone">--</b></p>
-                <button class="btn" style="margin-top: 16px;" onclick="requestPhoneNumber()">ስልክ ቁር አጋራ (Share Phone)</button>
+                <button class="btn" style="margin-top: 16px;" onclick="requestPhoneNumber()">ስልክ ቁጥር አጋራ (Share Phone)</button>
             </div>
         </div>
     </div>
@@ -528,7 +384,7 @@
     <div class="navbar">
         <div class="nav-item active" onclick="switchTab('gameTab', this)"><div class="nav-icon">🎮</div>ጨዋታ</div>
         <div class="nav-item" onclick="switchTab('walletTab', this)"><div class="nav-icon">💳</div>ዋሌት</div>
-        <div class="nav-item" onclick="switchTab('profileTab', this)"><div class="nav-icon">👤</div>ፕሮይል</div>
+        <div class="nav-item" onclick="switchTab('profileTab', this)"><div class="nav-icon">👤</div>ፕሮፋይል</div>
     </div>
 
     <script>
@@ -550,13 +406,14 @@
         let currentDerashAmount = 0.0;
         
         let allCardsData = {};
-        let selectedCardId = null; // No default selection in Page 2
+        let selectedCardId = null; 
         let currentRoomId = null;
         let drawnNumbers = [];
         let playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
         let roomSelectedBoards = {};
         let globalStartTime = null;
         let clientTimerInterval = null;
+        let gameStatus = 'waiting';
 
         window.addEventListener('DOMContentLoaded', async () => {
             await fetchUserData();
@@ -580,11 +437,6 @@
             } catch (e) { console.error(e); }
         }
 
-        function updateRoundUI(currentRound, maxRounds) {
-            // This function is now used to show Timer or Playing status
-            // It will be overridden by startClientCountdown
-        }
-
         function updateDerashUI(data) {
             if (typeof data.activePlayersCount !== 'undefined') {
                 currentActivePlayers = data.activePlayersCount;
@@ -605,14 +457,6 @@
             document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
         }
 
-        function autoClearAndRedirect(msg) {
-            selectedCardId = null;
-            updateBoardsUI();
-            displayPreview(null);
-            alert(msg || 'ጨዋው ኦሬዲ ጀምል!');
-            showGameStep('gameStepBet');
-        }
-
         socket.on('playersUpdate', (data) => { if (data) updateDerashUI(data); });
         socket.on('activePlayersUpdate', (data) => { if (data) updateDerashUI(data); });
 
@@ -620,6 +464,7 @@
             currentRoomId = data.roomId;
             document.getElementById('gameIdDisplay').innerText = currentRoomId;
             globalStartTime = data.startTime;
+            gameStatus = data.status || 'waiting';
             updateDerashUI(data);
             startClientCountdown();
             if (data.selectedBoards) {
@@ -630,94 +475,65 @@
 
         socket.on('countdownUpdate', (data) => {
             globalStartTime = data.startTime;
+            gameStatus = data.status || 'waiting';
             updateDerashUI(data);
         });
 
-        // === Countdown Timer Logic (Replaces Round Display) ===
         function startClientCountdown() {
             if (clientTimerInterval) clearInterval(clientTimerInterval);
             clientTimerInterval = setInterval(() => {
                 if (!globalStartTime) return;
                 let remaining = Math.max(0, Math.floor((globalStartTime - Date.now()) / 1000));
                 
-                // Update both Round displays
-                document.getElementById('roundDisplay').innerText = `${remaining}s`;
-                document.getElementById('liveRoundDisplay').innerText = `${remaining}s`;
+                let countdownElement = document.getElementById('countdownText');
+                let startBtn = document.getElementById('btnStartGame');
 
-                if (remaining <= 0) {
-                    clearInterval(clientTimerInterval);
-                    // Change to Green "Playing!"
-                    document.getElementById('roundDisplay').innerText = "Playing!";
-                    document.getElementById('roundDisplay').style.color = "var(--accent-green)";
-                    document.getElementById('liveRoundDisplay').innerText = "Playing!";
-                    document.getElementById('liveRoundDisplay').style.color = "var(--accent-green)";
-                    
-                    // === Start Button Lock ===
-                    const startBtn = document.getElementById('startGameBtn');
-                    if(startBtn) {
-                        startBtn.disabled = true;
-                        startBtn.innerText = "Game Started (Locked)";
-                        startBtn.style.background = "#555";
+                if (gameStatus === 'playing') {
+                    countdownElement.innerText = "ጨዋታው ተጀምሯል";
+                    if (startBtn) {
+                        startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
+                        startBtn.style.opacity = "0.5";
                     }
+                } else {
+                    countdownElement.innerText = `${remaining}s`;
+                    if (startBtn) {
+                        startBtn.innerText = "Start game (Join)";
+                        startBtn.style.opacity = "1";
+                    }
+                }
+
+                if (remaining <= 0 && gameStatus !== 'playing') {
+                    countdownElement.innerText = "ጨዋታው ተጀምሯል";
                 }
             }, 1000);
         }
 
         socket.on('gameStarted', (data) => {
+            gameStatus = 'playing';
+            document.getElementById('countdownText').innerText = "ጨዋታው ተጀምሯል";
+            let startBtn = document.getElementById('btnStartGame');
+            if (startBtn) {
+                startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
+                startBtn.style.opacity = "0.5";
+            }
             if (data && data.prizePool) {
                 currentDerashAmount = parseFloat(data.prizePool);
                 document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
             }
             updateBoardsUI();
-
-            // If user is on selection screen and hasn't joined, lock them out
-            const liveStepActive = document.getElementById('gameStepLive').classList.contains('active');
-            if (!liveStepActive && selectedCardId === null) {
-                autoClearAndRedirect('ጨዋታው ኦሬዲ ጀምሯል!');
-            } else if (!liveStepActive && selectedCardId !== null) {
-                // If they have a board, move them to live screen
-                prepareLiveGameBoard();
-                showGameStep('gameStepLive');
-            }
-        });
-
-        socket.on('gameAlreadyStarted', (data) => {
-            autoClearAndRedirect(data.message);
-        });
-
-        socket.on('roomFinished', (data) => {
-            alert(data.message || '3ም ራውንዶች ተጠናቀዋል!');
-            showGameStep('gameStepBet');
         });
 
         socket.on('roomResetForNextRound', (data) => {
-            // Reset UI for next round
+            gameStatus = 'waiting';
             globalStartTime = data.startTime;
-            startClientCountdown();
-            
-            // Re-enable Start Button
-            const startBtn = document.getElementById('startGameBtn');
-            if(startBtn) {
-                startBtn.disabled = false;
-                startBtn.innerText = "Start game (Join)";
-                startBtn.style.background = ""; // Reset to original gradient
-            }
-            
-            // Reset Round Text Color
-            document.getElementById('roundDisplay').style.color = "var(--accent-amber)";
-            document.getElementById('liveRoundDisplay').style.color = "var(--accent-amber)";
-            
-            // Clear boards and go back to selection
-            selectedCardId = null;
             roomSelectedBoards = data.selectedBoards || {};
             updateBoardsUI();
-            displayPreview(null);
-            
-            // If on live screen, go back to cards screen
-            if (document.getElementById('gameStepLive').classList.contains('active')) {
-                showGameStep('gameStepCards');
-                initPage1();
+            let startBtn = document.getElementById('btnStartGame');
+            if (startBtn) {
+                startBtn.innerText = "Start game (Join)";
+                startBtn.style.opacity = "1";
             }
+            startClientCountdown();
         });
 
         socket.on('boardTempSelected', (data) => {
@@ -850,7 +666,7 @@
 
         function selectBet(amount) {
             currentBet = amount;
-            selectedCardId = null; // Reset selection per bet
+            selectedCardId = null; 
             showGameStep('gameStepCards');
             initPage1();
             socket.emit('joinLobby', { betAmount: amount });
@@ -909,11 +725,17 @@
                 btn.id = `card-btn-${i}`;
                 btn.innerText = i;
                 btn.onclick = () => {
-                    // === Selection Lock Logic ===
-                    // Only allow selection if status is waiting (checked via timer or server state)
-                    // For simplicity, we check if button is disabled globally or if room is playing
+                    if (gameStatus === 'playing') {
+                        // ጨዋታው በሂደት ላይ እያለ ማየት (Preview) ብቻ ይቻላል, አዲስ መግባት አይቻልም
+                        if (roomSelectedBoards[i]) {
+                            displayPreview(i);
+                        } else {
+                            alert('ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም! ነገር ግን የያዙትን ማየት ይችላሉ።');
+                        }
+                        return;
+                    }
                     if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
-                        alert('ይህ ቦርድ በሌላ ተጫዋች ወይም በት ተይዟል!');
+                        alert('ይህ ቦርድ በሌላ ተጫዋች ወይም በቦት ተይዟል!');
                         return;
                     }
                     socket.emit('selectBoardTemp', { roomId: currentRoomId, boardNumber: i });
@@ -968,7 +790,29 @@
             }
         }
 
-        function prepareLiveGameBoard() {
+        async function goToGame() {
+            if (gameStatus === 'playing') {
+                return alert('ጨዋታው በሂደት ላይ ነው! እባክዎ ቀጣዩ ዙር እስኪጀር ይጠብቁ።');
+            }
+            if (selectedCardId === null) {
+                return alert('እባክዎ መጀመሪያ የቦርድ ቁጥር ይምረጡ!');
+            }
+            if (userWallet < currentBet) return alert('በቂ ባላንስ የለዎትም!');
+            
+            try {
+                const res = await fetch('/api/place-bet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: currentUser.id, amount: currentBet })
+                });
+                const data = await res.json();
+                if (!data.success) return alert(data.message);
+                userWallet = data.newBalance;
+            } catch (e) { return alert('የኔትወርክ ስህተት።'); }
+
+            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
+            updateHeaderStats();
+
             const calledGrid = document.getElementById('calledGrid');
             calledGrid.innerHTML = '';
             for (let row = 0; row < 15; row++) {
@@ -992,29 +836,7 @@
             document.getElementById('currentCallCircle').innerText = '-';
             document.getElementById('callCount').innerText = '0';
             document.getElementById('boardFooterText').innerText = `Board number ${selectedCardId}`;
-        }
 
-        async function goToGame() {
-            if (selectedCardId === null) {
-                return alert('እባክዎ መጀመሪያ የቦርድ ቁጥር ይምረጡ!');
-            }
-            if (userWallet < currentBet) return alert('በቂ ባንስ የለዎትም!');
-            
-            try {
-                const res = await fetch('/api/place-bet', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, amount: currentBet })
-                });
-                const data = await res.json();
-                if (!data.success) return alert(data.message);
-                userWallet = data.newBalance;
-            } catch (e) { return alert('የኔትወር ስህተት።'); }
-
-            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
-            updateHeaderStats();
-
-            prepareLiveGameBoard();
             showGameStep('gameStepLive');
         }
 
@@ -1062,7 +884,7 @@
                 let winAmount = currentDerashAmount > 0 ? currentDerashAmount : (currentBet * 15 * 0.90);
                 socket.emit('claimBingo', { identifier: currentUser.id, name: currentUser.first_name, winAmount, roomId: currentRoomId, boardNumber: selectedCardId, winningLine });
             } else {
-                alert("ገና አልላም! እባክዎን በደንብ ያረግጡ።");
+                alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
             }
         }
 
@@ -1081,7 +903,7 @@
         async function submitDeposit() {
             const amount = document.getElementById('depAmount').value;
             const smsText = document.getElementById('depSMS').value;
-            if (!amount || !smsText) return alert('እባዎን ሁሉንም ሟሉ!');
+            if (!amount || !smsText) return alert('እባክዎን ሁሉንም ያሟሉ!');
             
             try {
                 const res = await fetch('/api/request-transaction', {
@@ -1103,8 +925,8 @@
             const method = document.getElementById('withdrawMethod').value;
             const details = document.getElementById('withdrawAccountDetails').value;
 
-            if (!amount || !details) return alert('እባክዎን የር መጠን እና የአውንት መረጃ በትክክል ይሙሉ!');
-            if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ስጥ ካለው ቀ ሂሳብ በላይ ማውጣት አይችም!');
+            if (!amount || !details) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
+            if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
 
             try {
                 const res = await fetch('/api/request-transaction', {
@@ -1114,13 +936,13 @@
                 });
                 const data = await res.json();
                 if(data.success) {
-                    alert(`የዊዝድው ጥያቄዎ በአዎንታዊ ሁኔታ ተልኳል! TxID: ${data.tx_id}`);
+                    alert(`የዊዝድሮው ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('withdrawAmount').value = '';
                     document.getElementById('withdrawAccountDetails').value = '';
                 } else {
                     alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
                 }
-            } catch(e) { alert('ሰርቨር ላይ ስህተት ፈጥሯል'); }
+            } catch(e) { alert('ሰርቨር ላይ ስህተት ተፈጥሯል።'); }
         }
 
         function requestPhoneNumber() {
@@ -1132,12 +954,12 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ identifier: currentUser.id, phone: contact.phone_number })
                         });
-                        alert('ስልክ ቁርዎ ተመዝግቧል!');
+                        alert('ስልክ ቁጥርዎ ተመዝግቧል!');
                         fetchUserData();
                     }
                 });
             } else {
-                alert('የቴሌግራም አፕሊኬሽን ድጋፍ አያስልግም።');
+                alert('የቴሌግራም አፕሊኬሽን ድጋፍ አያስፈልግም።');
             }
         }
     </script>
