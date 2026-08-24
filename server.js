@@ -41,6 +41,7 @@ if (TOKEN) {
     console.error('ERROR: Telegram Bot Token not provided!');
 }
 
+// ሰርቨሩ ሲነሳ 'details' ኮለመን በዳታቤዝ መኖሩን ማረጋገጫ (Auto-migration)
 async function initializeDatabase() {
     try {
         await pool.query(`
@@ -58,6 +59,7 @@ async function initializeDatabase() {
 }
 initializeDatabase();
 
+// REST APIs for User & Wallet
 app.post('/api/get-user', async (req, res) => {
     const { identifier, name, username } = req.body;
     try {
@@ -135,11 +137,11 @@ app.post('/api/request-transaction', async (req, res) => {
                 let userInfo = userRes.rows[0] || {};
                 
                 let msgText = `🔔 አዲስ የ ${type} ጥያቄ ገብቷል!\n` +
-                              `🆔 TxID: ${tx_id}\n` +
-                              `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
-                              `📱 ስልክ: ${userInfo.phone || 'N/A'}\n` +
-                              `💰 መጠን: ${amount} ብር\n` +
-                              `🏦 ባንክ/አካውንት: ${details || 'N/A'}`;
+                            `🆔 TxID: ${tx_id}\n` +
+                            `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
+                            `📱 ስልክ: ${userInfo.phone || 'N/A'}\n` +
+                            `💰 መጠን: ${amount} ብር\n` +
+                            `🏦 ባንክ/አካውንት: ${details || 'N/A'}`;
 
                 await bot.sendMessage(ADMIN_CHAT_ID, msgText, {
                     parse_mode: 'Markdown',
@@ -164,6 +166,7 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
+// --- TELEGRAM BOT COMMANDS & ADMIN PANEL ---
 if (bot) {
     bot.setMyCommands([
         { command: 'start', description: 'ቦቱን ለመጀመር' },
@@ -359,6 +362,7 @@ if (bot) {
     });
 }
 
+// --- MULTI-ROOM & CONTINUOUS ROUND MANAGEMENT (MAX 3 ROUNDS) ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
@@ -385,7 +389,6 @@ function calculatePrizePool(room) {
 function getOrCreateLobby(betAmount) {
     let roomId = null;
     for (let id in activeRooms) {
-        // ክፍሉ 'waiting' ከሆነ እና 3ቱም ራውንዶች ያልጨረሰ ከሆነ ብቻ ይምረጡ
         if (activeRooms[id].betAmount === betAmount && activeRooms[id].status === 'waiting' && activeRooms[id].currentRound <= 3) {
             roomId = id;
             break;
@@ -448,11 +451,7 @@ function startGlobalLobbyCountdown(roomId) {
     if (room.timer) clearInterval(room.timer);
 
     room.timer = setInterval(() => {
-        // ከ 'waiting' ውጪ ሌላ ስቴት (ለምሳሌ playing) ከሆነ ቆጠራው እንዳይቀጥል ይታገዳል
-        if (room.status !== 'waiting') {
-            clearInterval(room.timer);
-            return;
-        }
+        if (room.status !== 'waiting') return;
 
         room.countdown--;
 
@@ -490,16 +489,14 @@ function startGlobalLobbyCountdown(roomId) {
         });
 
         if (room.countdown <= 0) {
-            clearInterval(room.timer); // ቆጠራው ሙሉ በሙሉ ይጠፋል
             let selectedBoardsCount = Object.keys(room.selectedBoards).length;
 
             if (room.players.size < 1 || selectedBoardsCount < 1) {
                 room.countdown = 30;
                 room.startTime = Date.now() + 30000;
                 io.to(roomId).emit('notification', { message: 'በቂ ተጫዋች ወይም የተመረጠ ቦርድ ስለሌለ ሰዓቱ እንደገና ከ 30 ጀምሮ ቆጠራ ጀምሯል...' });
-                startGlobalLobbyCountdown(roomId); // ተመልሶ እንዲቆጥር ይደረጋል
             } else {
-                startRoomGame(roomId); // ጨዋታው ይጀመራል (ስቴቱ 'playing' ይሆናል)
+                startRoomGame(roomId);
             }
         }
     }, 1000);
@@ -572,7 +569,7 @@ function startRoomGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
 
-    room.status = 'playing'; // ጨዋታው መጀመሩን ያሳያል (አዲስ ተጫዋች እንዳይገባ ይቆልፋል)
+    room.status = 'playing';
     if (room.timer) clearInterval(room.timer);
     
     let finalPrizePool = calculatePrizePool(room);
@@ -608,6 +605,8 @@ function startRoomGame(roomId) {
         } while (room.drawnNumbers.includes(rand));
 
         room.drawnNumbers.push(rand);
+        
+        // ቁጥሩ ሲጠራ ክ라이언트 (Frontend) ላይ በቀላሉ ቦርዱ እንዲቆለፍ (Lock እንዲያደርግ) 'numberDrawn' ኢቨንት ይላካል
         io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
 
         for (let botId in roomBotCards) {
@@ -645,9 +644,8 @@ io.on('connection', (socket) => {
         const betAmount = data && data.betAmount ? data.betAmount : '20';
         let room = getOrCreateLobby(betAmount);
 
-        // ጨዋታው 'playing' ከሆነ ተጫዋቹ እንዳይገባ ሙሉ በሙሉ ይዘጋል/ይቆለፋል
         if (room.status === 'playing') {
-            return socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል! እባክዎ ቀጣዩን ራውንድ ይጠብቁ።' });
+            return socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል! እባክዎ ቀጣዩን ጨዋታ ይጠብቁ።' });
         }
 
         socket.join(room.roomId);
@@ -690,7 +688,7 @@ io.on('connection', (socket) => {
             room.tempSelections[socket.id] = boardNumber;
 
             socket.emit('boardTempSelected', { boardNumber });
-        } else {
+        } else if (room && room.status === 'playing') {
             socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል!' });
         }
     });
@@ -699,43 +697,42 @@ io.on('connection', (socket) => {
         const { roomId, boardNumber, name } = data;
         let room = activeRooms[roomId];
 
-        // ጨዋታው ከተጀመረ ተጫዋቹ ቦርድ ይዞ ጨዋታ ውስጥ መግባት አይችልም (መቆለፊያ)
-        if (!room || room.status !== 'waiting') {
-            return socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል! መቀላቀል አይችሉም።' });
-        }
-
-        if (room.selectedBoards[boardNumber]) {
-            return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
-        }
-
-        let previousBoard = null;
-        for (let bNum in room.selectedBoards) {
-            if (room.selectedBoards[bNum] === socket.id) {
-                previousBoard = bNum;
-                delete room.selectedBoards[bNum];
+        if (room && room.status === 'waiting') {
+            if (room.selectedBoards[boardNumber]) {
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
             }
+
+            let previousBoard = null;
+            for (let bNum in room.selectedBoards) {
+                if (room.selectedBoards[bNum] === socket.id) {
+                    previousBoard = bNum;
+                    delete room.selectedBoards[bNum];
+                }
+            }
+
+            if (previousBoard) {
+                io.to(roomId).emit('boardReleased', { boardNumber: previousBoard });
+            }
+
+            room.selectedBoards[boardNumber] = socket.id;
+            room.playerNames[socket.id] = name || 'Player';
+
+            if (room.tempSelections && room.tempSelections[socket.id]) {
+                delete room.tempSelections[socket.id];
+            }
+            
+            let currentPrizePool = calculatePrizePool(room);
+
+            io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
+            io.to(roomId).emit('activePlayersUpdate', { 
+                activePlayersCount: getActivePlayersCount(room),
+                prizePool: currentPrizePool 
+            });
+
+            socket.emit('gameJoinSuccess', { boardNumber, prizePool: currentPrizePool });
+        } else if (room && room.status === 'playing') {
+            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል!' });
         }
-
-        if (previousBoard) {
-            io.to(roomId).emit('boardReleased', { boardNumber: previousBoard });
-        }
-
-        room.selectedBoards[boardNumber] = socket.id;
-        room.playerNames[socket.id] = name || 'Player';
-
-        if (room.tempSelections && room.tempSelections[socket.id]) {
-            delete room.tempSelections[socket.id];
-        }
-        
-        let currentPrizePool = calculatePrizePool(room);
-
-        io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
-        io.to(roomId).emit('activePlayersUpdate', { 
-            activePlayersCount: getActivePlayersCount(room),
-            prizePool: currentPrizePool 
-        });
-
-        socket.emit('gameJoinSuccess', { boardNumber, prizePool: currentPrizePool });
     });
 
     socket.on('claimBingo', async (data) => {
