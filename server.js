@@ -517,11 +517,7 @@ io.on('connection', (socket) => {
         const { roomId, boardNumber } = data;
         let room = activeRooms[roomId];
 
-        if (room && room.status === 'playing') {
-            return socket.emit('boardSelectError', { message: 'ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም!' });
-        }
-
-        if (room && room.status === 'waiting') {
+        if (room) {
             if (room.selectedBoards[boardNumber]) {
                 return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
             }
@@ -537,11 +533,7 @@ io.on('connection', (socket) => {
         const { roomId, boardNumber, name } = data;
         let room = activeRooms[roomId];
 
-        if (room && room.status === 'playing') {
-            return socket.emit('boardSelectError', { message: 'ጨዋታው በሂደት ላይ ስለሆነ አዲስ መግባት አይችሉም!' });
-        }
-
-        if (room && room.status === 'waiting') {
+        if (room) {
             if (room.selectedBoards[boardNumber]) {
                 return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
             }
