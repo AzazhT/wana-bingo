@@ -145,7 +145,6 @@
             font-size: 11px; 
             cursor: pointer; 
         }
-        /* ማስተካከያ 1: ተጠቃሚው የመረጠው ቦርድ በአረንጓዴ ከለር ብቻ ለራሱ ይታያል */
         .card-btn.active { 
             background: linear-gradient(135deg, #00ff87, #10b981) !important; 
             color: #000000 !important; 
@@ -265,7 +264,6 @@
 
                 <div class="action-column">
                     <button class="btn-back-small" onclick="goToBetStep()">‹ ተመለስ</button>
-                    <!-- ማስተካከያ 1: የስታርት በተን ጨዋታው እስኪዘጋጅ እና ሰዓቱ እስኪያልቅ ድረስ ተቆልፎ (Disabled) እንዲቆይ ተደርጓል -->
                     <button class="btn-start-game" id="btnStartGame" onclick="goToGame()" disabled style="opacity: 0.5; cursor: not-allowed;">ጨዋታው በዝግጅት ላይ ነው...</button>
                 </div>
             </div>
@@ -464,7 +462,6 @@
             updateDerashUI(data);
         });
 
-        // 👈 **ማስተካከያ 1:** የስታርት በተን አያያዝ እና ሰዓት ቆጣሪ ሎጂክ
         function startClientCountdown() {
             if (clientTimerInterval) clearInterval(clientTimerInterval);
             clientTimerInterval = setInterval(() => {
@@ -485,7 +482,6 @@
                 } else {
                     countdownElement.innerText = `${remaining}s`;
                     if (startBtn) {
-                        // ሰዓቱ እስኪያልቅ ወይም ጨዋታው ዝግጁ እስከሚሆን ድረስ በተኗ ተቆልፋ ትቆያለች
                         if (remaining <= 0) {
                             startBtn.disabled = false;
                             startBtn.innerText = "Start game (Join)";
@@ -718,7 +714,6 @@
                         alert('ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም!');
                         return;
                     }
-                    // 👈 **ማስተካከያ 2:** Private Selection (ተጠቃሚው ሲመርጥ ለራሱ ብቻ በአረንጓዴ ከለር ይታያል እንጂ ለሌሎች Taken ተብሎ አይዘጋም)
                     socket.emit('selectBoardTemp', { roomId: currentRoomId, boardNumber: i });
                 };
                 cardsGrid.appendChild(btn);
@@ -734,7 +729,7 @@
                 if(btn) {
                     btn.classList.remove('active');
                     if(selectedCardId !== null && i === selectedCardId) {
-                        btn.classList.add('active'); // ተጠቃሚው የመረጠው ቦርድ ብቻ በአረንጓዴ ይደምቃል
+                        btn.classList.add('active'); 
                     }
                 }
             }
