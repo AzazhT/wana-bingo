@@ -6,13 +6,8 @@ const pool = require('./database');
 
 const app = express();
 const server = http.createServer(app);
-
-// === 'io' በትክክል ተገልጿል ===
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+    cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 app.use(express.json());
@@ -86,13 +81,8 @@ app.post('/api/request-transaction', async (req, res) => {
     } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// --- GAME LOGIC: PARALLEL GAMES (MAX 3) ---
+// --- GAME LOGIC: SINGLE ROOM WITH CONTINUOUS COUNTDOWN ---
 let activeRooms = {}; 
-let globalGameCounter = 0; 
-
-function getActiveGamesCount() {
-    return Object.values(activeRooms).filter(r => r.status === 'waiting' || r.status === 'playing').length;
-}
 
 function getActivePlayersCount(room) {
     let count = 0;
@@ -105,73 +95,60 @@ function calculatePrizePool(room) {
     return Math.max(parseFloat(room.betAmount), activeCount * parseFloat(room.betAmount) * 0.9);
 }
 
-// Generate Bingo Card for Bots
-function generateServerBingoCard() {
-    let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
-    let cols = [];
-    for(let c = 0; c < 5; c++) {
-        let col = [];
-        let min = ranges[c][0], max = ranges[c][1];
-        while(col.length < 5) {
-            let rand = Math.floor(Math.random() * (max - min + 1)) + min;
-            if(!col.includes(rand)) col.push(rand);
+function getOrCreateLobby(betAmount) {
+    let roomId = null;
+    // አንድ ክፍል ብቻ ይፈልግ (Waiting or Playing)
+    for (let id in activeRooms) {
+        if (activeRooms[id].betAmount === betAmount) {
+            roomId = id;
+            break;
         }
-        cols.push(col);
     }
-    let card = [];
-    for(let r = 0; r < 5; r++) {
-        let row = [];
-        for(let c = 0; c < 5; c++) {
-            row.push(r === 2 && c === 2 ? "*" : cols[c][r]);
-        }
-        card.push(row);
-    }
-    return card;
-}
 
-// Check Winning Line
-function findWinningLine(card, drawnNums) {
-    let marked = Array(5).fill(false).map(() => Array(5).fill(false));
-    marked[2][2] = true;
-    for (let r = 0; r < 5; r++) {
-        for (let c = 0; c < 5; c++) {
-            let val = card[r][c];
-            if (val === '*' || drawnNums.includes(val)) marked[r][c] = true;
-        }
+    if (!roomId) {
+        let uniqueId = Math.floor(1000 + Math.random() * 9000);
+        roomId = `ROOM_${betAmount}_${uniqueId}`;
+        
+        activeRooms[roomId] = {
+            roomId,
+            betAmount,
+            status: 'waiting', 
+            currentRound: 1, 
+            maxRounds: 3,
+            players: new Set(),
+            playerNames: {},
+            selectedBoards: {}, 
+            drawnNumbers: [],
+            countdown: 30,
+            startTime: Date.now() + 30000,
+            timer: null,
+            gameInterval: null
+        };
+        startGlobalLobbyCountdown(roomId);
     }
-    for(let r=0; r<5; r++) if([0,1,2,3,4].every(c => marked[r][c])) return { type: 'row', index: r };
-    for(let c=0; c<5; c++) if([0,1,2,3,4].every(r => marked[r][c])) return { type: 'col', index: c };
-    if([0,1,2,3,4].every(i => marked[i][i])) return { type: 'diag1', index: 0 };
-    if([0,1,2,3,4].every(i => marked[i][4-i])) return { type: 'diag2', index: 0 };
-    return null;
-}
-
-function createNewLobby(betAmount) {
-    globalGameCounter++;
-    let gameNumber = ((globalGameCounter - 1) % 3) + 1; // 1, 2, or 3
-    
-    let uniqueId = Math.floor(1000 + Math.random() * 9000);
-    let roomId = `ROOM_${betAmount}_${uniqueId}`;
-    
-    activeRooms[roomId] = {
-        roomId,
-        betAmount,
-        status: 'waiting', 
-        gameNumber: gameNumber,
-        currentRound: 1, 
-        maxRounds: 3,
-        players: new Set(),
-        playerNames: {},
-        selectedBoards: {}, 
-        botCards: {}, // Store bot cards here
-        drawnNumbers: [],
-        countdown: 30,
-        startTime: Date.now() + 30000, // Start counting immediately
-        timer: null,
-        gameInterval: null
-    };
-    startGlobalLobbyCountdown(roomId);
     return activeRooms[roomId];
+}
+
+function resetRoomForNextRound(roomId) {
+    let room = activeRooms[roomId];
+    if (!room) return;
+
+    room.drawnNumbers = [];
+    room.selectedBoards = {}; 
+    room.status = 'waiting';
+    room.countdown = 30;
+    room.startTime = Date.now() + 30000;
+
+    // ለ Frontend ቆጠራውን እና ሁኔታውን ላክ
+    io.to(roomId).emit('roomResetForNextRound', {
+        currentRound: room.currentRound,
+        maxRounds: room.maxRounds,
+        countdown: room.countdown,
+        startTime: room.startTime,
+        selectedBoards: room.selectedBoards
+    });
+
+    startGlobalLobbyCountdown(roomId);
 }
 
 function startGlobalLobbyCountdown(roomId) {
@@ -181,31 +158,30 @@ function startGlobalLobbyCountdown(roomId) {
 
     room.timer = setInterval(() => {
         if (room.status !== 'waiting') return;
+
         room.countdown--;
 
-        // Bot Auto-selection & Card Generation
+        // Bot Auto-selection
         let targetBots = Math.floor((30 - room.countdown) * 1.5);
         let currentSelected = Object.keys(room.selectedBoards).length;
-        
         if (currentSelected < targetBots && currentSelected < 100) {
             let randBoard = Math.floor(Math.random() * 100) + 1;
             if (!room.selectedBoards[randBoard]) {
                 let botId = `BOT_${Math.floor(Math.random()*10000)}`;
                 room.selectedBoards[randBoard] = botId;
                 room.playerNames[botId] = `Kenbo-${Math.floor(10000+Math.random()*90000)}`;
-                room.botCards[botId] = generateServerBingoCard(); // Save bot card
                 io.to(roomId).emit('boardSelected', { boardNumber: randBoard, socketId: botId });
             }
         }
 
+        // ቆጠራውን ለሁሉም ተጫዋቾች ላክ (በመምረጫ እና በጨዋታ ስክሪን ላይ ይታያል)
         io.to(roomId).emit('countdownUpdate', { 
             countdown: room.countdown, 
             startTime: room.startTime,
             activePlayersCount: getActivePlayersCount(room),
             prizePool: calculatePrizePool(room),
             currentRound: room.currentRound,
-            maxRounds: room.maxRounds,
-            gameNumber: room.gameNumber
+            maxRounds: room.maxRounds
         });
 
         if (room.countdown <= 0) {
@@ -223,15 +199,14 @@ function startRoomGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
 
-    room.status = 'playing'; 
+    room.status = 'playing'; // === ይህ መስመር Start Button ይቆልፋል ===
     if (room.timer) clearInterval(room.timer);
     
     io.to(roomId).emit('gameStarted', { 
         message: 'ጨዋታው ተጀምሯል!',
         prizePool: calculatePrizePool(room),
         currentRound: room.currentRound,
-        maxRounds: room.maxRounds,
-        gameNumber: room.gameNumber
+        maxRounds: room.maxRounds
     });
 
     room.gameInterval = setInterval(() => {
@@ -243,21 +218,6 @@ function startRoomGame(roomId) {
         do { rand = Math.floor(Math.random() * 75) + 1; } while (room.drawnNumbers.includes(rand));
         room.drawnNumbers.push(rand);
         io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
-
-        // === CHECK BOT WINS ===
-        for (let botId in room.botCards) {
-            let botCard = room.botCards[botId];
-            let winningLine = findWinningLine(botCard, room.drawnNumbers);
-            if (winningLine) {
-                endGame(roomId, {
-                    name: room.playerNames[botId],
-                    boardNumber: Object.keys(room.selectedBoards).find(key => room.selectedBoards[key] === botId),
-                    winAmount: calculatePrizePool(room),
-                    winningLine: winningLine
-                });
-                return;
-            }
-        }
     }, 3000);
 }
 
@@ -273,13 +233,18 @@ function endGame(roomId, winnerData) {
         winnerName: winnerData ? winnerData.name : "No Winner",
         boardNumber: winnerData ? winnerData.boardNumber : "--",
         winAmount: winnerData ? winnerData.winAmount : 0,
-        winningLine: winnerData ? winnerData.winningLine : null,
-        gameNumber: room.gameNumber
+        winningLine: winnerData ? winnerData.winningLine : null
     });
 
+    // ከ 5 ሴኮንድ በኋላ ለቀጣዩ ራውንድ ያዘጋጅ
     setTimeout(() => {
-        delete activeRooms[roomId];
-        console.log(`Room ${roomId} closed. Active games: ${getActiveGamesCount()}`);
+        if (room.currentRound < room.maxRounds) {
+            room.currentRound++;
+            resetRoomForNextRound(roomId);
+        } else {
+            io.to(roomId).emit('roomFinished', { message: '3ቱም ራውንዶች ተጠናቀዋል!' });
+            delete activeRooms[roomId];
+        }
     }, 5000);
 }
 
@@ -289,13 +254,9 @@ io.on('connection', (socket) => {
 
     socket.on('joinLobby', (data) => {
         const betAmount = data && data.betAmount ? data.betAmount : '20';
-        
-        if (getActiveGamesCount() >= 3) {
-            return socket.emit('lobbyFull', { message: "3 ጫወታዎች እየተጫወቱ ነው። አንዱ እስኪያልቅ እባክዎ ይጠብቁ!" });
-        }
+        let room = getOrCreateLobby(betAmount);
 
-        let room = createNewLobby(betAmount);
-
+        // ጫወታው እየተጫወተ ከሆነ፣ ተጫዋቹ መግባት ይችላል ነገር ግን Start Button ይቆለፋል
         socket.join(room.roomId);
         room.players.add(socket.id);
         socket.currentRoomId = room.roomId;
@@ -305,12 +266,12 @@ io.on('connection', (socket) => {
             betAmount: room.betAmount,
             countdown: room.countdown,
             startTime: room.startTime,
+            status: room.status,
             selectedBoards: room.selectedBoards,
             activePlayersCount: getActivePlayersCount(room),
             prizePool: calculatePrizePool(room),
             currentRound: room.currentRound,
-            maxRounds: room.maxRounds,
-            gameNumber: room.gameNumber
+            maxRounds: room.maxRounds
         });
         
         io.to(room.roomId).emit('playersUpdate', { 
@@ -333,6 +294,8 @@ io.on('connection', (socket) => {
     socket.on('startPlayerGame', (data) => {
         const { roomId, boardNumber, name } = data;
         let room = activeRooms[roomId];
+        
+        // === Start Button Lock Logic ===
         if (room && room.status === 'waiting') {
             if (room.selectedBoards[boardNumber]) {
                 return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ተይዟል!' });
@@ -343,7 +306,8 @@ io.on('connection', (socket) => {
             io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
             socket.emit('gameJoinSuccess', { boardNumber, prizePool: calculatePrizePool(room) });
         } else {
-            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል!' });
+            // ጫወታው ከጀመረ በኋላ፣ ይህ መልእክት ይላካል እና Start Button ይቆለፋል
+            socket.emit('gameAlreadyStarted', { message: 'ጨዋታው ኦሬዲ ጀምሯል! ቁጥር መምረጥ ብቻ ይችላሉ።' });
         }
     });
 
