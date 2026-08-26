@@ -243,13 +243,11 @@ if (bot) {
             ]
         };
 
-        // 🎯 እዚህ ጋር Check Balance እና Contact Us ከላይ እንዲሆኑ ተስተካክሏል
         let keyboardRows = [
             [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }],
             [{ text: "📲 Share Contact", request_contact: true }]
         ];
 
-        // 👑 አድሚኑ ከሆነ ተጨማሪ የአድሚን በተን ይጨመራል
         if (chatId.toString() === ADMIN_CHAT_ID.toString()) {
             keyboardRows.push([{ text: "👑 Admin Panel" }]);
         }
@@ -277,16 +275,28 @@ if (bot) {
         });
     });
 
-    // 👑 የአድሚን በተን ትዕዛዝ ማስተናገጃ
+    // 👑 ለአድሚኑ የተዘጋጀ የሊስት ማሳያ ቁልፍ ማስተናገጃ
     bot.onText(/👑 Admin Panel/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
 
         try {
-            const usersRes = await pool.query('SELECT COUNT(*) FROM users');
-            const totalUsers = usersRes.rows[0].count;
-            bot.sendMessage(chatId, `👑 **የአድሚን መቆጣጠሪያ Dashboard**\n\n👥 **ጠቅላላ የተመዘገቡ ተጠቃሚዎች:** ${totalUsers}\n🌐 **ሚኒ አፕ ለመክፈት:** ${WEB_APP_URL}`, { parse_mode: 'Markdown' });
+            const usersRes = await pool.query('SELECT name, username, identifier, phone, balance FROM users ORDER BY id DESC LIMIT 20');
+            const totalCountRes = await pool.query('SELECT COUNT(*) FROM users');
+            
+            let totalUsers = totalCountRes.rows[0].count;
+            let userListMsg = `👑 **የአድሚን መቆጣጠሪያ Dashboard**\n\n👥 **ጠቅላላ የተመዘገቡ ተጠቃሚዎች:** ${totalUsers}\n\n📋 **የመጨረሻዎቹ ተጠቃሚዎች ዝርዝር፡**\n\n`;
+
+            usersRes.rows.forEach((u, index) => {
+                userListMsg += `${index + 1}. **${u.name || 'Unknown'}** (@${u.username || 'none'})\n` +
+                               `   🆔 ID: \`${u.identifier}\`\n` +
+                               `   📱 ስልክ: ${u.phone || 'ያልተመዘገበ'}\n` +
+                               `   💰 ባላንስ: ${u.balance} ETB\n-----------------------\n`;
+            });
+
+            bot.sendMessage(chatId, userListMsg, { parse_mode: 'Markdown' });
         } catch (e) {
+            console.error('Admin Panel error:', e);
             bot.sendMessage(chatId, 'የተጠቃሚዎችን መረጃ ማግኘት አልተቻለም።');
         }
     });
