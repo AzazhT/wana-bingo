@@ -6,7 +6,12 @@ const pool = require('./database');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 app.use(express.json());
 app.use(express.static('public'));
@@ -18,9 +23,22 @@ const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 let bot = null;
 if (TOKEN) {
     try {
-        bot = new TelegramBot(TOKEN, { polling: { interval: 300, autoStart: true, params: { timeout: 10 } } });
+        bot = new TelegramBot(TOKEN, {  
+            polling: {
+                interval: 300,
+                autoStart: true,
+                params: { timeout: 10 }
+            } 
+        });
         console.log('Telegram Bot started successfully!');
-    } catch (err) { console.error(err); }
+        bot.on('polling_error', (error) => {
+            console.log(`Telegram Polling Error: ${error.code} - ${error.message}`);
+        });
+    } catch (err) {
+        console.error('Telegram Bot initialization error:', err);
+    }
+} else {
+    console.error('ERROR: Telegram Bot Token not provided!');
 }
 
 async function initializeDatabase() {
@@ -33,7 +51,10 @@ async function initializeDatabase() {
                 END IF;
             END $$;
         `);
-    } catch (err) { console.error(err.message); }
+        console.log('Database transactions table checked for "details" column.');
+    } catch (err) {
+        console.error('Database initialization warning:', err.message);
+    }
 }
 initializeDatabase();
 
@@ -45,12 +66,17 @@ app.post('/api/get-user', async (req, res) => {
         if (userRes.rows.length === 0) {
             const insertRes = await pool.query(
                 'INSERT INTO users (identifier, name, username, balance) VALUES ($1, $2, $3, $4) RETURNING *',
-                [identifier, name || 'አክሊል Player', username || '', 0.00]
+                [identifier, name || 'Player', username || '', 0.00]
             );
             user = insertRes.rows[0];
-        } else { user = userRes.rows[0]; }
+        } else {
+            user = userRes.rows[0];
+        }
         res.json({ success: true, user });
-    } catch (err) { res.status(500).json({ success: false }); }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 app.post('/api/update-phone', async (req, res) => {
@@ -58,83 +84,254 @@ app.post('/api/update-phone', async (req, res) => {
     try {
         await pool.query('UPDATE users SET phone = $1 WHERE identifier = $2', [phone, identifier]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false }); }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false });
+    }
 });
 
 app.post('/api/place-bet', async (req, res) => {
     const { identifier, amount } = req.body;
     try {
         const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
-        if (userRes.rows.length === 0) return res.json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
+        if (userRes.rows.length === 0) return res.json({ success: false, message: 'User not found' });
+        
         let balance = parseFloat(userRes.rows[0].balance);
         if (balance < amount) return res.json({ success: false, message: 'በቂ ባላንስ የለዎትም!' });
+
         let newBalance = balance - amount;
         await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, identifier]);
         res.json({ success: true, newBalance });
-    } catch (err) { res.status(500).json({ success: false }); }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 app.post('/api/request-transaction', async (req, res) => {
-    const { identifier, type, amount, details } = req.body;
+    const { identifier, type, amount, details, sms } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
+    const txDetails = details || sms || 'N/A';
+    
     try {
         if (type === 'WITHDRAW') {
             const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+            if (userRes.rows.length === 0) {
+                return res.json({ success: false, message: 'ተጠቃሚው አልተገኘም' });
+            }
             let currentBalance = parseFloat(userRes.rows[0].balance);
-            if (currentBalance < parseFloat(amount)) return res.json({ success: false, message: 'ብር በቂ አይደለም!' });
-            await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [currentBalance - parseFloat(amount), identifier]);
+            if (currentBalance < parseFloat(amount)) {
+                return res.json({ success: false, message: 'በዋሌትዎ ውስጥ ያለው ብር በቂ አይደለም!' });
+            }
+            let newBalance = currentBalance - parseFloat(amount);
+            await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, identifier]);
         }
-        await pool.query('INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)', [tx_id, identifier, type, amount, details || 'N/A']);
-        
+
+        await pool.query(
+            'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
+            [tx_id, identifier, type, amount, txDetails]
+        );
+
         if (bot && ADMIN_CHAT_ID) {
-            const userRes = await pool.query('SELECT name, username, phone FROM users WHERE identifier = $1', [identifier]);
-            let userInfo = userRes.rows[0] || {};
-            let msgText = `🔔 አዲስ የ ${type} ጥያቄ ገብቷል!\n🆔 TxID: ${tx_id}\n👤 ስም: ${userInfo.name}\n💰 መጠን: ${amount} ብር`;
-            await bot.sendMessage(ADMIN_CHAT_ID, msgText, {
-                reply_markup: {
-                    inline_keyboard: [[
-                        { text: '✅ Approve', callback_data: `approve_${tx_id}_${identifier}_${amount}_${type}` },
-                        { text: '❌ Reject', callback_data: `reject_${tx_id}_${identifier}_${amount}_${type}` }
-                    ]]
-                }
-            });
+            try {
+                const userRes = await pool.query('SELECT name, username, phone FROM users WHERE identifier = $1', [identifier]);
+                let userInfo = userRes.rows[0] || {};
+                
+                let msgText = `🔔 አዲስ የ ${type} ጥያቄ ገብቷል!\n` +
+                              `🆔 TxID: ${tx_id}\n` +
+                              `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
+                              `📱 ስልክ: ${userInfo.phone || 'N/A'}\n` +
+                              `💰 መጠን: ${amount} ብር\n` +
+                              `🏦 መረጃ: ${txDetails}`;
+
+                await bot.sendMessage(ADMIN_CHAT_ID, msgText, {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}_${type}` },
+                                { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}_${identifier}_${amount}_${type}` }
+                            ]
+                        ]
+                    }
+                });
+            } catch (notifyErr) {
+                console.error('Failed to send instant admin notification:', notifyErr);
+            }
         }
+
         res.json({ success: true, tx_id });
-    } catch (err) { res.status(500).json({ success: false }); }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'ሰርቨር ላይ ስህተት ተፈጥሯል' });
+    }
 });
 
 if (bot) {
+    bot.setMyCommands([
+        { command: 'start', description: 'ቦቱን ለመጀመር' },
+        { command: 'play', description: '🎮 Play Bingo (ጨዋታውን ክፈት)' },
+        { command: 'balance', description: '💰 ቀሪ ሂሳብዎን ለማየት' },
+        { command: 'deposit', description: '💳 የዲፖዚት መመሪያ' },
+        { command: 'withdraw', description: '💸 ገንዘብ ወጪ ለማድረግ' }
+    ]);
+
     bot.onText(/\/start/, (msg) => {
-        bot.sendMessage(msg.chat.id, `✨ **እንኳን ደህና መጡ ወደ Wana Bingo (አክሊል & ሀሴት)** ✨`, {
-            reply_markup: { inline_keyboard: [[{ text: '🚀 Play Bingo 🎮', web_app: { url: WEB_APP_URL } }]] }
+        const chatId = msg.chat.id;
+        const name = msg.from.first_name;
+        
+        let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                            `─────────────────────\n` +
+                            `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
+                            `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
+                            `💰 /balance - 💵 ቀሪ ሂሳብዎን ለማየት\n` +
+                            `💳 /deposit - 📥 የዲፖዚት መመሪያዎችን ለማግኘት\n` +
+                            `💸 /withdraw - 📤 ያሸነፉትን ገንዘብ ወጪ ለማድረግ\n` +
+                            `─────────────────────`;
+
+        bot.sendMessage(chatId, welcomeMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🚀 ዋናውን ቢንጎ ጨዋታ ጀምር (Play Bingo) 🎮', web_app: { url: WEB_APP_URL } }]
+                ]
+            }
         });
+    });
+
+    bot.onText(/\/play/, (msg) => {
+        const chatId = msg.chat.id;
+        bot.sendMessage(chatId, `🎮 የቢንጎ ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ፡`, {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🚀 Play Bingo Web App 🎮', web_app: { url: WEB_APP_URL } }]
+                ]
+            }
+        });
+    });
+
+    bot.onText(/\/balance/, async (msg) => {
+        const chatId = msg.chat.id;
+        const username = msg.from.username || '';
+        
+        try {
+            const userRes = await pool.query('SELECT balance, name FROM users WHERE username = $1 OR identifier = $2', [username, chatId.toString()]);
+            if (userRes.rows.length > 0) {
+                let user = userRes.rows[0];
+                bot.sendMessage(chatId, `👤 ስም: ${user.name}\n💰 ቀሪ ባላንስዎ: ${user.balance} ብር`);
+            } else {
+                bot.sendMessage(chatId, `እባክዎ መጀመሪያ ዌብሳይቱ ላይ በመግባት አካውንት ይክፈቱ!`);
+            }
+        } catch (err) {
+            console.error(err);
+            bot.sendMessage(chatId, 'የሰርቨር ስህተት አጋጥሟል።');
+        }
+    });
+
+    bot.on('callback_query', async (callbackQuery) => {
+        const action = callbackQuery.data;
+        const msg = callbackQuery.message;
+        const parts = action.split('_');
+        const status = parts[0]; 
+        const tx_id = parts[1];
+        const identifier = parts[2];
+        const amount = parseFloat(parts[3]);
+        const type = parts[4]; 
+
+        try {
+            if (status === 'approve') {
+                if (type === 'DEPOSIT') {
+                    const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                    if (userRes.rows.length > 0) {
+                        let currentBal = parseFloat(userRes.rows[0].balance);
+                        let newBal = currentBal + amount;
+                        await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
+                    }
+                }
+                await pool.query('UPDATE transactions SET handled = TRUE WHERE tx_id = $1', [tx_id]);
+
+                await bot.editMessageText(`✅ **ይህ ጥያቄ (${tx_id}) በአድሚኑ ጸድቋል (Approved)!**`, {
+                    chat_id: msg.chat.id,
+                    message_id: msg.message_id,
+                    parse_mode: 'Markdown'
+                });
+            } else if (status === 'reject') {
+                if (type === 'WITHDRAW') {
+                    const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                    if (userRes.rows.length > 0) {
+                        let currentBal = parseFloat(userRes.rows[0].balance);
+                        let newBal = currentBal + amount;
+                        await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
+                    }
+                }
+                await pool.query('UPDATE transactions SET handled = TRUE WHERE tx_id = $1', [tx_id]);
+
+                await bot.editMessageText(`❌ **ይህ ጥያቄ (${tx_id}) ተሰርዟል (Rejected)!**`, {
+                    chat_id: msg.chat.id,
+                    message_id: msg.message_id,
+                    parse_mode: 'Markdown'
+                });
+            }
+            await bot.answerCallbackQuery(callbackQuery.id, { text: 'ተከናውኗል!' });
+        } catch (err) {
+            console.error('Error handling callback query:', err);
+            bot.answerCallbackQuery(callbackQuery.id, { text: 'ስህተት ተፈጥሯል!' });
+        }
     });
 }
 
+// --- CONTINUOUS GAME & MULTI-ROOM MANAGEMENT ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
     let activeSocketIds = new Set();
-    for (let bNum in room.selectedBoards) if (room.selectedBoards[bNum]) activeSocketIds.add(room.selectedBoards[bNum]);
-    for (let socketId of room.players) activeSocketIds.add(socketId);
+    for (let bNum in room.selectedBoards) {
+        if (room.selectedBoards[bNum]) {
+            activeSocketIds.add(room.selectedBoards[bNum]);
+        }
+    }
+    for (let socketId of room.players) {
+        activeSocketIds.add(socketId);
+    }
     return activeSocketIds.size;
 }
 
 function calculatePrizePool(room) {
     let activeCount = getActivePlayersCount(room);
     let totalBet = activeCount * parseFloat(room.betAmount);
-    return Math.floor(totalBet * 0.90 > 0 ? totalBet * 0.90 : parseFloat(room.betAmount));
+    let commissionRate = 0.10; 
+    let prizePool = totalBet * (1 - commissionRate);
+    return Math.floor(prizePool > 0 ? prizePool : parseFloat(room.betAmount));
 }
 
 function getOrCreateLobby(betAmount) {
     let roomId = null;
-    for (let id in activeRooms) if (activeRooms[id].betAmount === betAmount) { roomId = id; break; }
+    for (let id in activeRooms) {
+        if (activeRooms[id].betAmount === betAmount) {
+            roomId = id;
+            break;
+        }
+    }
+
     if (!roomId) {
-        roomId = `ROOM_${betAmount}_${Math.floor(1000 + Math.random() * 9000)}`;
+        let uniqueId = Math.floor(1000 + Math.random() * 9000);
+        roomId = `ROOM_${betAmount}_${uniqueId}`;
+        
         activeRooms[roomId] = {
-            roomId, betAmount, status: 'waiting', players: new Set(), playerNames: {},
-            reservedNumbers: {}, selectedBoards: {}, tempSelections: {}, drawnNumbers: [],
-            countdown: 30, startTime: Date.now() + 30000, timer: null, gameInterval: null
+            roomId,
+            betAmount,
+            status: 'waiting', 
+            players: new Set(),
+            playerNames: {},
+            reservedNumbers: {}, 
+            selectedBoards: {}, 
+            tempSelections: {},  
+            drawnNumbers: [],
+            countdown: 30,
+            startTime: Date.now() + 30000,
+            timer: null,
+            gameInterval: null
         };
         startGlobalLobbyCountdown(roomId);
     }
@@ -144,41 +341,103 @@ function getOrCreateLobby(betAmount) {
 function resetRoomForNextGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
-    room.drawnNumbers = []; room.reservedNumbers = {}; room.selectedBoards = {}; room.tempSelections = {};
-    room.status = 'waiting'; room.countdown = 30; room.startTime = Date.now() + 30000;
-    io.to(roomId).emit('roomResetForNextRound', { status: room.status, countdown: room.countdown, startTime: room.startTime, selectedBoards: room.selectedBoards });
+
+    room.drawnNumbers = [];
+    room.reservedNumbers = {};
+    room.selectedBoards = {}; 
+    room.tempSelections = {};
+    room.status = 'waiting';
+    room.countdown = 30;
+    room.startTime = Date.now() + 30000;
+
+    io.to(roomId).emit('roomResetForNextRound', {
+        status: room.status,
+        countdown: room.countdown,
+        startTime: room.startTime,
+        selectedBoards: room.selectedBoards
+    });
+
     startGlobalLobbyCountdown(roomId);
 }
 
 function startGlobalLobbyCountdown(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
+
     if (room.timer) clearInterval(room.timer);
+
     room.timer = setInterval(() => {
         if (room.status !== 'waiting') return;
+
         room.countdown--;
-        if (Object.keys(room.selectedBoards).length < 3 && room.countdown > 5) {
-            let randB = Math.floor(Math.random() * 100) + 1;
-            if (!room.selectedBoards[randB]) {
+
+        let totalPossibleBoards = 100;
+        let targetBotSelections = Math.floor((30 - room.countdown) * 1.5); 
+        let currentSelectedCount = Object.keys(room.selectedBoards).length;
+
+        if (currentSelectedCount < targetBotSelections && currentSelectedCount < totalPossibleBoards) {
+            let randomBoard;
+            let attempts = 0;
+            do {
+                randomBoard = Math.floor(Math.random() * totalPossibleBoards) + 1;
+                attempts++;
+            } while (room.selectedBoards[randomBoard] && attempts < 20);
+
+            if (!room.selectedBoards[randomBoard]) {
                 let botId = `BOT_${Math.floor(Math.random() * 10000)}`;
-                room.selectedBoards[randB] = botId;
-                room.playerNames[botId] = `ሀሴት-${Math.floor(1000 + Math.random()*9000)}`;
-                io.to(roomId).emit('boardSelected', { boardNumber: randB, socketId: botId });
+                room.selectedBoards[randomBoard] = botId;
+                room.playerNames[botId] = `Kenbo-${Math.floor(10000 + Math.random()*90000)}`;
+
+                io.to(roomId).emit('boardSelected', { boardNumber: randomBoard, socketId: botId });
             }
         }
-        io.to(roomId).emit('countdownUpdate', { countdown: room.countdown, status: room.status, activePlayersCount: getActivePlayersCount(room), prizePool: calculatePrizePool(room), startTime: room.startTime });
-        if (room.countdown <= 0) startRoomGame(roomId);
+
+        let currentPrizePool = calculatePrizePool(room);
+
+        io.to(roomId).emit('countdownUpdate', { 
+            countdown: room.countdown, 
+            status: room.status,
+            playersCount: room.players.size,
+            activePlayersCount: getActivePlayersCount(room),
+            prizePool: currentPrizePool,
+            startTime: room.startTime
+        });
+
+        if (room.countdown <= 0) {
+            let selectedBoardsCount = Object.keys(room.selectedBoards).length;
+
+            if (room.players.size < 1 || selectedBoardsCount < 1) {
+                room.countdown = 30;
+                room.startTime = Date.now() + 30000;
+            } else {
+                startRoomGame(roomId);
+            }
+        }
     }, 1000);
 }
 
 function findWinningLine(card, drawnNums) {
     let marked = Array(5).fill(false).map(() => Array(5).fill(false));
     marked[2][2] = true;
-    for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) if (card[r][c] === '*' || drawnNums.includes(card[r][c])) marked[r][c] = true;
-    for(let r=0; r<5; r++) if([0,1,2,3,4].every(c => marked[r][c])) return { type: 'row', index: r };
-    for(let c=0; c<5; c++) if([0,1,2,3,4].every(r => marked[r][c])) return { type: 'col', index: c };
+
+    for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+            let val = card[r][c];
+            if (val === '*' || drawnNums.includes(val)) {
+                marked[r][c] = true;
+            }
+        }
+    }
+
+    for(let r=0; r<5; r++) {
+        if([0,1,2,3,4].every(c => marked[r][c])) return { type: 'row', index: r };
+    }
+    for(let c=0; c<5; c++) {
+        if([0,1,2,3,4].every(r => marked[r][c])) return { type: 'col', index: c };
+    }
     if([0,1,2,3,4].every(i => marked[i][i])) return { type: 'diag1', index: 0 };
     if([0,1,2,3,4].every(i => marked[i][4-i])) return { type: 'diag2', index: 0 };
+
     return null;
 }
 
@@ -186,14 +445,22 @@ function generateServerBingoCard() {
     let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
     let cols = [];
     for(let c = 0; c < 5; c++) {
-        let col = [], min = ranges[c][0], max = ranges[c][1];
-        while(col.length < 5) { let rand = Math.floor(Math.random() * (max - min + 1)) + min; if(!col.includes(rand)) col.push(rand); }
+        let col = [];
+        let min = ranges[c][0], max = ranges[c][1];
+        while(col.length < 5) {
+            let rand = Math.floor(Math.random() * (max - min + 1)) + min;
+            if(!col.includes(rand)) col.push(rand);
+        }
         cols.push(col);
     }
     let card = [];
     for(let r = 0; r < 5; r++) {
-        let row = [], c = 0;
-        while(c < 5) { row.push(r === 2 && c === 2 ? "*" : cols[c][r]); c++; }
+        let row = [];
+        let c = 0;
+        while(c < 5) {
+            row.push(r === 2 && c === 2 ? "*" : cols[c][r]);
+            c++;
+        }
         card.push(row);
     }
     return card;
@@ -202,34 +469,66 @@ function generateServerBingoCard() {
 function startRoomGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
+
     room.status = 'playing';
     if (room.timer) clearInterval(room.timer);
-    io.to(roomId).emit('gameStarted', { message: 'ጨዋታው ተጀምሯል!', prizePool: calculatePrizePool(room) });
+    
+    let finalPrizePool = calculatePrizePool(room);
+    io.to(roomId).emit('gameStarted', { 
+        message: 'ጨዋታው ተጀምሯል!',
+        prizePool: finalPrizePool,
+        status: room.status
+    });
 
     let roomBotCards = {};
     for (let bNum in room.selectedBoards) {
         let ownerId = room.selectedBoards[bNum];
-        if (ownerId && ownerId.startsWith('BOT_')) roomBotCards[ownerId] = { boardNumber: bNum, card: generateServerBingoCard() };
+        if (ownerId && ownerId.startsWith('BOT_')) {
+            roomBotCards[ownerId] = { boardNumber: bNum, card: generateServerBingoCard() };
+        }
     }
 
     room.gameInterval = setInterval(() => {
         if (room.drawnNumbers.length >= 75) {
             clearInterval(room.gameInterval);
-            resetRoomForNextGame(roomId);
+            room.status = 'ended';
+            io.to(roomId).emit('gameOver', { message: 'ጨዋታው አልቋል! 75ቱ ቁጥሮች ተጠርተዋል አሸናፊ አልተገኘም።' });
+            setTimeout(() => {
+                resetRoomForNextGame(roomId);
+            }, 3000);
             return;
         }
+
         let rand;
-        do { rand = Math.floor(Math.random() * 75) + 1; } while (room.drawnNumbers.includes(rand));
+        do {
+            rand = Math.floor(Math.random() * 75) + 1;
+        } while (room.drawnNumbers.includes(rand));
+
         room.drawnNumbers.push(rand);
         io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
 
         for (let botId in roomBotCards) {
             let botData = roomBotCards[botId];
-            if (findWinningLine(botData.card, room.drawnNumbers)) {
+            let winningLine = findWinningLine(botData.card, room.drawnNumbers);
+            if (winningLine) {
                 clearInterval(room.gameInterval);
+                if (room.timer) clearInterval(room.timer);
                 room.status = 'ended';
-                io.to(roomId).emit('gameOver', { subtitle: 'አሸናፊ ተገኝቷል!', winnerName: room.playerNames[botId] || "እድል-Bot", boardNumber: botData.boardNumber, winAmount: calculatePrizePool(room) });
-                setTimeout(() => resetRoomForNextGame(roomId), 3000);
+
+                let botWinAmount = finalPrizePool;
+                let botName = room.playerNames[botId] || "Kenbo-Bot";
+
+                io.to(roomId).emit('gameOver', { 
+                    subtitle: '1 player has won the game',
+                    winnerName: botName,
+                    boardNumber: botData.boardNumber,
+                    winAmount: botWinAmount,
+                    winningLine: winningLine
+                });
+
+                setTimeout(() => {
+                    resetRoomForNextGame(roomId);
+                }, 3000);
                 return;
             }
         }
@@ -237,53 +536,178 @@ function startRoomGame(roomId) {
 }
 
 io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+
     socket.on('joinLobby', (data) => {
-        let room = getOrCreateLobby(data?.betAmount || '20');
+        const betAmount = data && data.betAmount ? data.betAmount : '20';
+        let room = getOrCreateLobby(betAmount);
+
         socket.join(room.roomId);
         room.players.add(socket.id);
-        socket.emit('assignedRoom', { roomId: room.roomId, betAmount: room.betAmount, countdown: room.countdown, startTime: room.startTime, status: room.status, selectedBoards: room.selectedBoards, activePlayersCount: getActivePlayersCount(room) });
+        socket.currentRoomId = room.roomId;
+
+        let currentPrizePool = calculatePrizePool(room);
+
+        socket.emit('assignedRoom', { 
+            roomId: room.roomId, 
+            betAmount: room.betAmount,
+            countdown: room.countdown,
+            startTime: room.startTime,
+            status: room.status,
+            reservedNumbers: room.reservedNumbers,
+            selectedBoards: room.selectedBoards,
+            activePlayersCount: getActivePlayersCount(room),
+            prizePool: currentPrizePool
+        });
+        
+        io.to(room.roomId).emit('playersUpdate', { 
+            playersCount: room.players.size,
+            activePlayersCount: getActivePlayersCount(room),
+            prizePool: currentPrizePool
+        });
     });
 
     socket.on('selectBoardTemp', (data) => {
-        let room = activeRooms[data.roomId];
-        if (room && room.status === 'waiting' && !room.selectedBoards[data.boardNumber]) socket.emit('boardTempSelected', { boardNumber: data.boardNumber });
+        const { roomId, boardNumber } = data;
+        let room = activeRooms[roomId];
+
+        if (room && room.status === 'playing') {
+            return socket.emit('boardSelectError', { message: 'ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም!' });
+        }
+
+        if (room && room.status === 'waiting') {
+            if (room.selectedBoards[boardNumber]) {
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
+            }
+
+            if (!room.tempSelections) room.tempSelections = {};
+            room.tempSelections[socket.id] = boardNumber;
+
+            socket.emit('boardTempSelected', { boardNumber });
+        }
     });
 
     socket.on('startPlayerGame', (data) => {
-        let room = activeRooms[data.roomId];
-        if (room && room.status === 'waiting' && !room.selectedBoards[data.boardNumber]) {
-            room.selectedBoards[data.boardNumber] = socket.id;
-            room.playerNames[socket.id] = data.name || 'ተጫዋች';
-            io.to(data.roomId).emit('boardSelected', { boardNumber: data.boardNumber, socketId: socket.id });
-            socket.emit('gameJoinSuccess', { boardNumber: data.boardNumber });
+        const { roomId, boardNumber, name } = data;
+        let room = activeRooms[roomId];
+
+        if (room && room.status === 'playing') {
+            return socket.emit('boardSelectError', { message: 'ጨዋታው በሂደት ላይ ስለሆነ አዲስ መግባት አይችሉም!' });
+        }
+
+        if (room && room.status === 'waiting') {
+            if (room.selectedBoards[boardNumber]) {
+                return socket.emit('boardSelectError', { message: 'ይህ ቦርድ ቁጥር አስቀድሞ በሌላ ተጫዋች ወይም በቦት ተይዟል!' });
+            }
+
+            let previousBoard = null;
+            for (let bNum in room.selectedBoards) {
+                if (room.selectedBoards[bNum] === socket.id) {
+                    previousBoard = bNum;
+                    delete room.selectedBoards[bNum];
+                }
+            }
+
+            if (previousBoard) {
+                io.to(roomId).emit('boardReleased', { boardNumber: previousBoard });
+            }
+
+            room.selectedBoards[boardNumber] = socket.id;
+            room.playerNames[socket.id] = name || 'Player';
+
+            if (room.tempSelections && room.tempSelections[socket.id]) {
+                delete room.tempSelections[socket.id];
+            }
+            
+            let currentPrizePool = calculatePrizePool(room);
+
+            io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
+            io.to(roomId).emit('activePlayersUpdate', { 
+                activePlayersCount: getActivePlayersCount(room),
+                prizePool: currentPrizePool 
+            });
+
+            socket.emit('gameJoinSuccess', { boardNumber, prizePool: currentPrizePool });
         }
     });
 
     socket.on('claimBingo', async (data) => {
-        let room = activeRooms[data.roomId];
+        const { identifier, name, winAmount, roomId, boardNumber, winningLine } = data;
+        let room = activeRooms[roomId];
+        
         if (room && room.status === 'playing') {
             room.status = 'ended';
             if (room.gameInterval) clearInterval(room.gameInterval);
-            let finalWin = calculatePrizePool(room) || data.winAmount;
-            let userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [data.identifier]);
-            if (userRes.rows.length > 0) {
-                await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [parseFloat(userRes.rows[0].balance) + parseFloat(finalWin), data.identifier]);
-                io.to(data.roomId).emit('gameOver', { subtitle: 'አሸናፊ ተገኝቷል!', winnerName: data.name, boardNumber: data.boardNumber, winAmount: finalWin, winningLine: data.winningLine });
-                setTimeout(() => resetRoomForNextGame(data.roomId), 3000);
+            if (room.timer) clearInterval(room.timer);
+
+            let finalWinAmount = calculatePrizePool(room) || winAmount;
+
+            try {
+                const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                if (userRes.rows.length > 0) {
+                    let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(finalWinAmount);
+                    await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
+                    
+                    io.to(roomId).emit('gameOver', { 
+                        subtitle: '1 player has won the game',
+                        winnerName: name || room.playerNames[socket.id] || 'Winner',
+                        boardNumber: boardNumber,
+                        winAmount: finalWinAmount,
+                        winningLine: winningLine
+                    });
+
+                    setTimeout(() => {
+                        resetRoomForNextGame(roomId);
+                    }, 3000);
+                }
+            } catch (err) {
+                console.error('Bingo claim error:', err);
             }
         }
     });
 
     socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
         for (let roomId in activeRooms) {
             let room = activeRooms[roomId];
             if (room.players.has(socket.id)) {
                 room.players.delete(socket.id);
-                for (let bNum in room.selectedBoards) if (room.selectedBoards[bNum] === socket.id) { delete room.selectedBoards[bNum]; io.to(roomId).emit('boardReleased', { boardNumber: bNum }); }
+                delete room.playerNames[socket.id];
+                
+                if (room.tempSelections && room.tempSelections[socket.id]) {
+                    delete room.tempSelections[socket.id];
+                }
+
+                let boardReleasedFlag = false;
+                if (room.status === 'waiting') {
+                    for (let bNum in room.selectedBoards) {
+                        if (room.selectedBoards[bNum] === socket.id) {
+                            delete room.selectedBoards[bNum];
+                            boardReleasedFlag = true;
+                            io.to(roomId).emit('boardReleased', { boardNumber: bNum });
+                        }
+                    }
+                }
+
+                let currentPrizePool = calculatePrizePool(room);
+                io.to(room.roomId).emit('playersUpdate', { 
+                    playersCount: room.players.size,
+                    activePlayersCount: getActivePlayersCount(room),
+                    prizePool: currentPrizePool
+                });
+
+                if (boardReleasedFlag) {
+                    io.to(room.roomId).emit('activePlayersUpdate', { 
+                        activePlayersCount: getActivePlayersCount(room),
+                        prizePool: currentPrizePool 
+                    });
+                }
             }
         }
     });
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, `0.0.0.0`, () => {
+    console.log(`Server running on port ${PORT}`);
+});
