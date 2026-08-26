@@ -84,7 +84,6 @@
         
         .container { padding: 8px; max-width: 500px; margin: 0 auto; position: relative; z-index: 10; }
         
-        /* የተደረገ ማስተካከያ 1: የገጽ መቀያየሪያዎችን ስላይድ/አኒሜሽን በማጥፋት ቀጥተኛ (instant/static) እንዲሆኑ አድርጓል */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
@@ -238,7 +237,6 @@
             border: 1px solid rgba(255, 255, 255, 0.1); 
         }
         
-        /* የተደረገ ማስተካከያ 3: ቁጥር ሲጠራ መጠኑ እንዳይለወጥ እና መንቀጥቀጥ/ስፔስ መጥፋት እንዳይኖር ተደርጓል */
         .grid-num.called.latest-call { 
             background: linear-gradient(135deg, #f59e0b, #d97706) !important; 
             color: #000000 !important; 
@@ -258,7 +256,6 @@
         .recent-calls { display: flex; gap: 4px; overflow-x: auto; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 8px; min-height: 32px; align-items: center; border: 1px solid var(--card-border); }
         .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; }
 
-        /* የተደረገ ማስተካከያ 2: ዩዘሩ የያዘው ቦርድ ከኮሉ አናት በቂ ክፍተት (margin-top) እንዲኖረው እና ጎልቶ እንዲታይ ተደረገ */
         .user-board { background: var(--card-bg); padding: 10px; border-radius: 12px; border: 1px solid var(--card-border); flex: 1; display: flex; flex-direction: column; justify-content: space-between; margin-top: 4px; }
         .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; flex: 1; margin-top: 8px; }
         .board-cell { background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; border: 1px solid var(--card-border); min-height: 32px; }
@@ -326,6 +323,7 @@
     </div>
 
     <div class="container">
+        <!-- 1. Game Tab -->
         <div id="gameTab" class="tab-content active">
             
             <div id="gameStepBet" class="game-step active">
@@ -412,6 +410,7 @@
             </div>
         </div>
 
+        <!-- 2. Wallet Tab -->
         <div id="walletTab" class="tab-content">
             <div class="wallet-banner">
                 <h4>⚡ ፈጣን የክፍያ ማዕከል ⚡</h4>
@@ -445,6 +444,7 @@
             </div>
         </div>
 
+        <!-- 3. Profile Tab -->
         <div id="profileTab" class="tab-content">
             <div class="card">
                 <h3>👤 የተጫዋች መረጃ</h3>
@@ -457,8 +457,31 @@
                 </button>
             </div>
         </div>
+
+        <!-- 4. Admin Dashboard Tab (ለአድሚኑ ብቻ የሚታይ) -->
+        <div id="adminTab" class="tab-content">
+            <div class="card" style="border: 1px solid var(--accent-amber);">
+                <h3 style="color: var(--accent-amber);">⚙️ አድሚን ዳሽቦርድ</h3>
+                <p style="font-size: 12px; color: var(--text-sub); margin-top: 4px;">የተጫዋቾች ባላንስ ማስተካከያ</p>
+                
+                <div style="margin-top: 14px;">
+                    <label style="font-size: 11px; color: var(--text-sub);">የተጫዋች Telegram ID:</label>
+                    <input type="text" id="adminTargetUserId" placeholder="ምሳሌ: 123456789">
+
+                    <label style="font-size: 11px; color: var(--text-sub); margin-top: 8px; display: block;">የብር መጠን (Amount):</label>
+                    <input type="number" id="adminChangeAmount" placeholder="የብር መጠን ያስገቡ">
+
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button class="btn" style="background: linear-gradient(135deg, #10b981, #059669); flex: 1;" onclick="adjustUserBalance('ADD')">➕ Add Balance</button>
+                        <button class="btn" style="background: linear-gradient(135deg, #ff2a5f, #e11d48); flex: 1;" onclick="adjustUserBalance('SUBTRACT')">➖ Deduct Balance</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
+    <!-- Modal Overlay -->
     <div class="modal-overlay" id="winnerModal">
         <div class="modal-card">
             <div class="winner-title-box">BINGO!</div>
@@ -481,13 +504,19 @@
         </div>
     </div>
 
+    <!-- Bottom Navigation Bar -->
     <div class="navbar">
         <div class="nav-item active" onclick="switchTab('gameTab', this)"><div class="nav-icon">🎮</div>ጨዋታ</div>
         <div class="nav-item" onclick="switchTab('walletTab', this)"><div class="nav-icon">💳</div>ዋሌት</div>
         <div class="nav-item" onclick="switchTab('profileTab', this)"><div class="nav-icon">👤</div>ፕሮፋይል</div>
+        <!-- አድሚኑ ብቻ የሚያየው የሜኑ አዝራር -->
+        <div class="nav-item" id="adminNavItem" style="display: none;" onclick="switchTab('adminTab', this)"><div class="nav-icon">⚙️</div>አድሚን</div>
     </div>
 
     <script>
+        // የአድሚን ቴሌግራም ID ዝርዝር (የእርስዎን Telegram ID እዚህ ያስገቡ)
+        const ADMIN_IDS = ["YOUR_TELEGRAM_ID_HERE"];
+
         const tg = window.Telegram ? window.Telegram.WebApp : null;
         if(tg) {
             tg.ready();
@@ -516,6 +545,46 @@
         let globalStartTime = null;
         let clientTimerInterval = null;
         let gameStatus = 'waiting';
+
+        function checkAdminAccess() {
+            if (ADMIN_IDS.includes(currentUser.id.toString())) {
+                const adminBtn = document.getElementById('adminNavItem');
+                if (adminBtn) adminBtn.style.display = 'block';
+            }
+        }
+
+        async function adjustUserBalance(actionType) {
+            const targetUserId = document.getElementById('adminTargetUserId').value;
+            const amount = document.getElementById('adminChangeAmount').value;
+
+            if (!targetUserId || !amount || parseFloat(amount) <= 0) {
+                return alert('እባክዎን የተጫዋቹን ID እና ትክክለኛ የብር መጠን ያስገቡ!');
+            }
+
+            try {
+                const res = await fetch('/api/admin/adjust-balance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        adminId: currentUser.id,
+                        targetUserId: targetUserId,
+                        action: actionType, // ADD ወይም SUBTRACT
+                        amount: parseFloat(amount)
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ የሂሳብ ማስተካከያው ተሳክቷል!\nየተጫዋቹ አዲስ ባላንስ: ${data.newBalance} ETB`);
+                    document.getElementById('adminChangeAmount').value = '';
+                } else {
+                    alert(data.message || 'ማስተካከል አልተቻለም።');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('የሰርቨር ግንኙነት ስህተት አጋጥሟል።');
+            }
+        }
 
         function initFallingNumbers() {
             const container = document.getElementById('fallingNumbersContainer');
@@ -547,6 +616,7 @@
         window.addEventListener('DOMContentLoaded', async () => {
             initFallingNumbers();
             await fetchUserData();
+            checkAdminAccess();
         });
 
         async function fetchUserData() {
