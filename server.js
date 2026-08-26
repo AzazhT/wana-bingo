@@ -235,15 +235,10 @@ if (bot) {
 
         const inlineButtons = {
             inline_keyboard: [
-                [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }],
-                [
-                    { text: '💳 Deposit', callback_data: 'btn_deposit' },
-                    { text: '💸 Withdraw', callback_data: 'btn_withdraw' }
-                ]
+                [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }]
             ]
         };
 
-        // 🎛️ ሁሉም ዋና ዋና ቁልፎች (Deposit, Withdraw, Check Balance, Contact Us) በአንድ ላይ በቅደም ተከተል ተስተካክለዋል
         let keyboardRows = [
             [{ text: "Deposit" }, { text: "Withdraw" }],
             [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }],
