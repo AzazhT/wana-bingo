@@ -275,7 +275,6 @@ if (bot) {
         });
     });
 
-    // 👑 ለአድሚኑ የተዘጋጀ የሊስት ማሳያ ቁልፍ ማስተናገጃ
     bot.onText(/👑 Admin Panel/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
@@ -374,8 +373,7 @@ if (bot) {
         let depositMsg = `💳 **ገንዘብ ገቢ ማድረጊያ (Deposit)**\n\n` +
                          `ገንዘብ ገቢ ለማድረግ የሚከተሉትን አካውንቶች ይጠቀሙ፦\n\n` +
                          `🏦 **ንግድ ባንክ (CBE):** 1000XXXXXXXXX\n` +
-                         `📱 **ቴሌብር (Telebirr):** 09XXXXXXXX\n` +
-                         `👤 **ስም:** Wana Bingo\n\n` +
+                         `📱 **ቴሌብር (Telebirr):** 0915503379 (Mulualem)\n\n` +
                          `💵 **እባክዎ ማስገባት የሚፈልጉትን የብር መጠን በቁጥር ይጻፉ፦**\n*(ለማቋረጥ /cancel ይበሉ)*`;
         bot.sendMessage(chatId, depositMsg, { parse_mode: 'Markdown' });
     };
@@ -410,7 +408,7 @@ if (bot) {
         let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
                           `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
                           `💬 **ቴሌግራም አድሚን:** @AdminUsername\n` +
-                          `📱 **ስልክ ቁጥር:** +2519XXXXXXXX`;
+                          `📱 **ስልክ ቁጥር:** +251915503379`;
         
         bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
     });
@@ -619,7 +617,7 @@ if (bot) {
                 });
 
                 try {
-                    await bot.sendMessage(identifier, `❌ የ ${tx_id} የ ${type} ጥያቄዎ አልፀደቀም።`, { parse_mode: 'Markdown' });
+                    await bot.sendMessage(identifier, `❌ የ ${tx_id} የ ${type} ጥያቄዎ አልፀደቀም፤ የተያዘው ብር ወደ ባላንስዎ ተመልሷል።`, { parse_mode: 'Markdown' });
                 } catch (e) {}
             }
             await bot.answerCallbackQuery(callbackQuery.id, { text: 'ተከናውኗል!' });
@@ -676,6 +674,7 @@ function getOrCreateLobby(betAmount) {
             status: 'waiting', 
             players: new Set(),
             playerNames: {},
+            playerIdentifiers: {},
             reservedNumbers: {}, 
             selectedBoards: {}, 
             tempSelections: {},  
@@ -733,7 +732,7 @@ function startGlobalLobbyCountdown(roomId) {
             do {
                 randomBoard = Math.floor(Math.random() * totalPossibleBoards) + 1;
                 attempts++;
-            } while (room.selectedBoards[randomBoard] && attempts < 20);
+            } while (room.selectedBoards[randomBoard] && attempts < 50);
 
             if (!room.selectedBoards[randomBoard]) {
                 let botId = `BOT_${Math.floor(Math.random() * 10000)}`;
@@ -940,7 +939,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('startPlayerGame', (data) => {
-        const { roomId, boardNumber, name } = data;
+        const { roomId, boardNumber, name, identifier } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'playing') {
@@ -966,6 +965,7 @@ io.on('connection', (socket) => {
 
             room.selectedBoards[boardNumber] = socket.id;
             room.playerNames[socket.id] = name || 'Player';
+            if(identifier) room.playerIdentifiers[socket.id] = identifier;
 
             if (room.tempSelections && room.tempSelections[socket.id]) {
                 delete room.tempSelections[socket.id];
@@ -1018,13 +1018,24 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
         for (let roomId in activeRooms) {
             let room = activeRooms[roomId];
             if (room.players.has(socket.id)) {
+                
+                // ከተጫዋቹ በWaiting ጊዜ የተያዘውን ገንዘብ Refund ማድረግ
+                if (room.status === 'waiting' && room.playerIdentifiers[socket.id]) {
+                    try {
+                        let refundId = room.playerIdentifiers[socket.id];
+                        let betAmount = parseFloat(room.betAmount);
+                        await pool.query('UPDATE users SET balance = balance + $1 WHERE identifier = $2', [betAmount, refundId]);
+                    } catch(e) { console.error('Refund Error:', e); }
+                }
+
                 room.players.delete(socket.id);
                 delete room.playerNames[socket.id];
+                delete room.playerIdentifiers[socket.id];
                 
                 if (room.tempSelections && room.tempSelections[socket.id]) {
                     delete room.tempSelections[socket.id];
