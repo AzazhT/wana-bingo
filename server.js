@@ -235,21 +235,21 @@ if (bot) {
 
         const inlineButtons = {
             inline_keyboard: [
-                [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }]
-                  [{ text: "Deposit" }, { text: "Withdraw" }],
-            [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }]
+                [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }],
+                [
+                    { text: '💳 Deposit', callback_data: 'btn_deposit' },
+                    { text: '💸 Withdraw', callback_data: 'btn_withdraw' }
+                ]
             ]
         };
 
-        // እዚህ ጋር የተስተካከለው የከስተመር እና የአድሚን ኪቦርድ አቀማመጥ ተቀምጧል
         let keyboardRows = [
-    
+            [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }],
+            [{ text: "📲 Share Contact", request_contact: true }]
         ];
 
         if (chatId.toString() === ADMIN_CHAT_ID.toString()) {
-            keyboardRows.push([{ text: "👑 Admin Panel" }, { text: "📲 Share Contact", request_contact: true }]);
-        } else {
-            keyboardRows.push([{ text: "📲 Share Contact", request_contact: true }]);
+            keyboardRows.push([{ text: "👑 Admin Panel" }]);
         }
 
         const mainKeyboard = {
