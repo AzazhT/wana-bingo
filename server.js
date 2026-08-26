@@ -636,6 +636,31 @@ if (bot) {
             return triggerWithdraw(chatId);
         }
 
+        if (action === 'btn_balance') {
+            await bot.answerCallbackQuery(callbackQuery.id);
+            try {
+                const userRes = await pool.query('SELECT balance, name FROM users WHERE identifier = $1', [chatId.toString()]);
+                if (userRes.rows.length > 0) {
+                    let user = userRes.rows[0];
+                    bot.sendMessage(chatId, `👤 **ስም:** ${user.name}\n💰 **ቀሪ ባላንስዎ:** ${user.balance} ብር`, { parse_mode: 'Markdown' });
+                } else {
+                    bot.sendMessage(chatId, `እባክዎ መጀመሪያ ዌብሳይቱ ላይ በመግባት አካውንት ይክፈቱ!`);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+            return;
+        }
+
+        if (action === 'btn_contact') {
+            await bot.answerCallbackQuery(callbackQuery.id);
+            let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
+                              `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
+                              `💬 **ቴሌግራም አድሚን:** @AdminUsername\n` +
+                              `📱 **ስልክ ቁጥር:** +251915503379`;
+            return bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
+        }
+
         const parts = action.split('_');
         const status = parts[0]; 
         const tx_id = parts[1];
