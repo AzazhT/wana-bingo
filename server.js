@@ -213,51 +213,6 @@ app.post('/api/request-transaction', async (req, res) => {
 // 🤖 TELEGRAM BOT CHAT FLOW
 // ==========================================
 
-// አድሚን ዳሽቦርድ መልእክት ማዘጋጃ ፈንክሽን
-async function sendAdminDashboard(chatId) {
-    try {
-        const usersRes = await pool.query('SELECT name, username, identifier, phone, balance FROM users ORDER BY id DESC LIMIT 15');
-        const totalCountRes = await pool.query('SELECT COUNT(*) FROM users');
-        const pendingTxRes = await pool.query('SELECT COUNT(*) FROM transactions WHERE handled = FALSE');
-        
-        let totalUsers = totalCountRes.rows[0].count;
-        let pendingCount = pendingTxRes.rows[0].count;
-
-        let userListMsg = `👑 **የአድሚን መቆጣጠሪያ Dashboard**\n\n` +
-                           `👥 **ጠቅላላ ተጠቃሚዎች:** ${totalUsers}\n` +
-                           `⏳ **ያልተጠናቀቁ ጥያቄዎች:** ${pendingCount}\n\n` +
-                           `📋 **የመጨረሻዎቹ ተጠቃሚዎች ዝርዝር፡**\n\n`;
-
-        usersRes.rows.forEach((u, index) => {
-            userListMsg += `${index + 1}. **${u.name || 'Unknown'}** (@${u.username || 'none'})\n` +
-                           `   🆔 ID: \`${u.identifier}\`\n` +
-                           `   📱 ስልክ: ${u.phone || 'ያልተመዘገበ'}\n` +
-                           `   💰 ባላንስ: ${u.balance} ETB\n-----------------------\n`;
-        });
-
-        const adminInlineKeyboard = {
-            inline_keyboard: [
-                [
-                    { text: '🔄 Refresh Dashboard', callback_data: 'admin_refresh' },
-                    { text: '⏳ Pending Requests', callback_data: 'admin_pending_tx' }
-                ],
-                [
-                    { text: '➕ Add Balance', callback_data: 'admin_add_bal' },
-                    { text: '➖ Deduct Balance', callback_data: 'admin_deduct_bal' }
-                ]
-            ]
-        };
-
-        await bot.sendMessage(chatId, userListMsg, {
-            parse_mode: 'Markdown',
-            reply_markup: adminInlineKeyboard
-        });
-    } catch (e) {
-        console.error('Admin Panel error:', e);
-        bot.sendMessage(chatId, 'የአድሚን ዳሽቦርድ መረጃን ማግኘት አልተቻለም።');
-    }
-}
-
 if (bot) {
     bot.setMyCommands([
         { command: 'start', description: 'ቦቱን ለመጀመር' },
@@ -322,11 +277,29 @@ if (bot) {
         });
     });
 
-    // 👑 ለአድሚኑ የተዘጋጀ Dashboard ቁልፍ
-    bot.onText(/👑 Admin Panel|\/admin/, async (msg) => {
+    bot.onText(/👑 Admin Panel/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
-        await sendAdminDashboard(chatId);
+
+        try {
+            const usersRes = await pool.query('SELECT name, username, identifier, phone, balance FROM users ORDER BY id DESC LIMIT 20');
+            const totalCountRes = await pool.query('SELECT COUNT(*) FROM users');
+            
+            let totalUsers = totalCountRes.rows[0].count;
+            let userListMsg = `👑 **የአድሚን መቆጣጠሪያ Dashboard**\n\n👥 **ጠቅላላ የተመዘገቡ ተጠቃሚዎች:** ${totalUsers}\n\n📋 **የመጨረሻዎቹ ተጠቃሚዎች ዝርዝር፡**\n\n`;
+
+            usersRes.rows.forEach((u, index) => {
+                userListMsg += `${index + 1}. **${u.name || 'Unknown'}** (@${u.username || 'none'})\n` +
+                               `   🆔 ID: \`${u.identifier}\`\n` +
+                               `   📱 ስልክ: ${u.phone || 'ያልተመዘገበ'}\n` +
+                               `   💰 ባላንስ: ${u.balance} ETB\n-----------------------\n`;
+            });
+
+            bot.sendMessage(chatId, userListMsg, { parse_mode: 'Markdown' });
+        } catch (e) {
+            console.error('Admin Panel error:', e);
+            bot.sendMessage(chatId, 'የተጠቃሚዎችን መረጃ ማግኘት አልተቻለም።');
+        }
     });
 
     bot.on('contact', async (msg) => {
@@ -455,36 +428,6 @@ if (bot) {
         if (!state) return;
 
         const identifier = chatId.toString();
-
-        // 👑 አድሚን ባላንስ ሲጨምር የሚቀበለው መልእክት
-        if (state.step === 'ADMIN_ADD_BAL_USER' && chatId.toString() === ADMIN_CHAT_ID.toString()) {
-            userStates[chatId] = { step: 'ADMIN_ADD_BAL_AMOUNT', targetId: text };
-            return bot.sendMessage(chatId, `💰 **ለ Telegram ID \`${text}\` የሚጨመረውን የብር መጠን ያስገቡ፦**`, { parse_mode: 'Markdown' });
-        }
-
-        if (state.step === 'ADMIN_ADD_BAL_AMOUNT' && chatId.toString() === ADMIN_CHAT_ID.toString()) {
-            const amount = parseFloat(text);
-            const targetId = state.targetId;
-            delete userStates[chatId];
-
-            if (isNaN(amount) || amount <= 0) return bot.sendMessage(chatId, '❌ የብር መጠኑ ስህተት ነው።');
-
-            try {
-                const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [targetId]);
-                if (userRes.rows.length === 0) return bot.sendMessage(chatId, '❌ ተጠቃሚው አልተገኘም።');
-
-                let newBal = parseFloat(userRes.rows[0].balance) + amount;
-                await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, targetId]);
-
-                bot.sendMessage(chatId, `✅ **${amount} ብር ለ \`${targetId}\` ተጨምሯል!**\nአዲሱ ባላንስ: ${newBal} ETB`, { parse_mode: 'Markdown' });
-                try {
-                    await bot.sendMessage(targetId, `🎉 **${amount} ብር በአድሚን ገቢ ተደርጎልዎታል!**\n💰 አዲሱ ባላንስዎ: ${newBal} ብር`);
-                } catch(e) {}
-            } catch(e) {
-                bot.sendMessage(chatId, 'ስህተት አጋጥሟል።');
-            }
-            return;
-        }
 
         if (state.step === 'AWAITING_DEPOSIT_AMOUNT') {
             const amount = parseFloat(text);
@@ -630,39 +573,6 @@ if (bot) {
             return triggerWithdraw(chatId);
         }
 
-        if (action === 'admin_refresh') {
-            await bot.answerCallbackQuery(callbackQuery.id, { text: 'የታደሰ መረጃ...' });
-            return sendAdminDashboard(chatId);
-        }
-
-        if (action === 'admin_add_bal') {
-            await bot.answerCallbackQuery(callbackQuery.id);
-            userStates[chatId] = { step: 'ADMIN_ADD_BAL_USER' };
-            return bot.sendMessage(chatId, '🆔 **ገንዘብ ሊጨምሩለት የሚፈልጉትን ተጠቃሚ Telegram ID ያስገቡ፦**', { parse_mode: 'Markdown' });
-        }
-
-        if (action === 'admin_pending_tx') {
-            await bot.answerCallbackQuery(callbackQuery.id);
-            try {
-                const pending = await pool.query('SELECT * FROM transactions WHERE handled = FALSE ORDER BY id DESC LIMIT 10');
-                if (pending.rows.length === 0) {
-                    return bot.sendMessage(chatId, '✅ ምንም ያልተከናወኑ ጥያቄዎች የሉም።');
-                }
-                let pendingMsg = `⏳ **ያልተጠናቀቁ ጥያቄዎች List:**\n\n`;
-                pending.rows.forEach(t => {
-                    pendingMsg += `🆔 **TxID:** ${t.tx_id}\n` +
-                                  `👤 **User ID:** \`${t.identifier}\`\n` +
-                                  `📌 **Type:** ${t.type}\n` +
-                                  `💰 **Amount:** ${t.amount} ETB\n` +
-                                  `📝 **Details:** ${t.details}\n-----------------------\n`;
-                });
-                bot.sendMessage(chatId, pendingMsg, { parse_mode: 'Markdown' });
-            } catch(e) {
-                bot.sendMessage(chatId, 'ስህተት አጋጥሟል።');
-            }
-            return;
-        }
-
         const parts = action.split('_');
         const status = parts[0]; 
         const tx_id = parts[1];
@@ -724,6 +634,38 @@ if (bot) {
 // ==========================================
 // 🎲 CONTINUOUS GAME & SOCKET.IO
 // ==========================================
+
+// ✨ እጅግ በርካታ የተቀላቀሉ የቴሌግራም ስሞች ዝርዝር (ወንድ፣ ሴት፣ አጫጭር ፊደላት)
+const mixedTelegramNames = [
+    // 1. የወንድ ስሞች
+    "Henok", "Robel", "Dawit", "Yonas", "Elias", "Kebede", "Seleshi", "Nati", 
+    "Kaleb", "Bereket", "Amanuel", "Yared", "Tewodros", "Girma", "Biniyam", "Sami",
+    "Ermias", "Abebe", "Getachew", "Mulugeta", "Matiwos", "Surafel", "Dagi", "Fikru",
+    "Bruk", "Kidus", "Abel", "Mikiyas", "Eyob", "Solomon", "Tinsae", "Nathanael",
+    "Nahom", "Bisrat", "Gideon", "Kirubel", "Caleb", "Fitsum", "Samuel", "Yonatan",
+
+    // 2. አጫጭር ባለ 1 እና ባለ 2 ፊደላት (Single/Double Letters)
+    "Z", "H", "X", "K", "ZZ", "A", "M", "T", "AZ", "KX", "XX", "B", "S", "Y", "R", "D", "W", "J",
+
+    // 3. የሴት ስሞች
+    "Hana", "Meti", "Ruta", "Saba", "Bethlehem", "Mahlet", "Meron", "Aster", 
+    "Rahel", "Kalkidan", "Fikir", "Lydia", "Selam", "Tsion", "Eden", "Helen",
+
+    // 4. በነጥብ እና በፊደል የተያያዙ አጫጭር ስሞች
+    "Henok.Z", "Robel_K", "D.A", "Yonas_Z", "H.M", "K.T", "A.B", "Z.X", "S.N"
+];
+
+// ✨ የዘፈቀደ ስም መራጭ ተግባር
+function getRandomTelegramName() {
+    const baseName = mixedTelegramNames[Math.floor(Math.random() * mixedTelegramNames.length)];
+    // 50% እድል ስሙ ብቻ፣ 50% እድል ከኋላው ቁጥር ይጨምራል
+    if (Math.random() > 0.5) {
+        return baseName;
+    } else {
+        const randomNum = Math.floor(1 + Math.random() * 99);
+        return `${baseName}_${randomNum}`;
+    }
+}
 
 let activeRooms = {}; 
 
@@ -829,7 +771,9 @@ function startGlobalLobbyCountdown(roomId) {
             if (!room.selectedBoards[randomBoard]) {
                 let botId = `BOT_${Math.floor(Math.random() * 10000)}`;
                 room.selectedBoards[randomBoard] = botId;
-                room.playerNames[botId] = `Kenbo-${Math.floor(10000 + Math.random()*90000)}`;
+                
+                // ✨ እዚህ ላይ አዲሱን እና የተቀላቀለውን የስም መራጭ ተጠቀምን
+                room.playerNames[botId] = getRandomTelegramName();
 
                 io.to(roomId).emit('boardSelected', { boardNumber: randomBoard, socketId: botId });
             }
@@ -959,7 +903,8 @@ function startRoomGame(roomId) {
                 room.status = 'ended';
 
                 let botWinAmount = finalPrizePool;
-                let botName = room.playerNames[botId] || "Kenbo-Bot";
+                // ✨ ቦት ሲያሸንፍ በራሱ ስም እንዲወጣ አድርገነዋል
+                let botName = room.playerNames[botId] || getRandomTelegramName();
 
                 io.to(roomId).emit('gameOver', { 
                     subtitle: '1 player has won the game',
