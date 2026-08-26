@@ -243,7 +243,9 @@ if (bot) {
             ]
         };
 
+        // 🎛️ ሁሉም ዋና ዋና ቁልፎች (Deposit, Withdraw, Check Balance, Contact Us) በአንድ ላይ በቅደም ተከተል ተስተካክለዋል
         let keyboardRows = [
+            [{ text: "Deposit" }, { text: "Withdraw" }],
             [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }],
             [{ text: "📲 Share Contact", request_contact: true }]
         ];
@@ -275,6 +277,7 @@ if (bot) {
         });
     });
 
+    // 👑 ለአድሚኑ የተዘጋጀ የሊስት ማሳያ ቁልፍ ማስተናገጃ
     bot.onText(/👑 Admin Panel/, async (msg) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
@@ -693,9 +696,6 @@ function resetRoomForNextGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
 
-    if (room.gameInterval) clearInterval(room.gameInterval);
-    if (room.timer) clearInterval(room.timer);
-
     room.drawnNumbers = [];
     room.reservedNumbers = {};
     room.selectedBoards = {}; 
@@ -795,22 +795,15 @@ function findWinningLine(card, drawnNums) {
     return null;
 }
 
-function seededRandom(seed) {
-    let x = Math.sin(seed++) * 10000;
-    return x - Math.floor(x);
-}
-
-function generateServerBingoCard(seed) {
+function generateServerBingoCard() {
     let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
     let cols = [];
-    let currentSeed = seed;
-
     for(let c = 0; c < 5; c++) {
         let col = [];
         let min = ranges[c][0], max = ranges[c][1];
         while(col.length < 5) {
-            let randVal = Math.floor(seededRandom(currentSeed++) * (max - min + 1)) + min;
-            if(!col.includes(randVal)) col.push(randVal);
+            let rand = Math.floor(Math.random() * (max - min + 1)) + min;
+            if(!col.includes(rand)) col.push(rand);
         }
         cols.push(col);
     }
@@ -845,16 +838,11 @@ function startRoomGame(roomId) {
     for (let bNum in room.selectedBoards) {
         let ownerId = room.selectedBoards[bNum];
         if (ownerId && ownerId.startsWith('BOT_')) {
-            roomBotCards[ownerId] = { boardNumber: bNum, card: generateServerBingoCard(bNum * 999) };
+            roomBotCards[ownerId] = { boardNumber: bNum, card: generateServerBingoCard() };
         }
     }
 
     room.gameInterval = setInterval(() => {
-        if (room.status !== 'playing') {
-            clearInterval(room.gameInterval);
-            return;
-        }
-
         if (room.drawnNumbers.length >= 75) {
             clearInterval(room.gameInterval);
             room.status = 'ended';
