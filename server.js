@@ -108,9 +108,13 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
+// 🌟 የተስተካከለ የዲፖዚት እና ዊዝድሮ (Transactions) API
 app.post('/api/request-transaction', async (req, res) => {
-    const { identifier, type, amount, details } = req.body;
+    const { identifier, type, amount, details, sms } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
+    
+    // ለዲፖዚት የገባውን ኤስኤምኤስ እና ለዊዝድሮ የተላከውን አካውንት በአንድነት ወደ details እንጠቀማለን
+    const txDetails = type === 'DEPOSIT' ? (sms || details || 'N/A') : (details || 'N/A');
     
     try {
         if (type === 'WITHDRAW') {
@@ -122,14 +126,13 @@ app.post('/api/request-transaction', async (req, res) => {
             if (currentBalance < parseFloat(amount)) {
                 return res.json({ success: false, message: 'በዋሌትዎ ውስጥ ያለው ብር በቂ አይደለም!' });
             }
-            // ለወጪ ጥያቄ በሚገባበት ሰዓት ቀድሞ ከባላንስ መቀነስ ይቻላል (ወይም በአፕሩቭ ጊዜ)
             let newBalance = currentBalance - parseFloat(amount);
             await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, identifier]);
         }
 
         await pool.query(
             'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
-            [tx_id, identifier, type, amount, details || 'N/A']
+            [tx_id, identifier, type, amount, txDetails]
         );
 
         if (bot && ADMIN_CHAT_ID) {
@@ -142,7 +145,7 @@ app.post('/api/request-transaction', async (req, res) => {
                               `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
                               `📱 ስልክ: ${userInfo.phone || 'N/A'}\n` +
                               `💰 መጠን: ${amount} ብር\n` +
-                              `🏦 ባንክ/አካውንት: ${details || 'N/A'}`;
+                              `📋 መረጃ/SMS: ${txDetails}`;
 
                 await bot.sendMessage(ADMIN_CHAT_ID, msgText, {
                     parse_mode: 'Markdown',
@@ -181,7 +184,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
                             `─────────────────────\n` +
                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -229,21 +232,20 @@ if (bot) {
         }
     });
 
-    // --- አድሚኑ Approve ወይም Reject ሲያደርግ የሚሰራው ክፍል (Callback Query Handler) ---
+    // --- አድሚኑ Approve ወይም Reject ሲያደርግ የሚሰራው ክፍል ---
     bot.on('callback_query', async (callbackQuery) => {
         const action = callbackQuery.data;
         const msg = callbackQuery.message;
         const parts = action.split('_');
-        const status = parts[0]; // approve ወይም reject
+        const status = parts[0]; 
         const tx_id = parts[1];
         const identifier = parts[2];
         const amount = parseFloat(parts[3]);
-        const type = parts[4]; // DEPOSIT ወይም WITHDRAW
+        const type = parts[4]; 
 
         try {
             if (status === 'approve') {
                 if (type === 'DEPOSIT') {
-                    // ಡೆፖዚት ከሆነ ተጠቃሚው አካውንት ላይ ብሩን መጨመር
                     const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
                     if (userRes.rows.length > 0) {
                         let currentBal = parseFloat(userRes.rows[0].balance);
@@ -251,7 +253,6 @@ if (bot) {
                         await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
                     }
                 }
-                // ለሁለቱም ትራንዛክሽን handled true ማድረግ
                 await pool.query('UPDATE transactions SET handled = TRUE WHERE tx_id = $1', [tx_id]);
 
                 await bot.editMessageText(`✅ **ይህ ጥያቄ (${tx_id}) በአድሚኑ ጸድቋል (Approved)!**`, {
@@ -261,7 +262,6 @@ if (bot) {
                 });
             } else if (status === 'reject') {
                 if (type === 'WITHDRAW') {
-                    // ወጪ ጥያቄ ውድቅ ከተደረገ የተቆረጠውን ብር ተጠቃሚው ላይ መልሶ መክተት
                     const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
                     if (userRes.rows.length > 0) {
                         let currentBal = parseFloat(userRes.rows[0].balance);
