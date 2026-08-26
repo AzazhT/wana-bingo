@@ -70,10 +70,11 @@ initializeDatabase();
 
 app.get('/api/admin/users', async (req, res) => {
     try {
+        // ✅ 1ኛ ማስተካከያ፦ "id" በሚለው ምትክ "identifier" ተተክቷል
         const usersRes = await pool.query(`
-            SELECT id, identifier, name, username, phone, balance, created_at 
+            SELECT identifier, name, username, phone, balance, created_at 
             FROM users 
-            ORDER BY id DESC
+            ORDER BY identifier DESC
         `);
         res.json({ 
             success: true, 
@@ -282,7 +283,8 @@ if (bot) {
         if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
 
         try {
-            const usersRes = await pool.query('SELECT name, username, identifier, phone, balance FROM users ORDER BY id DESC LIMIT 20');
+            // ✅ 2ኛ ማስተካከያ፦ "ORDER BY id DESC" በ "ORDER BY identifier DESC" ተተክቷል
+            const usersRes = await pool.query('SELECT name, username, identifier, phone, balance FROM users ORDER BY identifier DESC LIMIT 20');
             const totalCountRes = await pool.query('SELECT COUNT(*) FROM users');
             
             let totalUsers = totalCountRes.rows[0].count;
@@ -635,30 +637,20 @@ if (bot) {
 // 🎲 CONTINUOUS GAME & SOCKET.IO
 // ==========================================
 
-// ✨ እጅግ በርካታ የተቀላቀሉ የቴሌግራም ስሞች ዝርዝር (ወንድ፣ ሴት፣ አጫጭር ፊደላት)
 const mixedTelegramNames = [
-    // 1. የወንድ ስሞች
     "Henok", "Robel", "Dawit", "Yonas", "Elias", "Kebede", "Seleshi", "Nati", 
     "Kaleb", "Bereket", "Amanuel", "Yared", "Tewodros", "Girma", "Biniyam", "Sami",
     "Ermias", "Abebe", "Getachew", "Mulugeta", "Matiwos", "Surafel", "Dagi", "Fikru",
     "Bruk", "Kidus", "Abel", "Mikiyas", "Eyob", "Solomon", "Tinsae", "Nathanael",
     "Nahom", "Bisrat", "Gideon", "Kirubel", "Caleb", "Fitsum", "Samuel", "Yonatan",
-
-    // 2. አጫጭር ባለ 1 እና ባለ 2 ፊደላት (Single/Double Letters)
     "Z", "H", "X", "K", "ZZ", "A", "M", "T", "AZ", "KX", "XX", "B", "S", "Y", "R", "D", "W", "J",
-
-    // 3. የሴት ስሞች
     "Hana", "Meti", "Ruta", "Saba", "Bethlehem", "Mahlet", "Meron", "Aster", 
     "Rahel", "Kalkidan", "Fikir", "Lydia", "Selam", "Tsion", "Eden", "Helen",
-
-    // 4. በነጥብ እና በፊደል የተያያዙ አጫጭር ስሞች
     "Henok.Z", "Robel_K", "D.A", "Yonas_Z", "H.M", "K.T", "A.B", "Z.X", "S.N"
 ];
 
-// ✨ የዘፈቀደ ስም መራጭ ተግባር
 function getRandomTelegramName() {
     const baseName = mixedTelegramNames[Math.floor(Math.random() * mixedTelegramNames.length)];
-    // 50% እድል ስሙ ብቻ፣ 50% እድል ከኋላው ቁጥር ይጨምራል
     if (Math.random() > 0.5) {
         return baseName;
     } else {
@@ -772,7 +764,6 @@ function startGlobalLobbyCountdown(roomId) {
                 let botId = `BOT_${Math.floor(Math.random() * 10000)}`;
                 room.selectedBoards[randomBoard] = botId;
                 
-                // ✨ እዚህ ላይ አዲሱን እና የተቀላቀለውን የስም መራጭ ተጠቀምን
                 room.playerNames[botId] = getRandomTelegramName();
 
                 io.to(roomId).emit('boardSelected', { boardNumber: randomBoard, socketId: botId });
@@ -903,7 +894,6 @@ function startRoomGame(roomId) {
                 room.status = 'ended';
 
                 let botWinAmount = finalPrizePool;
-                // ✨ ቦት ሲያሸንፍ በራሱ ስም እንዲወጣ አድርገነዋል
                 let botName = room.playerNames[botId] || getRandomTelegramName();
 
                 io.to(roomId).emit('gameOver', { 
