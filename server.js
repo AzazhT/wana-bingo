@@ -21,6 +21,9 @@ const ADMIN_CHAT_ID = '686733543';
 const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 const PHOTO_URL = `${WEB_APP_URL}/bingo_bg.jpg`;
 
+// የቦት Chat Flow Session መያዣ (User States)
+const userStates = {};
+
 let bot = null;
 if (TOKEN) {
     try {
@@ -58,6 +61,10 @@ async function initializeDatabase() {
     }
 }
 initializeDatabase();
+
+// ==========================================
+// 🔹 EXISTING MINI APP ENDPOINTS (UNCHANGED)
+// ==========================================
 
 app.post('/api/get-user', async (req, res) => {
     const { identifier, name, username } = req.body;
@@ -167,19 +174,24 @@ app.post('/api/request-transaction', async (req, res) => {
     }
 });
 
+// ==========================================
+// 🤖 TELEGRAM BOT CHAT FLOW (ENHANCED)
+// ==========================================
+
 if (bot) {
     bot.setMyCommands([
         { command: 'start', description: 'ቦቱን ለመጀመር' },
         { command: 'play', description: '🎮 Play Bingo (ጨዋታውን ክፈት)' },
         { command: 'balance', description: '💰 ቀሪ ሂሳብዎን ለማየት' },
         { command: 'deposit', description: '💳 የዲፖዚት መመሪያ' },
-        { command: 'withdraw', description: '💸 ገንዘብ ወጪ ለማድረግ' }
+        { command: 'withdraw', description: '💸 ገንዘብ ወጪ ለማድረግ' },
+        { command: 'cancel', description: '❌ ሂደቱን ሰርዝ' }
     ]);
 
-    // 🔹 /start ኮማንድ
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
         const name = msg.from.first_name;
+        delete userStates[chatId];
         
         let welcomeCaption = `✨ **እንኳን ወደ እድል ቢንጎ በደህና መጡ!** ✨\n\n` +
                              `ሰላም **${name}**! 👋\n\n` +
@@ -189,7 +201,6 @@ if (bot) {
                              `• ⚡ **ቀጥታ ስርጭት** - የእውነተኛ ጊዜ ቀጥታ ውድድር\n` +
                              `👇 **አሁኑኑ ጨዋታውን ይጀምሩና የእድሉ ባለቤት ይሁኑ!**`;
 
-        // Reply Keyboard Setup (Bottom Menu Buttons)
         const mainKeyboard = {
             reply_markup: {
                 keyboard: [
@@ -226,8 +237,15 @@ if (bot) {
         });
     });
 
+    bot.onText(/\/cancel/, (msg) => {
+        const chatId = msg.chat.id;
+        delete userStates[chatId];
+        bot.sendMessage(chatId, '❌ የነበረው ሂደት ተሰርዟል።');
+    });
+
     bot.onText(/\/play|🎮 Play now 🎮/, (msg) => {
         const chatId = msg.chat.id;
+        delete userStates[chatId];
         bot.sendMessage(chatId, `🎮 የቢንጎ ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ፡`, {
             reply_markup: {
                 inline_keyboard: [
@@ -239,6 +257,7 @@ if (bot) {
 
     bot.onText(/\/balance|Check Balance 💰/, async (msg) => {
         const chatId = msg.chat.id;
+        delete userStates[chatId];
         const username = msg.from.username || '';
         
         try {
@@ -255,32 +274,49 @@ if (bot) {
         }
     });
 
-    // 💳 DEPOSIT BUTTON
+    // 💳 DEPOSIT BUTTON (Chat Step-by-Step Flow)
     bot.onText(/\/deposit|Deposit/, (msg) => {
         const chatId = msg.chat.id;
-        let depositMsg = `💳 **ገንዘብ ገቢ ማድረጊያ (Deposit) መመሪያ**\n\n` +
-                          `ገንዘብ ወደ አካውንትዎ ገቢ ለማድረግ የሚከተሉትን የባንክ ሂሳቦች ይጠቀሙ፦\n\n` +
-                          `🏦 **ንግድ ባንክ (CBE):** 1000XXXXXXXXX\n` +
-                          `📱 **ቴሌብር (Telebirr):** 09XXXXXXXX\n` +
-                          `👤 **ስም:** Wana Bingo\n\n` +
-                          `📌 **ማሳሰቢያ:** ብሩን ገቢ ካደረጉ በኋላ ዌብሳይቱ (Play Now) ውስጥ በመግባት የDeposit ፎርም ይሙሉ ወይም ደረሰኙን ለአድሚን ይላኩ።`;
+        userStates[chatId] = { step: 'AWAITING_DEPOSIT_AMOUNT' };
+
+        let depositMsg = `💳 **ገንዘብ ገቢ ማድረጊያ (Deposit)**\n\n` +
+                         `ገንዘብ ገቢ ለማድረግ የሚከተሉትን አካውንቶች ይጠቀሙ፦\n\n` +
+                         `🏦 **ንግድ ባንክ (CBE):** 1000XXXXXXXXX\n` +
+                         `📱 **ቴሌብር (Telebirr):** 09XXXXXXXX\n` +
+                         `👤 **ስም:** Wana Bingo\n\n` +
+                         `💵 **እባክዎ ማስገባት የሚፈልጉትን የብር መጠን በቁጥር ይጻፉ፦**\n*(ለማቋረጥ /cancel ይበሉ)*`;
         
         bot.sendMessage(chatId, depositMsg, { parse_mode: 'Markdown' });
     });
 
-    // 💸 WITHDRAW BUTTON
-    bot.onText(/\/withdraw|Withdraw/, (msg) => {
+    // 💸 WITHDRAW BUTTON (Chat Step-by-Step Flow)
+    bot.onText(/\/withdraw|Withdraw/, async (msg) => {
         const chatId = msg.chat.id;
-        let withdrawMsg = `💸 **ገንዘብ ወጪ ማድረጊያ (Withdraw)**\n\n` +
-                           `ያሸነፉትን ገንዘብ ወጪ ለማድረግ በቀጥታ **Play now 🎮** የሚለውን ተጭነው ወደ ዌብሳይቱ በመግባት **Withdraw** የሚለውን ቁልፍ ይጠቀሙ።\n\n` +
-                           `ወይም በስልክዎ የባንክ/ቴሌብር መረጃ እና የብሩን መጠን ለ **@AdminUsername** በመላክ ወጪ ማድረግ ይችላሉ።`;
-        
-        bot.sendMessage(chatId, withdrawMsg, { parse_mode: 'Markdown' });
+        const identifier = chatId.toString();
+
+        try {
+            const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+            if (userRes.rows.length === 0) {
+                return bot.sendMessage(chatId, 'እባክዎ መጀመሪያ ሚኒ አፑን ከፍተው ይመዝገቡ!');
+            }
+
+            let balance = parseFloat(userRes.rows[0].balance);
+            if (balance <= 0) {
+                return bot.sendMessage(chatId, `❌ **ቀሪ ባላንስዎ 0 ብር ነው።** ወጪ ማድረግ አይችሉም።`);
+            }
+
+            userStates[chatId] = { step: 'AWAITING_WITHDRAW_AMOUNT', balance };
+            bot.sendMessage(chatId, `💸 **ገንዘብ ወጪ ማድረጊያ (Withdraw)**\n\n💰 **ያለዎት ባላንስ:** ${balance} ብር\n\nእባክዎ ወጪ ማድረግ የሚፈልጉትን የብር መጠን ያስገቡ፦\n*(ለማቋረጥ /cancel ይበሉ)*`, { parse_mode: 'Markdown' });
+        } catch (err) {
+            console.error(err);
+            bot.sendMessage(chatId, 'የሰርቨር ስህተት አጋጥሟል።');
+        }
     });
 
     // 📞 CONTACT US BUTTON
     bot.onText(/Contact Us 📞/, (msg) => {
         const chatId = msg.chat.id;
+        delete userStates[chatId];
         let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
                           `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
                           `💬 **ቴሌግራም አድሚን:** @AdminUsername\n` +
@@ -289,6 +325,155 @@ if (bot) {
         bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
     });
 
+    // 📩 MESSAGE HANDLER FOR CHAT DEPOSIT / WITHDRAW
+    bot.on('message', async (msg) => {
+        const chatId = msg.chat.id;
+        const text = msg.text ? msg.text.trim() : '';
+
+        // Commands OR main menu items ignore state processing
+        if (text.startsWith('/') || ['🎮 Play now 🎮', 'Check Balance 💰', 'Deposit', 'Withdraw', 'Contact Us 📞'].includes(text)) {
+            return;
+        }
+
+        const state = userStates[chatId];
+        if (!state) return;
+
+        const identifier = chatId.toString();
+
+        // --- DEPOSIT FLOW ---
+        if (state.step === 'AWAITING_DEPOSIT_AMOUNT') {
+            const amount = parseFloat(text);
+            if (isNaN(amount) || amount <= 0) {
+                return bot.sendMessage(chatId, '❌ እባክዎ ትክክለኛ የብር መጠን በቁጥር ብቻ ያስገቡ!');
+            }
+
+            userStates[chatId] = { step: 'AWAITING_DEPOSIT_DETAILS', amount };
+            return bot.sendMessage(chatId, `✅ መጠን: ${amount} ብር\n\nእባክዎ የክፍያ ማረጋገጫውን (የደረሰኝ ቁጥር / Trans ID ወይም የከፈሉበትን ባንክ እና ስም) ይጻፉልን፦`);
+        }
+
+        if (state.step === 'AWAITING_DEPOSIT_DETAILS') {
+            const amount = state.amount;
+            const details = text;
+            delete userStates[chatId];
+
+            const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
+
+            try {
+                // Check if user exists in DB, create if not
+                let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
+                if (userRes.rows.length === 0) {
+                    const name = msg.from.first_name || 'Player';
+                    const username = msg.from.username || '';
+                    await pool.query('INSERT INTO users (identifier, name, username, balance) VALUES ($1, $2, $3, $4)', [identifier, name, username, 0.00]);
+                }
+
+                await pool.query(
+                    'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
+                    [tx_id, identifier, 'DEPOSIT', amount, details]
+                );
+
+                bot.sendMessage(chatId, `✅ **የዲፖዚት ጥያቄዎ በተሳካ ሁኔታ ተልኳል!**\n\n🆔 **TxID:** ${tx_id}\n💰 **መጠን:** ${amount} ብር\n\nአድሚኑ መረጃውን አረጋግጦ በቅርቡ ባላንስዎ ላይ ይጨምራል።`, { parse_mode: 'Markdown' });
+
+                if (ADMIN_CHAT_ID) {
+                    const userInfo = msg.from;
+                    let msgText = `🔔 **አዲስ የ DEPOSIT ጥያቄ (ከቦት ቻት)**\n` +
+                                  `🆔 TxID: ${tx_id}\n` +
+                                  `👤 ስም: ${userInfo.first_name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
+                                  `🆔 Telegram ID: \`${identifier}\`\n` +
+                                  `💰 መጠን: ${amount} ብር\n` +
+                                  `📝 መረጃ/ደረሰኝ: ${details}`;
+
+                    await bot.sendMessage(ADMIN_CHAT_ID, msgText, {
+                        parse_mode: 'Markdown',
+                        reply_markup: {
+                            inline_keyboard: [
+                                [
+                                    { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}_DEPOSIT` },
+                                    { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}_${identifier}_${amount}_DEPOSIT` }
+                                ]
+                            ]
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                bot.sendMessage(chatId, 'የዲፖዚት ጥያቄ ሲላክ ስህተት ተፈጥሯል።');
+            }
+            return;
+        }
+
+        // --- WITHDRAW FLOW ---
+        if (state.step === 'AWAITING_WITHDRAW_AMOUNT') {
+            const amount = parseFloat(text);
+            if (isNaN(amount) || amount <= 0) {
+                return bot.sendMessage(chatId, '❌ እባክዎ ትክክለኛ የብር መጠን በቁጥር ብቻ ያስገቡ!');
+            }
+
+            if (amount > state.balance) {
+                return bot.sendMessage(chatId, `❌ **አንችሉም!** አስገቡት መጠን (${amount} ብር) ካለዎት ባላንስ (${state.balance} ብር) ይበልጣል።`);
+            }
+
+            userStates[chatId] = { step: 'AWAITING_WITHDRAW_DETAILS', amount };
+            return bot.sendMessage(chatId, `✅ መጠን: ${amount} ብር\n\nእባክዎ ገንዘቡ እንዲላክሎት የሚፈልጉበትን **የባንክ ስም፣ የአካውንት ቁጥር እና የስም** ያስገቡ፦`);
+        }
+
+        if (state.step === 'AWAITING_WITHDRAW_DETAILS') {
+            const amount = state.amount;
+            const details = text;
+            delete userStates[chatId];
+
+            const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
+
+            try {
+                const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
+                if (userRes.rows.length === 0) return bot.sendMessage(chatId, 'ተጠቃሚው አልተገኘም!');
+
+                let currentBalance = parseFloat(userRes.rows[0].balance);
+                if (currentBalance < amount) {
+                    return bot.sendMessage(chatId, '❌ በቂ ባላንስ የለዎትም!');
+                }
+
+                // Deduct balance immediately
+                let newBalance = currentBalance - amount;
+                await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, identifier]);
+
+                await pool.query(
+                    'INSERT INTO transactions (tx_id, identifier, type, amount, details, handled) VALUES ($1, $2, $3, $4, $5, FALSE)',
+                    [tx_id, identifier, 'WITHDRAW', amount, details]
+                );
+
+                bot.sendMessage(chatId, `✅ **የወጪ ጥያቄዎ በተሳካ ሁኔታ ተልኳል!**\n\n🆔 **TxID:** ${tx_id}\n💰 **መጠን:** ${amount} ብር\n💰 **ቀሪ ባላንስ:** ${newBalance} ብር\n\nአድሚኑ አረጋግጦ በቅርቡ ወደ ገለጹት አካውንት ይልካል፤ ጥያቄው ካልፀደቀ ብሩ ወደ ባላንስዎ ይመለሳል።`, { parse_mode: 'Markdown' });
+
+                if (ADMIN_CHAT_ID) {
+                    const userInfo = msg.from;
+                    let msgText = `🔔 **አዲስ የ WITHDRAW ጥያቄ (ከቦት ቻት)**\n` +
+                                  `🆔 TxID: ${tx_id}\n` +
+                                  `👤 ስም: ${userInfo.first_name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
+                                  `🆔 Telegram ID: \`${identifier}\`\n` +
+                                  `💰 መጠን: ${amount} ብር\n` +
+                                  `🏦 የከፋይ አካውንት: ${details}`;
+
+                    await bot.sendMessage(ADMIN_CHAT_ID, msgText, {
+                        parse_mode: 'Markdown',
+                        reply_markup: {
+                            inline_keyboard: [
+                                [
+                                    { text: '✅ አረጋግጥ (Approve)', callback_data: `approve_${tx_id}_${identifier}_${amount}_WITHDRAW` },
+                                    { text: '❌ ሰርዝ (Reject)', callback_data: `reject_${tx_id}_${identifier}_${amount}_WITHDRAW` }
+                                ]
+                            ]
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                bot.sendMessage(chatId, 'የወጪ ጥያቄ ሲላክ ስህተት ተፈጥሯል።');
+            }
+            return;
+        }
+    });
+
+    // 🔘 CALLBACK QUERY FOR APPROVE/REJECT (UNCHANGED)
     bot.on('callback_query', async (callbackQuery) => {
         const action = callbackQuery.data;
         const msg = callbackQuery.message;
@@ -316,6 +501,12 @@ if (bot) {
                     message_id: msg.message_id,
                     parse_mode: 'Markdown'
                 });
+
+                // Notify User
+                try {
+                    await bot.sendMessage(identifier, `🎉 **መልካም ዜና!** የ ${tx_id} የ ${type} ጥያቄዎ ${amount} ብር ፀድቋል።`, { parse_mode: 'Markdown' });
+                } catch (e) {}
+
             } else if (status === 'reject') {
                 if (type === 'WITHDRAW') {
                     const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
@@ -332,6 +523,11 @@ if (bot) {
                     message_id: msg.message_id,
                     parse_mode: 'Markdown'
                 });
+
+                // Notify User
+                try {
+                    await bot.sendMessage(identifier, `❌ የ ${tx_id} የ ${type} ጥያቄዎ አልፀደቀም።`, { parse_mode: 'Markdown' });
+                } catch (e) {}
             }
             await bot.answerCallbackQuery(callbackQuery.id, { text: 'ተከናውኗል!' });
         } catch (err) {
@@ -341,7 +537,10 @@ if (bot) {
     });
 }
 
-// --- CONTINUOUS GAME & MULTI-ROOM MANAGEMENT ---
+// ==========================================
+// 🎲 CONTINUOUS GAME & SOCKET.IO (UNCHANGED)
+// ==========================================
+
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
