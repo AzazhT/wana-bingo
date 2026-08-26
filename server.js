@@ -68,7 +68,6 @@ initializeDatabase();
 // 🔹 API ENDPOINTS
 // ==========================================
 
-// 👑 አድሚኑ ሁሉንም ተጠቃሚዎች ከነሙሉ መረጃቸው የሚያይበት API
 app.get('/api/admin/users', async (req, res) => {
     try {
         const usersRes = await pool.query(`
@@ -234,7 +233,6 @@ if (bot) {
                              `🎯 **እየተዝናኑ እድልዎን ይፈትሹ፡ እሴትዎን ያሳድጉ!**\n` +
                              `👇 **ከታች ባሉት አማራጮች ጨዋታውን ይጀምሩ ወይም ሂሳብዎን ይሙሉ።**`;
 
-        // 1. ከላይ Inline ቁልፎች (Play, Deposit, Withdraw)
         const inlineButtons = {
             inline_keyboard: [
                 [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }],
@@ -245,13 +243,20 @@ if (bot) {
             ]
         };
 
-        // 2. ከታች የሚቀመጥ ኪቦርድ (Share Contact እዚህ ይገኛል)
+        // 🎯 እዚህ ጋር Check Balance እና Contact Us ከላይ እንዲሆኑ ተስተካክሏል
+        let keyboardRows = [
+            [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }],
+            [{ text: "📲 Share Contact", request_contact: true }]
+        ];
+
+        // 👑 አድሚኑ ከሆነ ተጨማሪ የአድሚን በተን ይጨመራል
+        if (chatId.toString() === ADMIN_CHAT_ID.toString()) {
+            keyboardRows.push([{ text: "👑 Admin Panel" }]);
+        }
+
         const mainKeyboard = {
             reply_markup: {
-                keyboard: [
-                    [{ text: "📲 Share Contact", request_contact: true }],
-                    [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }]
-                ],
+                keyboard: keyboardRows,
                 resize_keyboard: true
             }
         };
@@ -270,6 +275,20 @@ if (bot) {
                 bot.sendMessage(chatId, "እባክዎ ከታች ያሉትን አማራጮች ይጠቀሙ፡", mainKeyboard);
             });
         });
+    });
+
+    // 👑 የአድሚን በተን ትዕዛዝ ማስተናገጃ
+    bot.onText(/👑 Admin Panel/, async (msg) => {
+        const chatId = msg.chat.id;
+        if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
+
+        try {
+            const usersRes = await pool.query('SELECT COUNT(*) FROM users');
+            const totalUsers = usersRes.rows[0].count;
+            bot.sendMessage(chatId, `👑 **የአድሚን መቆጣጠሪያ Dashboard**\n\n👥 **ጠቅላላ የተመዘገቡ ተጠቃሚዎች:** ${totalUsers}\n🌐 **ሚኒ አፕ ለመክፈት:** ${WEB_APP_URL}`, { parse_mode: 'Markdown' });
+        } catch (e) {
+            bot.sendMessage(chatId, 'የተጠቃሚዎችን መረጃ ማግኘት አልተቻለም።');
+        }
     });
 
     bot.on('contact', async (msg) => {
@@ -390,7 +409,7 @@ if (bot) {
         const chatId = msg.chat.id;
         const text = msg.text ? msg.text.trim() : '';
 
-        if (text.startsWith('/') || ['🎮 Play now 🎮', 'Check Balance 💰', 'Deposit', 'Withdraw', 'Contact Us 📞'].includes(text)) {
+        if (text.startsWith('/') || ['🎮 Play now 🎮', 'Check Balance 💰', 'Deposit', 'Withdraw', 'Contact Us 📞', '👑 Admin Panel'].includes(text)) {
             return;
         }
 
@@ -533,7 +552,6 @@ if (bot) {
         const msg = callbackQuery.message;
         const chatId = msg.chat.id;
 
-        // የ Inline ቁልፎች ሲነኩ (Deposit & Withdraw)
         if (action === 'btn_deposit') {
             await bot.answerCallbackQuery(callbackQuery.id);
             return triggerDeposit(chatId);
@@ -544,7 +562,6 @@ if (bot) {
             return triggerWithdraw(chatId);
         }
 
-        // የአድሚኑ Approve/Reject ሲነካ
         const parts = action.split('_');
         const status = parts[0]; 
         const tx_id = parts[1];
