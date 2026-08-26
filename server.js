@@ -176,6 +176,7 @@ if (bot) {
         { command: 'withdraw', description: '💸 ገንዘብ ወጪ ለማድረግ' }
     ]);
 
+    // 🔹 /start ኮማንድ
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
         const name = msg.from.first_name;
@@ -188,6 +189,18 @@ if (bot) {
                              `• ⚡ **ቀጥታ ስርጭት** - የእውነተኛ ጊዜ ቀጥታ ውድድር\n` +
                              `👇 **አሁኑኑ ጨዋታውን ይጀምሩና የእድሉ ባለቤት ይሁኑ!**`;
 
+        // Reply Keyboard Setup (Bottom Menu Buttons)
+        const mainKeyboard = {
+            reply_markup: {
+                keyboard: [
+                    [{ text: "🎮 Play now 🎮" }],
+                    [{ text: "Check Balance 💰" }, { text: "Deposit" }],
+                    [{ text: "Withdraw" }, { text: "Contact Us 📞" }]
+                ],
+                resize_keyboard: true
+            }
+        };
+
         bot.sendPhoto(chatId, PHOTO_URL, {
             caption: welcomeCaption,
             parse_mode: 'Markdown',
@@ -196,6 +209,8 @@ if (bot) {
                     [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }]
                 ]
             }
+        }).then(() => {
+            bot.sendMessage(chatId, "እባክዎ ከታች ያሉትን አማራጮች ይጠቀሙ፡", mainKeyboard);
         }).catch((err) => {
             console.error('Failed to send photo, sending text fallback:', err.message);
             bot.sendMessage(chatId, welcomeCaption, {
@@ -205,11 +220,13 @@ if (bot) {
                         [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }]
                     ]
                 }
+            }).then(() => {
+                bot.sendMessage(chatId, "እባክዎ ከታች ያሉትን አማራጮች ይጠቀሙ፡", mainKeyboard);
             });
         });
     });
 
-    bot.onText(/\/play/, (msg) => {
+    bot.onText(/\/play|🎮 Play now 🎮/, (msg) => {
         const chatId = msg.chat.id;
         bot.sendMessage(chatId, `🎮 የቢንጎ ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ፡`, {
             reply_markup: {
@@ -220,7 +237,7 @@ if (bot) {
         });
     });
 
-    bot.onText(/\/balance/, async (msg) => {
+    bot.onText(/\/balance|Check Balance 💰/, async (msg) => {
         const chatId = msg.chat.id;
         const username = msg.from.username || '';
         
@@ -228,7 +245,7 @@ if (bot) {
             const userRes = await pool.query('SELECT balance, name FROM users WHERE username = $1 OR identifier = $2', [username, chatId.toString()]);
             if (userRes.rows.length > 0) {
                 let user = userRes.rows[0];
-                bot.sendMessage(chatId, `👤 ስም: ${user.name}\n💰 ቀሪ ባላንስዎ: ${user.balance} ብር`);
+                bot.sendMessage(chatId, `👤 **ስም:** ${user.name}\n💰 **ቀሪ ባላንስዎ:** ${user.balance} ብር`, { parse_mode: 'Markdown' });
             } else {
                 bot.sendMessage(chatId, `እባክዎ መጀመሪያ ዌብሳይቱ ላይ በመግባት አካውንት ይክፈቱ!`);
             }
@@ -236,6 +253,40 @@ if (bot) {
             console.error(err);
             bot.sendMessage(chatId, 'የሰርቨር ስህተት አጋጥሟል።');
         }
+    });
+
+    // 💳 DEPOSIT BUTTON
+    bot.onText(/\/deposit|Deposit/, (msg) => {
+        const chatId = msg.chat.id;
+        let depositMsg = `💳 **ገንዘብ ገቢ ማድረጊያ (Deposit) መመሪያ**\n\n` +
+                          `ገንዘብ ወደ አካውንትዎ ገቢ ለማድረግ የሚከተሉትን የባንክ ሂሳቦች ይጠቀሙ፦\n\n` +
+                          `🏦 **ንግድ ባንክ (CBE):** 1000XXXXXXXXX\n` +
+                          `📱 **ቴሌብር (Telebirr):** 09XXXXXXXX\n` +
+                          `👤 **ስም:** Wana Bingo\n\n` +
+                          `📌 **ማሳሰቢያ:** ብሩን ገቢ ካደረጉ በኋላ ዌብሳይቱ (Play Now) ውስጥ በመግባት የDeposit ፎርም ይሙሉ ወይም ደረሰኙን ለአድሚን ይላኩ።`;
+        
+        bot.sendMessage(chatId, depositMsg, { parse_mode: 'Markdown' });
+    });
+
+    // 💸 WITHDRAW BUTTON
+    bot.onText(/\/withdraw|Withdraw/, (msg) => {
+        const chatId = msg.chat.id;
+        let withdrawMsg = `💸 **ገንዘብ ወጪ ማድረጊያ (Withdraw)**\n\n` +
+                           `ያሸነፉትን ገንዘብ ወጪ ለማድረግ በቀጥታ **Play now 🎮** የሚለውን ተጭነው ወደ ዌብሳይቱ በመግባት **Withdraw** የሚለውን ቁልፍ ይጠቀሙ።\n\n` +
+                           `ወይም በስልክዎ የባንክ/ቴሌብር መረጃ እና የብሩን መጠን ለ **@AdminUsername** በመላክ ወጪ ማድረግ ይችላሉ።`;
+        
+        bot.sendMessage(chatId, withdrawMsg, { parse_mode: 'Markdown' });
+    });
+
+    // 📞 CONTACT US BUTTON
+    bot.onText(/Contact Us 📞/, (msg) => {
+        const chatId = msg.chat.id;
+        let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
+                          `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
+                          `💬 **ቴሌግራም አድሚን:** @AdminUsername\n` +
+                          `📱 **ስልክ ቁጥር:** +2519XXXXXXXX`;
+        
+        bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
     });
 
     bot.on('callback_query', async (callbackQuery) => {
