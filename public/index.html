@@ -33,7 +33,6 @@
             overflow-x: hidden;
         }
 
-        /* 🌟 የቁጥሮች ፍሰት (Falling Numbers Pattern) ዲዛይን */
         .falling-numbers-bg {
             position: fixed;
             top: 0;
@@ -43,7 +42,7 @@
             pointer-events: none;
             z-index: 0;
             overflow: hidden;
-            opacity: 0.12; /* በደበዘዘ መልኩ እንዲታይ */
+            opacity: 0.12;
         }
         .falling-num {
             position: absolute;
@@ -148,7 +147,7 @@
         .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
         .header-box p { font-size: 13px; color: var(--text-sub); }
         
-        /* Welcome / Entertainment Section */
+        /* 🌟 Welcome / Entertainment Section */
         .welcome-promo-box {
             background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(14, 165, 233, 0.15));
             border: 1px solid rgba(168, 85, 247, 0.3);
@@ -290,7 +289,6 @@
         .modal-badge-name { background: #0d9488; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 800; }
         .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; }
 
-        /* 🌟 የተሻሻለ ማራኪ የዲፖዚት እና ዊዝድሮ ሲስተም ስታይል */
         .wallet-banner {
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(2, 132, 199, 0.2));
             border: 1px solid rgba(16, 185, 129, 0.4);
@@ -316,7 +314,6 @@
 </head>
 <body>
 
-    <!-- 🌟 የቁጥሮች ፍሰት (Falling Numbers Pattern) ዳራ -->
     <div class="falling-numbers-bg" id="fallingNumbersContainer"></div>
 
     <div class="header" id="mainHeader">
@@ -411,7 +408,6 @@
             </div>
         </div>
 
-        <!-- 🌟 የተሻሻለ ማራኪ ዋሌት (Deposit & Withdraw System) -->
         <div id="walletTab" class="tab-content">
             <div class="wallet-banner">
                 <h4>⚡ ፈጣን የክፍያ ማዕከል ⚡</h4>
@@ -512,7 +508,6 @@
         let clientTimerInterval = null;
         let gameStatus = 'waiting';
 
-        // 🌟 የቁጥሮች ፍሰት (Falling Numbers Background Animation Generator)
         function initFallingNumbers() {
             const container = document.getElementById('fallingNumbersContainer');
             const bingoTerms = ['B-12', 'I-24', 'N-33', 'G-50', 'O-71', 'B-5', 'I-19', 'N-42', 'G-58', 'O-65', 'B-9', 'I-28'];
@@ -529,7 +524,6 @@
             }
         }
 
-        // 🔊 ቁጥሮች በድምጽ የሚጠሩበት פונקציה (Text-to-Speech)
         function speakNumber(textToSpeak) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -1029,6 +1023,7 @@
             leaveGame(); 
         }
 
+        // 🌟 የዲፖዚት (Deposit) ክፍያ ጥያቄ መላኪያ ፋንክሽን
         async function submitDeposit() {
             const amount = document.getElementById('depAmount').value;
             const smsText = document.getElementById('depSMS').value;
@@ -1051,25 +1046,28 @@
             } catch(e) { alert('ስህተት ተፈጥሯል።'); }
         }
 
+        // 🌟 የዊዝድሮ (Withdraw) ገንዘብ ማውጫ ጥያቄ መላኪያ ፋንክሽን
         async function submitWithdraw() {
             const amount = document.getElementById('withdrawAmount').value;
             const method = document.getElementById('withdrawMethod').value;
-            const details = document.getElementById('withdrawAccountDetails').value;
+            const detailsVal = document.getElementById('withdrawAccountDetails').value;
+            const details = `${method} - ${detailsVal}`;
 
-            if (!amount || !details) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
+            if (!amount || !detailsVal) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
             if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
 
             try {
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, method, details })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details })
                 });
                 const data = await res.json();
                 if(data.success) {
                     alert(`የዊዝድሮው ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('withdrawAmount').value = '';
                     document.getElementById('withdrawAccountDetails').value = '';
+                    fetchUserData(); // ቀሪ ባላንስን ወዲያውኑ ማስተካከል
                 } else {
                     alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
                 }
