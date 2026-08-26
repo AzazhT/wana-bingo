@@ -17,7 +17,7 @@ const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_CHAT_ID = '686733543';
 const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 // የላክኸው የ3D ፎቶ URL (ወይም በቦቱ የላከውን photo_id መጠቀም ትችላለህ)
-const PHOTO_URL = const PHOTO_URL = `${WEB_APP_URL}/bingo_bg.jpg`;
+const PHOTO_URL = `${WEB_APP_URL}/bingo_bg.jpg`;
 
 let bot = null;
 if (TOKEN) {
