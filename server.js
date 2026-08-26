@@ -233,21 +233,24 @@ if (bot) {
                              `🎯 **እየተዝናኑ እድልዎን ይፈትሹ፡ እሴትዎን ያሳድጉ!**\n` +
                              `👇 **ከታች ባሉት አማራጮች ጨዋታውን ይጀምሩ ወይም ሂሳብዎን ይሙሉ።**`;
 
-        const inlineButtons = {
+       const inlineButtons = {
             inline_keyboard: [
                 [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }],
                 [
                     { text: '💳 Deposit', callback_data: 'btn_deposit' },
                     { text: '💸 Withdraw', callback_data: 'btn_withdraw' }
+                ],
+                [
+                    { text: 'Check Balance 💰', callback_data: 'btn_balance' },
+                    { text: 'Contact Us 📞', callback_data: 'btn_contact' }
                 ]
             ]
         };
 
+        // ከታች በቻቱ መክፈቻ ላይ ደግሞ Share Contact ብቻ እንዲኖር ተደረገ
         let keyboardRows = [
-            [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }],
             [{ text: "📲 Share Contact", request_contact: true }]
         ];
-
         if (chatId.toString() === ADMIN_CHAT_ID.toString()) {
             keyboardRows.push([{ text: "👑 Admin Panel" }]);
         }
