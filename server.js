@@ -21,7 +21,6 @@ const ADMIN_CHAT_ID = '686733543';
 const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 const PHOTO_URL = `${WEB_APP_URL}/bingo_bg.jpg`;
 
-// የቦት Chat Flow Session መያዣ (User States)
 const userStates = {};
 
 let bot = null;
@@ -53,9 +52,12 @@ async function initializeDatabase() {
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='details') THEN
                     ALTER TABLE transactions ADD COLUMN details TEXT;
                 END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='phone') THEN
+                    ALTER TABLE users ADD COLUMN phone TEXT;
+                END IF;
             END $$;
         `);
-        console.log('Database transactions table checked for "details" column.');
+        console.log('Database tables checked and updated.');
     } catch (err) {
         console.error('Database initialization warning:', err.message);
     }
@@ -63,7 +65,7 @@ async function initializeDatabase() {
 initializeDatabase();
 
 // ==========================================
-// 🔹 EXISTING MINI APP ENDPOINTS (UNCHANGED)
+// 🔹 API ENDPOINTS
 // ==========================================
 
 app.post('/api/get-user', async (req, res) => {
@@ -91,6 +93,22 @@ app.post('/api/update-phone', async (req, res) => {
     const { identifier, phone } = req.body;
     try {
         await pool.query('UPDATE users SET phone = $1 WHERE identifier = $2', [phone, identifier]);
+        
+        // ለአድሚኑ ስልኩን ማሳወቅ
+        if (bot && ADMIN_CHAT_ID) {
+            try {
+                const userRes = await pool.query('SELECT name, username FROM users WHERE identifier = $1', [identifier]);
+                let userInfo = userRes.rows[0] || {};
+                let msgText = `📱 **አዲስ ስልክ ቁጥር ተመዝግቧል!**\n` +
+                              `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
+                              `🆔 Telegram ID: \`${identifier}\`\n` +
+                              `📞 ስልክ ቁጥር: \`${phone}\``;
+                await bot.sendMessage(ADMIN_CHAT_ID, msgText, { parse_mode: 'Markdown' });
+            } catch (e) {
+                console.error('Failed to notify admin on phone update:', e);
+            }
+        }
+
         res.json({ success: true });
     } catch (err) {
         console.error(err);
@@ -175,7 +193,7 @@ app.post('/api/request-transaction', async (req, res) => {
 });
 
 // ==========================================
-// 🤖 TELEGRAM BOT CHAT FLOW (ENHANCED)
+// 🤖 TELEGRAM BOT CHAT FLOW
 // ==========================================
 
 if (bot) {
@@ -206,7 +224,8 @@ if (bot) {
                 keyboard: [
                     [{ text: "🎮 Play now 🎮" }],
                     [{ text: "Check Balance 💰" }, { text: "Deposit" }],
-                    [{ text: "Withdraw" }, { text: "Contact Us 📞" }]
+                    [{ text: "Withdraw" }, { text: "📲 Share Contact", request_contact: true }],
+                    [{ text: "Contact Us 📞" }]
                 ],
                 resize_keyboard: true
             }
@@ -223,7 +242,6 @@ if (bot) {
         }).then(() => {
             bot.sendMessage(chatId, "እባክዎ ከታች ያሉትን አማራጮች ይጠቀሙ፡", mainKeyboard);
         }).catch((err) => {
-            console.error('Failed to send photo, sending text fallback:', err.message);
             bot.sendMessage(chatId, welcomeCaption, {
                 parse_mode: 'Markdown',
                 reply_markup: {
@@ -235,6 +253,39 @@ if (bot) {
                 bot.sendMessage(chatId, "እባክዎ ከታች ያሉትን አማራጮች ይጠቀሙ፡", mainKeyboard);
             });
         });
+    });
+
+    // 📲 TELEGRAM CONTACT HANDLER
+    bot.on('contact', async (msg) => {
+        const chatId = msg.chat.id;
+        const identifier = chatId.toString();
+        const phoneNumber = msg.contact.phone_number;
+        const name = msg.from.first_name || 'Player';
+        const username = msg.from.username || '';
+
+        try {
+            let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
+            if (userRes.rows.length === 0) {
+                await pool.query('INSERT INTO users (identifier, name, username, balance, phone) VALUES ($1, $2, $3, $4, $5)', 
+                    [identifier, name, username, 0.00, phoneNumber]);
+            } else {
+                await pool.query('UPDATE users SET phone = $1 WHERE identifier = $2', [phoneNumber, identifier]);
+            }
+
+            bot.sendMessage(chatId, `✅ **ስልክ ቁጥርዎ (${phoneNumber}) በተሳካ ሁኔታ ተመዝግቧል!**`, { parse_mode: 'Markdown' });
+
+            // አድሚን ላይ በቴሌግራም መልእክት መላክ
+            if (ADMIN_CHAT_ID) {
+                let adminMsg = `📱 **አዲስ ስልክ ቁጥር ከቻት ተጋርቷል!**\n` +
+                               `👤 ስም: ${name} (@${username || 'none'})\n` +
+                               `🆔 Telegram ID: \`${identifier}\`\n` +
+                               `📞 ስልክ ቁጥር: \`${phoneNumber}\``;
+                await bot.sendMessage(ADMIN_CHAT_ID, adminMsg, { parse_mode: 'Markdown' });
+            }
+        } catch (err) {
+            console.error('Error saving contact from bot:', err);
+            bot.sendMessage(chatId, 'ስልክ ቁጥርዎን በመመዝገብ ላይ ስህተት ተፈጥሯል።');
+        }
     });
 
     bot.onText(/\/cancel/, (msg) => {
@@ -274,7 +325,6 @@ if (bot) {
         }
     });
 
-    // 💳 DEPOSIT BUTTON (Chat Step-by-Step Flow)
     bot.onText(/\/deposit|Deposit/, (msg) => {
         const chatId = msg.chat.id;
         userStates[chatId] = { step: 'AWAITING_DEPOSIT_AMOUNT' };
@@ -289,7 +339,6 @@ if (bot) {
         bot.sendMessage(chatId, depositMsg, { parse_mode: 'Markdown' });
     });
 
-    // 💸 WITHDRAW BUTTON (Chat Step-by-Step Flow)
     bot.onText(/\/withdraw|Withdraw/, async (msg) => {
         const chatId = msg.chat.id;
         const identifier = chatId.toString();
@@ -313,7 +362,6 @@ if (bot) {
         }
     });
 
-    // 📞 CONTACT US BUTTON
     bot.onText(/Contact Us 📞/, (msg) => {
         const chatId = msg.chat.id;
         delete userStates[chatId];
@@ -325,12 +373,10 @@ if (bot) {
         bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
     });
 
-    // 📩 MESSAGE HANDLER FOR CHAT DEPOSIT / WITHDRAW
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
         const text = msg.text ? msg.text.trim() : '';
 
-        // Commands OR main menu items ignore state processing
         if (text.startsWith('/') || ['🎮 Play now 🎮', 'Check Balance 💰', 'Deposit', 'Withdraw', 'Contact Us 📞'].includes(text)) {
             return;
         }
@@ -340,7 +386,6 @@ if (bot) {
 
         const identifier = chatId.toString();
 
-        // --- DEPOSIT FLOW ---
         if (state.step === 'AWAITING_DEPOSIT_AMOUNT') {
             const amount = parseFloat(text);
             if (isNaN(amount) || amount <= 0) {
@@ -359,7 +404,6 @@ if (bot) {
             const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
 
             try {
-                // Check if user exists in DB, create if not
                 let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
                 if (userRes.rows.length === 0) {
                     const name = msg.from.first_name || 'Player';
@@ -402,7 +446,6 @@ if (bot) {
             return;
         }
 
-        // --- WITHDRAW FLOW ---
         if (state.step === 'AWAITING_WITHDRAW_AMOUNT') {
             const amount = parseFloat(text);
             if (isNaN(amount) || amount <= 0) {
@@ -433,7 +476,6 @@ if (bot) {
                     return bot.sendMessage(chatId, '❌ በቂ ባላንስ የለዎትም!');
                 }
 
-                // Deduct balance immediately
                 let newBalance = currentBalance - amount;
                 await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, identifier]);
 
@@ -473,7 +515,6 @@ if (bot) {
         }
     });
 
-    // 🔘 CALLBACK QUERY FOR APPROVE/REJECT (UNCHANGED)
     bot.on('callback_query', async (callbackQuery) => {
         const action = callbackQuery.data;
         const msg = callbackQuery.message;
@@ -502,7 +543,6 @@ if (bot) {
                     parse_mode: 'Markdown'
                 });
 
-                // Notify User
                 try {
                     await bot.sendMessage(identifier, `🎉 **መልካም ዜና!** የ ${tx_id} የ ${type} ጥያቄዎ ${amount} ብር ፀድቋል።`, { parse_mode: 'Markdown' });
                 } catch (e) {}
@@ -524,7 +564,6 @@ if (bot) {
                     parse_mode: 'Markdown'
                 });
 
-                // Notify User
                 try {
                     await bot.sendMessage(identifier, `❌ የ ${tx_id} የ ${type} ጥያቄዎ አልፀደቀም።`, { parse_mode: 'Markdown' });
                 } catch (e) {}
@@ -538,7 +577,7 @@ if (bot) {
 }
 
 // ==========================================
-// 🎲 CONTINUOUS GAME & SOCKET.IO (UNCHANGED)
+// 🎲 CONTINUOUS GAME & SOCKET.IO
 // ==========================================
 
 let activeRooms = {}; 
