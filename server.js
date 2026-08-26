@@ -68,6 +68,25 @@ initializeDatabase();
 // 🔹 API ENDPOINTS
 // ==========================================
 
+// 👑 አድሚኑ ሁሉንም ተጠቃሚዎች ከነሙሉ መረጃቸው የሚያይበት API
+app.get('/api/admin/users', async (req, res) => {
+    try {
+        const usersRes = await pool.query(`
+            SELECT id, identifier, name, username, phone, balance, created_at 
+            FROM users 
+            ORDER BY id DESC
+        `);
+        res.json({ 
+            success: true, 
+            totalUsers: usersRes.rows.length, 
+            users: usersRes.rows 
+        });
+    } catch (err) {
+        console.error('Error fetching admin users:', err);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
 app.post('/api/get-user', async (req, res) => {
     const { identifier, name, username } = req.body;
     try {
@@ -94,7 +113,6 @@ app.post('/api/update-phone', async (req, res) => {
     try {
         await pool.query('UPDATE users SET phone = $1 WHERE identifier = $2', [phone, identifier]);
         
-        // ለአድሚኑ ስልኩን ማሳወቅ
         if (bot && ADMIN_CHAT_ID) {
             try {
                 const userRes = await pool.query('SELECT name, username FROM users WHERE identifier = $1', [identifier]);
@@ -214,18 +232,25 @@ if (bot) {
         let welcomeCaption = `✨ **እንኳን ወደ እድል ቢንጎ በደህና መጡ!** ✨\n\n` +
                              `ሰላም **${name}**! 👋\n\n` +
                              `🎯 **እየተዝናኑ እድልዎን ይፈትሹ፡ እሴትዎን ያሳድጉ!**\n` +
-                             `🌟 **የእኛ ቢንጎ ልዩ የሚያደርገው፡**\n` +
-                             `• 💎 **ታማኝነት እና ፍትሃዊነት** - ፈጣንና አስተማማኝ አሰራር\n` +
-                             `• ⚡ **ቀጥታ ስርጭት** - የእውነተኛ ጊዜ ቀጥታ ውድድር\n` +
-                             `👇 **አሁኑኑ ጨዋታውን ይጀምሩና የእድሉ ባለቤት ይሁኑ!**`;
+                             `👇 **ከታች ባሉት አማራጮች ጨዋታውን ይጀምሩ ወይም ሂሳብዎን ይሙሉ።**`;
 
+        // 1. ከላይ Inline ቁልፎች (Play, Deposit, Withdraw)
+        const inlineButtons = {
+            inline_keyboard: [
+                [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }],
+                [
+                    { text: '💳 Deposit', callback_data: 'btn_deposit' },
+                    { text: '💸 Withdraw', callback_data: 'btn_withdraw' }
+                ]
+            ]
+        };
+
+        // 2. ከታች የሚቀመጥ ኪቦርድ (Share Contact እዚህ ይገኛል)
         const mainKeyboard = {
             reply_markup: {
                 keyboard: [
-                    [{ text: "🎮 Play now 🎮" }],
-                    [{ text: "Check Balance 💰" }, { text: "Deposit" }],
-                    [{ text: "Withdraw" }, { text: "📲 Share Contact", request_contact: true }],
-                    [{ text: "Contact Us 📞" }]
+                    [{ text: "📲 Share Contact", request_contact: true }],
+                    [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }]
                 ],
                 resize_keyboard: true
             }
@@ -234,28 +259,19 @@ if (bot) {
         bot.sendPhoto(chatId, PHOTO_URL, {
             caption: welcomeCaption,
             parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }]
-                ]
-            }
+            reply_markup: inlineButtons
         }).then(() => {
             bot.sendMessage(chatId, "እባክዎ ከታች ያሉትን አማራጮች ይጠቀሙ፡", mainKeyboard);
-        }).catch((err) => {
+        }).catch(() => {
             bot.sendMessage(chatId, welcomeCaption, {
                 parse_mode: 'Markdown',
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }]
-                    ]
-                }
+                reply_markup: inlineButtons
             }).then(() => {
                 bot.sendMessage(chatId, "እባክዎ ከታች ያሉትን አማራጮች ይጠቀሙ፡", mainKeyboard);
             });
         });
     });
 
-    // 📲 TELEGRAM CONTACT HANDLER
     bot.on('contact', async (msg) => {
         const chatId = msg.chat.id;
         const identifier = chatId.toString();
@@ -274,7 +290,6 @@ if (bot) {
 
             bot.sendMessage(chatId, `✅ **ስልክ ቁጥርዎ (${phoneNumber}) በተሳካ ሁኔታ ተመዝግቧል!**`, { parse_mode: 'Markdown' });
 
-            // አድሚን ላይ በቴሌግራም መልእክት መላክ
             if (ADMIN_CHAT_ID) {
                 let adminMsg = `📱 **አዲስ ስልክ ቁጥር ከቻት ተጋርቷል!**\n` +
                                `👤 ስም: ${name} (@${username || 'none'})\n` +
@@ -325,24 +340,19 @@ if (bot) {
         }
     });
 
-    bot.onText(/\/deposit|Deposit/, (msg) => {
-        const chatId = msg.chat.id;
+    const triggerDeposit = (chatId) => {
         userStates[chatId] = { step: 'AWAITING_DEPOSIT_AMOUNT' };
-
         let depositMsg = `💳 **ገንዘብ ገቢ ማድረጊያ (Deposit)**\n\n` +
                          `ገንዘብ ገቢ ለማድረግ የሚከተሉትን አካውንቶች ይጠቀሙ፦\n\n` +
                          `🏦 **ንግድ ባንክ (CBE):** 1000XXXXXXXXX\n` +
                          `📱 **ቴሌብር (Telebirr):** 09XXXXXXXX\n` +
                          `👤 **ስም:** Wana Bingo\n\n` +
                          `💵 **እባክዎ ማስገባት የሚፈልጉትን የብር መጠን በቁጥር ይጻፉ፦**\n*(ለማቋረጥ /cancel ይበሉ)*`;
-        
         bot.sendMessage(chatId, depositMsg, { parse_mode: 'Markdown' });
-    });
+    };
 
-    bot.onText(/\/withdraw|Withdraw/, async (msg) => {
-        const chatId = msg.chat.id;
+    const triggerWithdraw = async (chatId) => {
         const identifier = chatId.toString();
-
         try {
             const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
             if (userRes.rows.length === 0) {
@@ -360,7 +370,10 @@ if (bot) {
             console.error(err);
             bot.sendMessage(chatId, 'የሰርቨር ስህተት አጋጥሟል።');
         }
-    });
+    };
+
+    bot.onText(/\/deposit|Deposit/, (msg) => triggerDeposit(msg.chat.id));
+    bot.onText(/\/withdraw|Withdraw/, (msg) => triggerWithdraw(msg.chat.id));
 
     bot.onText(/Contact Us 📞/, (msg) => {
         const chatId = msg.chat.id;
@@ -453,7 +466,7 @@ if (bot) {
             }
 
             if (amount > state.balance) {
-                return bot.sendMessage(chatId, `❌ **አንችሉም!** አስገቡት መጠን (${amount} ብር) ካለዎት ባላንስ (${state.balance} ብር) ይበልጣል።`);
+                return bot.sendMessage(chatId, `❌ **አይችሉም!** አስገቡት መጠን (${amount} ብር) ካለዎት ባላንስ (${state.balance} ብር) ይበልጣል።`);
             }
 
             userStates[chatId] = { step: 'AWAITING_WITHDRAW_DETAILS', amount };
@@ -518,6 +531,20 @@ if (bot) {
     bot.on('callback_query', async (callbackQuery) => {
         const action = callbackQuery.data;
         const msg = callbackQuery.message;
+        const chatId = msg.chat.id;
+
+        // የ Inline ቁልፎች ሲነኩ (Deposit & Withdraw)
+        if (action === 'btn_deposit') {
+            await bot.answerCallbackQuery(callbackQuery.id);
+            return triggerDeposit(chatId);
+        }
+
+        if (action === 'btn_withdraw') {
+            await bot.answerCallbackQuery(callbackQuery.id);
+            return triggerWithdraw(chatId);
+        }
+
+        // የአድሚኑ Approve/Reject ሲነካ
         const parts = action.split('_');
         const status = parts[0]; 
         const tx_id = parts[1];
