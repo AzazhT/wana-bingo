@@ -267,7 +267,7 @@ if (bot) {
             parse_mode: 'Markdown',
             reply_markup: inlineButtons
         }).then(() => {
-            bot.sendMessage(chatId, "እባክዎ ከታች ያሉትን አማራጮች ይጠቀሙ፡", mainKeyboard);
+            bot.sendMessage(chatId, "መልካም እድል፡", mainKeyboard);
         }).catch(() => {
             bot.sendMessage(chatId, welcomeCaption, {
                 parse_mode: 'Markdown',
