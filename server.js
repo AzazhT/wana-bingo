@@ -108,13 +108,12 @@ app.post('/api/place-bet', async (req, res) => {
     }
 });
 
-// 🌟 የተስተካከለ የዲፖዚት እና ዊዝድሮ (Transactions) API
 app.post('/api/request-transaction', async (req, res) => {
-    const { identifier, type, amount, details, sms } = req.body;
+    const { identifier, type, amount, details, sms, method } = req.body;
     const tx_id = 'TX' + Math.floor(100000 + Math.random() * 900000);
     
-    // ለዲፖዚት የገባውን ኤስኤምኤስ እና ለዊዝድሮ የተላከውን አካውንት በአንድነት ወደ details እንጠቀማለን
-    const txDetails = type === 'DEPOSIT' ? (sms || details || 'N/A') : (details || 'N/A');
+    // የዲፖዚት SMS ወይም የዊዝድሮ ዴቴልስ ወደ ትክክለኛው 'details' ተለዋዋጭ እንዲገባ ማድረግ
+    const txDetails = details || sms || (method ? `${method} - N/A` : 'N/A');
     
     try {
         if (type === 'WITHDRAW') {
@@ -145,7 +144,7 @@ app.post('/api/request-transaction', async (req, res) => {
                               `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
                               `📱 ስልክ: ${userInfo.phone || 'N/A'}\n` +
                               `💰 መጠን: ${amount} ብር\n` +
-                              `📋 መረጃ/SMS: ${txDetails}`;
+                              `🏦 ዝርዝር/አካውንት: ${txDetails}`;
 
                 await bot.sendMessage(ADMIN_CHAT_ID, msgText, {
                     parse_mode: 'Markdown',
@@ -184,7 +183,7 @@ if (bot) {
         const name = msg.from.first_name;
         
         let welcomeMessage = `✨ **እንኳን ደህና መጡ!** ✨\n\n` +
-                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ።\n\n` +
+                            `ሰላም **${name}**! ወደ 🏆 **ዋና ቢንጎ (Wana Bingo)** በሰላም መጡ。\n\n` +
                             `─────────────────────\n` +
                             `📌 **የቦቱ አገልግሎቶች እና ትዕዛዞች፡**\n\n` +
                             `🎮 /play - 🎲 ቢንጎን በቀጥታ ለመጫወት (Web App)\n` +
@@ -232,7 +231,6 @@ if (bot) {
         }
     });
 
-    // --- አድሚኑ Approve ወይም Reject ሲያደርግ የሚሰራው ክፍል ---
     bot.on('callback_query', async (callbackQuery) => {
         const action = callbackQuery.data;
         const msg = callbackQuery.message;
@@ -285,7 +283,6 @@ if (bot) {
     });
 }
 
-// --- CONTINUOUS GAME & MULTI-ROOM MANAGEMENT ---
 let activeRooms = {}; 
 
 function getActivePlayersCount(room) {
