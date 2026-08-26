@@ -58,12 +58,6 @@
             80% { opacity: 1; }
             100% { transform: translateY(105vh); opacity: 0; }
         }
-        
-        @keyframes popIn {
-            0% { transform: scale(0.6); opacity: 0; }
-            80% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); }
-        }
 
         @keyframes pulseGlow {
             0% { box-shadow: 0 0 10px rgba(255, 42, 95, 0.4); }
@@ -82,7 +76,6 @@
             position: sticky; 
             top: 0; 
             z-index: 100; 
-            transition: all 0.3s ease;
         }
         .header.hidden { display: none !important; }
 
@@ -90,11 +83,13 @@
         .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.3); }
         
         .container { padding: 8px; max-width: 500px; margin: 0 auto; position: relative; z-index: 10; }
+        
+        /* የተደረገ ማስተካከያ 1: የገጽ መቀያየሪያዎችን ስላይድ/አኒሜሽን በማጥፋት ቀጥተኛ (instant/static) እንዲሆኑ አድርጓል */
         .tab-content { display: none; }
-        .tab-content.active { display: block; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .tab-content.active { display: block; }
         
         .game-step { display: none; }
-        .game-step.active { display: block; animation: popIn 0.3s ease-out; }
+        .game-step.active { display: block; }
 
         .navbar { 
             position: fixed; bottom: 0; left: 0; right: 0; 
@@ -102,8 +97,8 @@
             display: flex; justify-content: space-around; padding: 8px 0; 
             border-top: 1px solid var(--card-border); z-index: 1000; 
         }
-        .nav-item { color: var(--text-sub); text-decoration: none; font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; flex: 1; transition: all 0.2s ease; }
-        .nav-item.active { color: var(--primary-cyan); transform: translateY(-2px); }
+        .nav-item { color: var(--text-sub); text-decoration: none; font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; flex: 1; }
+        .nav-item.active { color: var(--primary-cyan); }
         .nav-icon { font-size: 18px; margin-bottom: 2px; }
 
         .card { background: var(--card-bg); backdrop-filter: blur(8px); padding: 16px; border-radius: 16px; margin-bottom: 12px; border: 1px solid var(--card-border); }
@@ -156,9 +151,7 @@
             background: var(--card-bg); color: var(--accent-amber); 
             border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; 
             cursor: pointer; text-align: center; width: 100%; 
-            transition: transform 0.2s;
         }
-        .bet-grid-btn:hover { transform: scale(1.02); border-color: var(--accent-amber); }
 
         .top-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
         .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px 4px; border-radius: 8px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; }
@@ -245,13 +238,14 @@
             border: 1px solid rgba(255, 255, 255, 0.1); 
         }
         
+        /* የተደረገ ማስተካከያ 3: ቁጥር ሲጠራ መጠኑ እንዳይለወጥ እና መንቀጥቀጥ/ስፔስ መጥፋት እንዳይኖር ተደርጓል */
         .grid-num.called.latest-call { 
             background: linear-gradient(135deg, #f59e0b, #d97706) !important; 
             color: #000000 !important; 
             font-weight: 900 !important; 
-            font-size: 13px !important;
+            font-size: 12px !important;
             border: 2px solid #ffffff !important; 
-            box-shadow: 0 0 15px rgba(245, 158, 11, 0.9);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.9);
             z-index: 5;
         }
 
@@ -264,11 +258,12 @@
         .recent-calls { display: flex; gap: 4px; overflow-x: auto; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 8px; min-height: 32px; align-items: center; border: 1px solid var(--card-border); }
         .recent-ball { background: #0284c7; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; white-space: nowrap; }
 
-        .user-board { background: var(--card-bg); padding: 8px; border-radius: 12px; border: 1px solid var(--card-border); flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; margin-top: 4px; }
-        .board-cell { background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; border: 1px solid var(--card-border); }
+        /* የተደረገ ማስተካከያ 2: ዩዘሩ የያዘው ቦርድ ከኮሉ አናት በቂ ክፍተት (margin-top) እንዲኖረው እና ጎልቶ እንዲታይ ተደረገ */
+        .user-board { background: var(--card-bg); padding: 10px; border-radius: 12px; border: 1px solid var(--card-border); flex: 1; display: flex; flex-direction: column; justify-content: space-between; margin-top: 4px; }
+        .board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; flex: 1; margin-top: 8px; }
+        .board-cell { background: rgba(0,0,0,0.3); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; border: 1px solid var(--card-border); min-height: 32px; }
         .board-cell.free, .board-cell.marked { background: var(--accent-green); color: white; border-color: #34d399; }
-        .board-footer { text-align: center; font-size: 10px; color: var(--text-sub); margin-top: 4px; font-weight: 800; }
+        .board-footer { text-align: center; font-size: 10px; color: var(--text-sub); margin-top: 6px; font-weight: 800; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 2000; padding: 16px; }
         .modal-card { background: linear-gradient(135deg, #1e1b4b, #0f172a); width: 100%; max-width: 360px; padding: 20px; border-radius: 20px; text-align: center; border: 1px solid var(--accent-purple); color: #fff; }
@@ -318,10 +313,6 @@
             width: 100%;
             margin-top: 12px;
             box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);
-            transition: all 0.2s;
-        }
-        .btn-share-phone:hover {
-            opacity: 0.9;
         }
     </style>
 </head>
@@ -741,7 +732,7 @@
             let latestCell = document.getElementById(`grid-num-${rand}`);
             if (latestCell) {
                 latestCell.classList.add('called', 'latest-call');
-                latestCell.innerText = `⭐${rand}⭐`;
+                latestCell.innerText = `${rand}`;
             }
 
             let ball = document.createElement('div');
