@@ -43,7 +43,7 @@
             pointer-events: none;
             z-index: 0;
             overflow: hidden;
-            opacity: 0.12; /* በደበዘዘ መልኩ እንዲታይ */
+            opacity: 0.12;
         }
         .falling-num {
             position: absolute;
@@ -101,9 +101,7 @@
             position: sticky; 
             top: 0; 
             z-index: 100; 
-            transition: all 0.3s ease;
         }
-        .header.hidden { display: none !important; }
 
         .logo { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #00f2fe, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 6px; }
         .balance-badge { background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; font-weight: 800; color: var(--accent-green); font-size: 13px; border: 1px solid rgba(16, 185, 129, 0.3); }
@@ -148,7 +146,6 @@
         .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
         .header-box p { font-size: 13px; color: var(--text-sub); }
         
-        /* Welcome / Entertainment Section */
         .welcome-promo-box {
             background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(14, 165, 233, 0.15));
             border: 1px solid rgba(168, 85, 247, 0.3);
@@ -158,17 +155,8 @@
             text-align: center;
             backdrop-filter: blur(5px);
         }
-        .welcome-promo-box h4 {
-            color: var(--primary-cyan);
-            font-size: 14px;
-            font-weight: 900;
-            margin-bottom: 4px;
-        }
-        .welcome-promo-box p {
-            color: var(--text-sub);
-            font-size: 11px;
-            line-height: 1.4;
-        }
+        .welcome-promo-box h4 { color: var(--primary-cyan); font-size: 14px; font-weight: 900; margin-bottom: 4px; }
+        .welcome-promo-box p { color: var(--text-sub); font-size: 11px; line-height: 1.4; }
 
         .bet-selection-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
         .bet-grid-btn { 
@@ -290,7 +278,6 @@
         .modal-badge-name { background: #0d9488; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 800; }
         .play-again-btn { background: linear-gradient(135deg, var(--accent-amber), #f97316); color: #000; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 16px; cursor: pointer; text-transform: uppercase; }
 
-        /* 🌟 የተሻሻለ ማራኪ የዲፖዚት እና ዊዝድሮ ሲስተም ስታይል */
         .wallet-banner {
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(2, 132, 199, 0.2));
             border: 1px solid rgba(16, 185, 129, 0.4);
@@ -316,7 +303,6 @@
 </head>
 <body>
 
-    <!-- 🌟 የቁጥሮች ፍሰት (Falling Numbers Pattern) ዳራ -->
     <div class="falling-numbers-bg" id="fallingNumbersContainer"></div>
 
     <div class="header" id="mainHeader">
@@ -411,7 +397,6 @@
             </div>
         </div>
 
-        <!-- 🌟 የተሻሻለ ማራኪ ዋሌት (Deposit & Withdraw System) -->
         <div id="walletTab" class="tab-content">
             <div class="wallet-banner">
                 <h4>⚡ ፈጣን የክፍያ ማዕከል ⚡</h4>
@@ -512,7 +497,6 @@
         let clientTimerInterval = null;
         let gameStatus = 'waiting';
 
-        // 🌟 የቁጥሮች ፍሰት (Falling Numbers Background Animation Generator)
         function initFallingNumbers() {
             const container = document.getElementById('fallingNumbersContainer');
             const bingoTerms = ['B-12', 'I-24', 'N-33', 'G-50', 'O-71', 'B-5', 'I-19', 'N-42', 'G-58', 'O-65', 'B-9', 'I-28'];
@@ -529,7 +513,6 @@
             }
         }
 
-        // 🔊 ቁጥሮች በድምጽ የሚጠሩበት פונקציה (Text-to-Speech)
         function speakNumber(textToSpeak) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -570,209 +553,17 @@
                 document.getElementById('activePlayersDisplay').innerText = currentActivePlayers;
                 document.getElementById('activePlayersDisplayLive').innerText = currentActivePlayers;
             }
-            
             if (typeof data.derashAmount !== 'undefined') {
                 currentDerashAmount = parseFloat(data.derashAmount);
             } else if (typeof data.derash !== 'undefined') {
                 currentDerashAmount = parseFloat(data.derash);
-            } else if (typeof data.prizePool !== 'undefined') {
-                currentDerashAmount = parseFloat(data.prizePool);
-            } else {
-                currentDerashAmount = currentActivePlayers * currentBet * 0.90; 
             }
-            
             document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
         }
 
-        socket.on('playersUpdate', (data) => { if (data) updateDerashUI(data); });
-        socket.on('activePlayersUpdate', (data) => { if (data) updateDerashUI(data); });
-
-        socket.on('assignedRoom', (data) => {
-            currentRoomId = data.roomId;
-            document.getElementById('gameIdDisplay').innerText = currentRoomId;
-            globalStartTime = data.startTime;
-            gameStatus = data.status || 'waiting';
-            updateDerashUI(data);
-            startClientCountdown();
-            if (data.selectedBoards) {
-                roomSelectedBoards = data.selectedBoards;
-                updateBoardsUI();
-            }
-        });
-
-        socket.on('countdownUpdate', (data) => {
-            globalStartTime = data.startTime;
-            gameStatus = data.status || 'waiting';
-            updateDerashUI(data);
-        });
-
-        function startClientCountdown() {
-            if (clientTimerInterval) clearInterval(clientTimerInterval);
-            clientTimerInterval = setInterval(() => {
-                if (!globalStartTime) return;
-                let remaining = Math.max(0, Math.floor((globalStartTime - Date.now()) / 1000));
-                
-                let countdownElement = document.getElementById('countdownText');
-                let startBtn = document.getElementById('btnStartGame');
-
-                if (gameStatus === 'playing') {
-                    countdownElement.innerText = "ጨዋታው ተጀምሯል";
-                    if (startBtn) {
-                        startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
-                        startBtn.style.opacity = "0.5";
-                    }
-                } else {
-                    countdownElement.innerText = `${remaining}s`;
-                    if (startBtn) {
-                        startBtn.innerText = "Start game (Join)";
-                        startBtn.style.opacity = "1";
-                    }
-                }
-
-                if (remaining <= 0 && gameStatus !== 'playing') {
-                    countdownElement.innerText = "ጨዋታው ተጀምሯል";
-                }
-            }, 1000);
-        }
-
-        socket.on('gameStarted', (data) => {
-            gameStatus = 'playing';
-            document.getElementById('countdownText').innerText = "ጨዋታው ተጀምሯል";
-            let startBtn = document.getElementById('btnStartGame');
-            if (startBtn) {
-                startBtn.innerText = "ጨዋታው በሂደት ላይ ነው (Playing)";
-                startBtn.style.opacity = "0.5";
-            }
-            if (data && data.prizePool) {
-                currentDerashAmount = parseFloat(data.prizePool);
-                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-            }
-            updateBoardsUI();
-        });
-
-        socket.on('roomResetForNextRound', (data) => {
-            gameStatus = 'waiting';
-            globalStartTime = data.startTime;
-            roomSelectedBoards = data.selectedBoards || {};
-            updateBoardsUI();
-            let startBtn = document.getElementById('btnStartGame');
-            if (startBtn) {
-                startBtn.innerText = "Start game (Join)";
-                startBtn.style.opacity = "1";
-            }
-            startClientCountdown();
-        });
-
-        socket.on('boardTempSelected', (data) => {
-            selectedCardId = data.boardNumber;
-            updateBoardsUI();
-            displayPreview(selectedCardId);
-        });
-
-        socket.on('boardSelected', (data) => {
-            roomSelectedBoards[data.boardNumber] = data.socketId;
-            updateBoardsUI();
-        });
-
-        socket.on('boardReleased', (data) => {
-            delete roomSelectedBoards[data.boardNumber];
-            updateBoardsUI();
-        });
-
-        socket.on('gameJoinSuccess', (data) => {
-            selectedCardId = data.boardNumber;
-            if (data.prizePool) {
-                currentDerashAmount = parseFloat(data.prizePool);
-                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-            }
-            displayPreview(selectedCardId);
-            updateBoardsUI();
-        });
-
-        socket.on('boardSelectError', (data) => { alert(data.message); });
-
-        socket.on('numberDrawn', (data) => {
-            let rand = data.number;
-            drawnNumbers = data.drawnHistory || [];
-            document.getElementById('callCount').innerText = drawnNumbers.length;
-
-            let letter = rand <= 15 ? 'B' : rand <= 30 ? 'I' : rand <= 45 ? 'N' : rand <= 60 ? 'G' : 'O';
-            let callText = `${letter}-${rand}`;
-            
-            speakNumber(`${letter} ${rand}`);
-
-            const callCircle = document.getElementById('currentCallCircle');
-            callCircle.innerText = callText;
-            callCircle.classList.remove('animate');
-            void callCircle.offsetWidth;
-            callCircle.classList.add('animate');
-
-            document.querySelectorAll('.grid-num').forEach(el => {
-                el.classList.remove('latest-call');
-                if(el.dataset.num) {
-                    el.innerText = el.dataset.num;
-                }
-            });
-
-            drawnNumbers.forEach(n => {
-                let cell = document.getElementById(`grid-num-${n}`);
-                if (cell) cell.classList.add('called');
-            });
-
-            let latestCell = document.getElementById(`grid-num-${rand}`);
-            if (latestCell) {
-                latestCell.classList.add('called', 'latest-call');
-                latestCell.innerText = `*${rand}*`;
-            }
-
-            let ball = document.createElement('div');
-            ball.className = 'recent-ball';
-            ball.innerText = callText;
-            document.getElementById('recentCalls').prepend(ball);
-        });
-
-        socket.on('gameOver', (data) => {
-            speakNumber("Bingo! Game Over!");
-            document.getElementById('winnerSubText').innerText = data.subtitle || "1 player has won the game";
-            document.getElementById('modalWinnerName').innerText = data.winnerName || "Kenbo-Winner";
-            document.getElementById('modalBoardNumText').innerText = `Board number ${data.boardNumber || selectedCardId}`;
-            document.getElementById('modalPrizeText').innerText = `(${parseFloat(data.winAmount || currentDerashAmount).toFixed(2)} ETB)`;
-            
-            renderModalWinningBoard(data.boardNumber || selectedCardId, data.winningLine);
-            document.getElementById('winnerModal').style.display = 'flex';
-        });
-
-        function renderModalWinningBoard(boardNum, winningLine) {
-            const modalGrid = document.getElementById('modalBoardGrid');
-            modalGrid.innerHTML = '';
-            const card = allCardsData[boardNum] || allCardsData[selectedCardId];
-            
-            if(card) {
-                card.forEach((row, r) => {
-                    row.forEach((val, c) => {
-                        let cell = document.createElement('div');
-                        cell.className = 'modal-cell';
-                        cell.innerText = val;
-                        
-                        if (winningLine) {
-                            if (winningLine.type === 'row' && winningLine.index === r) {
-                                cell.classList.add(r % 2 === 0 ? 'win-orange' : 'win-green');
-                            } else if (winningLine.type === 'col' && winningLine.index === c) {
-                                cell.classList.add(c % 2 === 0 ? 'win-orange' : 'win-green');
-                            } else if (winningLine.type === 'diag1' && r === c) {
-                                cell.classList.add('win-orange');
-                            } else if (winningLine.type === 'diag2' && (r + c === 4)) {
-                                cell.classList.add('win-green');
-                            }
-                        } else {
-                            if (val === '*' || drawnNumbers.includes(val)) {
-                                cell.classList.add('win-orange');
-                            }
-                        }
-                        modalGrid.appendChild(cell);
-                    });
-                });
-            }
+        function updateHeaderStats() {
+            document.getElementById('userBalanceDisplay').innerText = userWallet.toFixed(2);
+            document.getElementById('walletDisplay').innerText = userWallet.toFixed(2);
         }
 
         function switchTab(tabId, el) {
@@ -782,315 +573,351 @@
             el.classList.add('active');
         }
 
-        function showGameStep(stepId) {
-            document.querySelectorAll('.game-step').forEach(s => s.classList.remove('active'));
-            document.getElementById(stepId).classList.add('active');
-
-            const header = document.getElementById('mainHeader');
-            if (stepId === 'gameStepBet') {
-                header.classList.remove('hidden');
-            } else {
-                header.classList.add('hidden');
-            }
-        }
-
         function selectBet(amount) {
             currentBet = amount;
-            selectedCardId = null; 
-            showGameStep('gameStepCards');
-            initPage1();
-            socket.emit('joinLobby', { betAmount: amount });
-        }
-
-        function goToBetStep() { 
-            showGameStep('gameStepBet'); 
-        }
-
-        function updateHeaderStats() {
-            document.getElementById('userBalanceDisplay').innerText = userWallet.toFixed(2);
-            document.getElementById('walletDisplay').innerText = userWallet.toFixed(2);
             document.getElementById('betDisplay').innerText = currentBet;
-            
-            if(currentActivePlayers === 0) {
-                document.getElementById('derashDisplay').innerText = "0.0";
-            } else {
-                document.getElementById('derashDisplay').innerText = currentDerashAmount.toFixed(1);
-            }
+            document.getElementById('gameStepBet').classList.remove('active');
+            document.getElementById('gameStepCards').classList.add('active');
+            loadCardsGrid();
         }
 
-        function generateBingoCard() {
-            let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
-            let cols = [];
-            for(let c = 0; c < 5; c++) {
-                let col = [];
-                let min = ranges[c][0], max = ranges[c][1];
-                while(col.length < 5) {
-                    let rand = Math.floor(Math.random() * (max - min + 1)) + min;
-                    if(!col.includes(rand)) col.push(rand);
-                }
-                cols.push(col);
-            }
-            let card = [];
-            for(let r = 0; r < 5; r++) {
-                let row = [];
-                let c = 0;
-                while(c < 5) {
-                    row.push(r === 2 && c === 2 ? "*" : cols[c][r]);
-                    c++;
-                }
-                card.push(row);
-            }
-            return card;
+        function goToBetStep() {
+            document.getElementById('gameStepCards').classList.remove('active');
+            document.getElementById('gameStepBet').classList.add('active');
         }
 
-        function initPage1() {
-            const cardsGrid = document.getElementById('cardsGrid');
-            cardsGrid.innerHTML = '';
-            for(let i = 1; i <= 100; i++) {
-                if(!allCardsData[i]) {
-                    allCardsData[i] = generateBingoCard();
-                }
+        function loadCardsGrid() {
+            const grid = document.getElementById('cardsGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 50; i++) {
                 const btn = document.createElement('button');
-                btn.className = `card-btn`;
-                btn.id = `card-btn-${i}`;
+                btn.className = 'card-btn';
                 btn.innerText = i;
-                btn.onclick = () => {
-                    if (gameStatus === 'playing') {
-                        if (roomSelectedBoards[i]) {
-                            displayPreview(i);
-                        } else {
-                            alert('ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም! ነገር ግን የያዙትን ማየት ይችላሉ።');
-                        }
-                        return;
-                    }
-                    if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
-                        alert('ይህ ቦርድ በሌላ ተጫዋች ወይም በቦት ተይዟል!');
-                        return;
-                    }
-                    socket.emit('selectBoardTemp', { roomId: currentRoomId, boardNumber: i });
-                };
-                cardsGrid.appendChild(btn);
+                btn.id = `card-btn-${i}`;
+                btn.onclick = () => chooseCard(i);
+                grid.appendChild(btn);
             }
-            updateBoardsUI();
-            displayPreview(null);
-            updateHeaderStats();
+            socket.emit('get_cards_data', { bet: currentBet });
         }
 
-        function updateBoardsUI() {
-            for(let i = 1; i <= 100; i++) {
+        socket.on('cards_status_update', (data) => {
+            allCardsData = data.cards || {};
+            roomSelectedBoards = data.takenBoards || {};
+            
+            for (let i = 1; i <= 50; i++) {
                 const btn = document.getElementById(`card-btn-${i}`);
-                if(btn) {
-                    btn.classList.remove('active', 'taken');
-                    if(roomSelectedBoards[i]) {
-                        if(roomSelectedBoards[i] === socket.id) {
-                            btn.classList.add('active'); 
-                        } else {
-                            btn.classList.add('taken');  
-                        }
-                    } else if(selectedCardId !== null && i === selectedCardId) {
-                        btn.classList.add('active'); 
+                if (btn) {
+                    if (roomSelectedBoards[i]) {
+                        btn.className = 'card-btn taken';
+                    } else if (selectedCardId === i) {
+                        btn.className = 'card-btn active';
+                    } else {
+                        btn.className = 'card-btn';
                     }
                 }
             }
+        });
+
+        function chooseCard(cardId) {
+            if (roomSelectedBoards[cardId]) {
+                tg.showAlert("ይህ ቦርድ ሌላ ተጫዋች ወስዶታል! እባክዎ ሌላ ይምረጡ።");
+                return;
+            }
+            selectedCardId = cardId;
+            document.querySelectorAll('.card-btn').forEach(btn => {
+                let id = parseInt(btn.innerText);
+                if (!roomSelectedBoards[id]) {
+                    btn.className = (id === selectedCardId) ? 'card-btn active' : 'card-btn';
+                }
+            });
+            document.getElementById('selectedBoardNumLabel').innerText = cardId;
+            renderPreviewTicket(cardId);
         }
 
-        function displayPreview(id) {
-            selectedCardId = id;
-            document.getElementById('selectedBoardNumLabel').innerText = id !== null ? id : '--';
-            const previewTicket = document.getElementById('previewTicket');
-            previewTicket.innerHTML = '';
+        function renderPreviewTicket(cardId) {
+            const preview = document.getElementById('previewTicket');
+            preview.innerHTML = '';
+            let cardNumbers = allCardsData[cardId] || Array(25).fill(0);
             
-            if(id && allCardsData[id]) {
-                allCardsData[id].forEach(row => {
-                    row.forEach(val => {
-                        const cell = document.createElement('div');
-                        cell.className = `preview-cell ${val === '*' ? 'free' : ''}`;
-                        cell.innerText = val;
-                        previewTicket.appendChild(cell);
-                    });
-                });
-            } else {
-                for(let i = 0; i < 25; i++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'preview-cell';
-                    cell.innerText = '-';
-                    previewTicket.appendChild(cell);
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    let idx = r * 5 + c;
+                    const cell = document.div || document.createElement('div');
+                    let div = document.createElement('div');
+                    div.className = 'preview-cell';
+                    if (r === 2 && c === 2) {
+                        div.className += ' free';
+                        div.innerText = 'FREE';
+                    } else {
+                        div.innerText = cardNumbers[idx] || '';
+                    }
+                    preview.appendChild(div);
                 }
             }
         }
 
-        async function goToGame() {
-            if (gameStatus === 'playing') {
-                return alert('ጨዋታው በሂደት ላይ ነው! እባክዎ ቀጣዩ ዙር እስኪጀር ይጠብቁ።');
+        function goToGame() {
+            if (!selectedCardId) {
+                tg.showAlert("እባክዎ መጀመሪያ የጨዋታ ቦርድ (Card) ይምረጡ!");
+                return;
             }
-            if (selectedCardId === null) {
-                return alert('እባክዎ መጀመሪያ የቦርድ ቁጥር ይምረጡ!');
+            if (userWallet < currentBet) {
+                tg.showAlert("የእርስዎ የኪስ ቦርሳ ቀሪ ሂሳብ በቂ አይደለም! እባክዎ ዋሌት ውስጥ በመግባት ብር ገቢ ያድርጉ።");
+                switchTab('walletTab', document.querySelectorAll('.nav-item')[1]);
+                return;
             }
-            if (userWallet < currentBet) return alert('በቂ ባላንስ የለዎትም!');
-            
-            try {
-                const res = await fetch('/api/place-bet', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, amount: currentBet })
-                });
-                const data = await res.json();
-                if (!data.success) return alert(data.message);
-                userWallet = data.newBalance;
-            } catch (e) { return alert('የኔትወርክ ስህተት።'); }
 
-            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
+            socket.emit('join_room', {
+                userId: currentUser.id,
+                name: currentUser.first_name,
+                bet: currentBet,
+                boardId: selectedCardId
+            });
+        }
+
+        socket.on('room_joined_success', (data) => {
+            currentRoomId = data.roomId;
+            userWallet = parseFloat(data.balance);
             updateHeaderStats();
 
-            const calledGrid = document.getElementById('calledGrid');
-            calledGrid.innerHTML = '';
-            for (let row = 0; row < 15; row++) {
-                for (let col = 0; col < 5; col++) {
-                    let num = (col * 15) + (row + 1);
-                    let cell = document.createElement('div');
-                    cell.className = 'grid-num';
-                    cell.id = `grid-num-${num}`;
-                    cell.dataset.num = num;
-                    cell.innerText = num;
-                    calledGrid.appendChild(cell);
-                }
-            }
-
-            playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
-            playerMarkedBoard[2][2] = true;
-            renderInteractiveBoard();
-
-            drawnNumbers = [];
-            document.getElementById('recentCalls').innerHTML = '';
-            document.getElementById('currentCallCircle').innerText = '-';
-            document.getElementById('callCount').innerText = '0';
+            document.getElementById('gameStepCards').classList.remove('active');
+            document.getElementById('gameStepLive').classList.add('active');
+            document.getElementById('gameIdDisplay').innerText = `#${currentRoomId}`;
             document.getElementById('boardFooterText').innerText = `Board number ${selectedCardId}`;
 
-            showGameStep('gameStepLive');
-        }
+            buildCalledGrid();
+            buildUserBoard(selectedCardId);
+            updateDerashUI(data);
+        });
 
-        function renderInteractiveBoard() {
-            const userBoardGrid = document.getElementById('userBoardGrid');
-            userBoardGrid.innerHTML = '';
-            const card = allCardsData[selectedCardId];
-            if(card) {
-                card.forEach((row, r) => {
-                    row.forEach((val, c) => {
-                        let cell = document.createElement('div');
-                        cell.className = `board-cell ${val === '*' ? 'free' : ''}`;
-                        if(playerMarkedBoard[r][c]) cell.classList.add('marked');
-                        cell.innerText = val;
-                        cell.onclick = () => {
-                            if(val !== '*') {
-                                playerMarkedBoard[r][c] = !playerMarkedBoard[r][c];
-                                cell.classList.toggle('marked');
-                            }
-                        };
-                        userBoardGrid.appendChild(cell);
-                    });
-                });
+        function buildCalledGrid() {
+            const grid = document.getElementById('calledGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 75; i++) {
+                const div = document.createElement('div');
+                div.className = 'grid-num';
+                div.id = `grid-num-${i}`;
+                div.innerText = i;
+                grid.appendChild(div);
             }
         }
+
+        function buildUserBoard(cardId) {
+            const grid = document.getElementById('userBoardGrid');
+            grid.innerHTML = '';
+            let cardNumbers = allCardsData[cardId] || Array(25).fill(0);
+            playerMarkedBoard = Array(5).fill(null).map(() => Array(5).fill(false));
+            playerMarkedBoard[2][2] = true; // FREE center
+
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    let idx = r * 5 + c;
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell';
+                    if (r === 2 && c === 2) {
+                        cell.className += ' free';
+                        cell.innerText = 'FREE';
+                    } else {
+                        let num = cardNumbers[idx];
+                        cell.innerText = num;
+                        cell.id = `board-cell-${r}-${c}`;
+                        cell.onclick = () => toggleMarkCell(r, c, num, cell);
+                    }
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        function toggleMarkCell(r, c, num, cellElement) {
+            if (r === 2 && c === 2) return;
+            if (!drawnNumbers.includes(num)) {
+                tg.showAlert(`ቁጥር ${num} ገና አልተጠራም!`);
+                return;
+            }
+            playerMarkedBoard[r][c] = !playerMarkedBoard[r][c];
+            if (playerMarkedBoard[r][c]) {
+                cellElement.classList.add('marked');
+            } else {
+                cellElement.classList.remove('marked');
+            }
+        }
+
+        socket.on('game_update', (data) => {
+            updateDerashUI(data);
+            if (data.drawnNumbers) {
+                drawnNumbers = data.drawnNumbers;
+                document.getElementById('callCount').innerText = drawnNumbers.length;
+                
+                // Reset highlights
+                for (let i = 1; i <= 75; i++) {
+                    const el = document.getElementById(`grid-num-${i}`);
+                    if (el) el.className = 'grid-num';
+                }
+
+                drawnNumbers.forEach((num, index) => {
+                    const el = document.getElementById(`grid-num-${num}`);
+                    if (el) {
+                        if (index === drawnNumbers.length - 1) {
+                            el.className = 'grid-num called latest-call';
+                        } else {
+                            el.className = 'grid-num called';
+                        }
+                    }
+                });
+
+                if (drawnNumbers.length > 0) {
+                    let latest = drawnNumbers[drawnNumbers.length - 1];
+                    let circle = document.getElementById('currentCallCircle');
+                    circle.innerText = latest;
+                    circle.classList.remove('animate');
+                    void circle.offsetWidth;
+                    circle.classList.add('animate');
+                    speakNumber(String(latest));
+
+                    const recentBox = document.getElementById('recentCalls');
+                    recentBox.innerHTML = '';
+                    drawnNumbers.slice(-5).reverse().forEach(n => {
+                        let ball = document.createElement('div');
+                        ball.className = 'recent-ball';
+                        ball.innerText = n;
+                        recentBox.appendChild(ball);
+                    });
+                }
+            }
+        });
+
+        socket.ion = socket.on; // fallback helper if needed
+        socket.on('timer_update', (data) => {
+            document.getElementById('countdownText').innerText = `${data.timeLeft}s`;
+        });
 
         function checkPlayerBingo() {
-            const card = allCardsData[selectedCardId];
-            let winningLine = null;
-            const isValidMark = (r, c) => {
-                let num = card[r][c];
-                return (num === '*' || drawnNumbers.includes(num)) && playerMarkedBoard[r][c];
-            };
-
-            for(let r=0; r<5; r++) {
-                if([0,1,2,3,4].every(c => isValidMark(r, c))) winningLine = { type: 'row', index: r };
-            }
-            for(let c=0; c<5; c++) {
-                if([0,1,2,3,4].every(r => isValidMark(r, c))) winningLine = { type: 'col', index: c };
-            }
-            if([0,1,2,3,4].every(i => isValidMark(i, i))) winningLine = { type: 'diag1', index: 0 };
-            if([0,1,2,3,4].every(i => isValidMark(i, 4-i))) winningLine = { type: 'diag2', index: 0 };
-
-            if(winningLine) {
-                let winAmount = currentDerashAmount > 0 ? currentDerashAmount : (currentBet * 15 * 0.90);
-                socket.emit('claimBingo', { identifier: currentUser.id, name: currentUser.first_name, winAmount, roomId: currentRoomId, boardNumber: selectedCardId, winningLine });
-            } else {
-                alert("ገና አልሞላም! እባክዎን በደንብ ያረጋግጡ።");
-            }
+            socket.emit('claim_bingo', {
+                roomId: currentRoomId,
+                userId: currentUser.id,
+                boardId: selectedCardId,
+                markedMatrix: playerMarkedBoard
+            });
         }
+
+        socket.on('bingo_result', (data) => {
+            if (data.success) {
+                document.getElementById('winnerSubText').innerText = `${data.winnerName} has won the game!`;
+                document.getElementById('modalWinnerName').innerText = data.winnerName;
+                document.getElementById('modalBoardNumText').innerText = `Board number ${selectedCardId}`;
+                document.getElementById('modalPrizeText').innerText = `(${data.prize} ETB)`;
+                
+                const modalGrid = document.getElementById('modalBoardGrid');
+                modalGrid.innerHTML = '';
+                let cardNumbers = allCardsData[selectedCardId] || Array(25).fill(0);
+                for (let r = 0; r < 5; r++) {
+                    for (let c = 0; c < 5; c++) {
+                        let div = document.createElement('div');
+                        div.className = 'modal-cell';
+                        if (r === 2 && c === 2) {
+                            div.className += ' win-green';
+                            div.innerText = 'FREE';
+                        } else {
+                            div.innerText = cardNumbers[r * 5 + c];
+                            if (playerMarkedBoard[r][c]) div.className += ' win-orange';
+                        }
+                        modalGrid.appendChild(div);
+                    }
+                }
+                document.getElementById('winnerModal').style.display = 'flex';
+            } else {
+                tg.showAlert(data.message || "የእርስዎ ቢንጎ ትክክል አይደለም! እባክዎ እንደገና ያረጋግጡ።");
+            }
+        });
 
         function leaveGame() {
-            document.getElementById('winnerModal').style.display = 'none';
+            socket.emit('leave_room', { roomId: currentRoomId, userId: currentUser.id });
+            document.getElementById('gameStepLive').classList.remove('active');
+            document.getElementById('gameStepBet').classList.add('active');
             selectedCardId = null;
-            showGameStep('gameStepBet');
-            fetchUserData();
+            currentRoomId = null;
         }
 
-        function closeModal(id) { 
-            document.getElementById(id).style.display = 'none'; 
-            leaveGame(); 
-        }
-
-        async function submitDeposit() {
-            const amount = document.getElementById('depAmount').value;
-            const smsText = document.getElementById('depSMS').value;
-            if (!amount || !smsText) return alert('እባክዎን ሁሉንም ያሟሉ!');
-            
-            try {
-                const res = await fetch('/api/request-transaction', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'DEPOSIT', amount, sms: smsText })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    alert(`የዲፖዚት ጥያቄዎ ተልኳል! TxID: ${data.tx_id}`);
-                    document.getElementById('depAmount').value = '';
-                    document.getElementById('depSMS').value = '';
-                } else {
-                    alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
-                }
-            } catch(e) { alert('ስህተት ተፈጥሯል።'); }
-        }
-
-        async function submitWithdraw() {
-            const amount = document.getElementById('withdrawAmount').value;
-            const method = document.getElementById('withdrawMethod').value;
-            const details = document.getElementById('withdrawAccountDetails').value;
-
-            if (!amount || !details) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
-            if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
-
-            try {
-                const res = await fetch('/api/request-transaction', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, method, details })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    alert(`የዊዝድሮው ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
-                    document.getElementById('withdrawAmount').value = '';
-                    document.getElementById('withdrawAccountDetails').value = '';
-                } else {
-                    alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
-                }
-            } catch(e) { alert('ሰርቨር ላይ ስህተት ተፈጥሯል።'); }
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            leaveGame();
         }
 
         function requestPhoneNumber() {
             if (tg.requestContact) {
-                tg.requestContact(async (shared, contact) => {
-                    if (shared && contact) {
-                        await fetch('/api/update-phone', {
+                tg.requestContact((shared, contact) => {
+                    if (shared) {
+                        fetch('/api/update-phone', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: `{"identifier":"${currentUser.id}","phone":"${contact.phone_number}"}`
+                            body: JSON.stringify({ identifier: currentUser.id, phone: contact.phone_number })
+                        }).then(res => res.json()).then(data => {
+                            if (data.success) {
+                                document.getElementById('profPhone').innerText = contact.phone_number;
+                                tg.showAlert("ስልክ ቁጥርዎ በተሳካ ሁኔታ ተመዝግቧል!");
+                            }
                         });
-                        alert('ስልክ ቁጥርዎ ተመዝግቧል!');
-                        fetchUserData();
                     }
                 });
             } else {
-                alert('የቴሌግራም አፕሊኬሽን ድጋፍ አያስፈልግም።');
+                tg.showAlert("ይህ ባህሪ በቴሌብር/ቴሌግራም አፕ ውስጥ ብቻ ይሰራል።");
+            }
+        }
+
+        async function submitDeposit() {
+            let amount = document.getElementById('depAmount').value;
+            let sms = document.getElementById('depSMS').value;
+            if (!amount || !sms) {
+                tg.showAlert("እባክዎ የብር መጠን እና የቴሌብር SMS ሁለቱንም ያስገቡ!");
+                return;
+            }
+            try {
+                let res = await fetch('/api/deposit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: currentUser.id, amount: parseFloat(amount), smsText: sms })
+                });
+                let data = await res.json();
+                if (data.success) {
+                    userWallet = parseFloat(data.newBalance);
+                    updateHeaderStats();
+                    tg.showAlert("ገንዘብ ገቢ ማድረጉ በተሳካ ሁኔታ ተጠናቋል!");
+                    document.getElementById('depAmount').value = '';
+                    document.getElementById('depSMS').value = '';
+                } else {
+                    tg.showAlert(data.message || "ክፍያውን ማረጋገጥ አልተቻለም።");
+                }
+            } catch (e) {
+                tg.showAlert("የኔትወርክ ስህተት አጋጥሟል። እባክዎ እንደገና ይሞክሩ።");
+            }
+        }
+
+        async function submitWithdraw() {
+            let method = document.getElementById('withdrawMethod').value;
+            let amount = document.getElementById('withdrawAmount').value;
+            let details = document.getElementById('withdrawAccountDetails').value;
+            if (!amount || !details) {
+                tg.showAlert("እባክዎ የሚወጣውን የብር መጠን እና የአካውንት መረጃ ይሙሉ!");
+                return;
+            }
+            try {
+                let res = await fetch('/api/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: currentUser.id, method, amount: parseFloat(amount), accountDetails: details })
+                });
+                let data = await res.json();
+                if (data.success) {
+                    userWallet = parseFloat(data.newBalance);
+                    updateHeaderStats();
+                    tg.showAlert("የገንዘብ ማውጣት ጥያቄዎ ተቀባይነት አግኝቷል!");
+                    document.getElementById('withdrawAmount').value = '';
+                    document.getElementById('withdrawAccountDetails').value = '';
+                } else {
+                    tg.showAlert(data.message || "ጥያቄውን ማስተናገድ አልተቻለም።");
+                }
+            } catch (e) {
+                tg.showAlert("የኔትወርክ ስህተት አጋጥሟል።");
             }
         }
     </script>
