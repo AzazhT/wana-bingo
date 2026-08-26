@@ -373,7 +373,8 @@ if (bot) {
         let depositMsg = `💳 **ገንዘብ ገቢ ማድረጊያ (Deposit)**\n\n` +
                          `ገንዘብ ገቢ ለማድረግ የሚከተሉትን አካውንቶች ይጠቀሙ፦\n\n` +
                          `🏦 **ንግድ ባንክ (CBE):** 1000XXXXXXXXX\n` +
-                         `📱 **ቴሌብር (Telebirr):** 0915503379 (Mulualem)\n\n` +
+                         `📱 **ቴሌብር (Telebirr):** 09XXXXXXXX\n` +
+                         `👤 **ስም:** Wana Bingo\n\n` +
                          `💵 **እባክዎ ማስገባት የሚፈልጉትን የብር መጠን በቁጥር ይጻፉ፦**\n*(ለማቋረጥ /cancel ይበሉ)*`;
         bot.sendMessage(chatId, depositMsg, { parse_mode: 'Markdown' });
     };
@@ -408,7 +409,7 @@ if (bot) {
         let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
                           `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
                           `💬 **ቴሌግራም አድሚን:** @AdminUsername\n` +
-                          `📱 **ስልክ ቁጥር:** +251915503379`;
+                          `📱 **ስልክ ቁጥር:** +2519XXXXXXXX`;
         
         bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
     });
@@ -617,7 +618,7 @@ if (bot) {
                 });
 
                 try {
-                    await bot.sendMessage(identifier, `❌ የ ${tx_id} የ ${type} ጥያቄዎ አልፀደቀም፤ የተያዘው ብር ወደ ባላንስዎ ተመልሷል።`, { parse_mode: 'Markdown' });
+                    await bot.sendMessage(identifier, `❌ የ ${tx_id} የ ${type} ጥያቄዎ አልፀደቀም።`, { parse_mode: 'Markdown' });
                 } catch (e) {}
             }
             await bot.answerCallbackQuery(callbackQuery.id, { text: 'ተከናውኗል!' });
@@ -674,7 +675,6 @@ function getOrCreateLobby(betAmount) {
             status: 'waiting', 
             players: new Set(),
             playerNames: {},
-            playerIdentifiers: {},
             reservedNumbers: {}, 
             selectedBoards: {}, 
             tempSelections: {},  
@@ -692,6 +692,9 @@ function getOrCreateLobby(betAmount) {
 function resetRoomForNextGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
+
+    if (room.gameInterval) clearInterval(room.gameInterval);
+    if (room.timer) clearInterval(room.timer);
 
     room.drawnNumbers = [];
     room.reservedNumbers = {};
@@ -732,7 +735,7 @@ function startGlobalLobbyCountdown(roomId) {
             do {
                 randomBoard = Math.floor(Math.random() * totalPossibleBoards) + 1;
                 attempts++;
-            } while (room.selectedBoards[randomBoard] && attempts < 50);
+            } while (room.selectedBoards[randomBoard] && attempts < 20);
 
             if (!room.selectedBoards[randomBoard]) {
                 let botId = `BOT_${Math.floor(Math.random() * 10000)}`;
@@ -792,15 +795,22 @@ function findWinningLine(card, drawnNums) {
     return null;
 }
 
-function generateServerBingoCard() {
+function seededRandom(seed) {
+    let x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+}
+
+function generateServerBingoCard(seed) {
     let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
     let cols = [];
+    let currentSeed = seed;
+
     for(let c = 0; c < 5; c++) {
         let col = [];
         let min = ranges[c][0], max = ranges[c][1];
         while(col.length < 5) {
-            let rand = Math.floor(Math.random() * (max - min + 1)) + min;
-            if(!col.includes(rand)) col.push(rand);
+            let randVal = Math.floor(seededRandom(currentSeed++) * (max - min + 1)) + min;
+            if(!col.includes(randVal)) col.push(randVal);
         }
         cols.push(col);
     }
@@ -835,11 +845,16 @@ function startRoomGame(roomId) {
     for (let bNum in room.selectedBoards) {
         let ownerId = room.selectedBoards[bNum];
         if (ownerId && ownerId.startsWith('BOT_')) {
-            roomBotCards[ownerId] = { boardNumber: bNum, card: generateServerBingoCard() };
+            roomBotCards[ownerId] = { boardNumber: bNum, card: generateServerBingoCard(bNum * 999) };
         }
     }
 
     room.gameInterval = setInterval(() => {
+        if (room.status !== 'playing') {
+            clearInterval(room.gameInterval);
+            return;
+        }
+
         if (room.drawnNumbers.length >= 75) {
             clearInterval(room.gameInterval);
             room.status = 'ended';
@@ -939,7 +954,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('startPlayerGame', (data) => {
-        const { roomId, boardNumber, name, identifier } = data;
+        const { roomId, boardNumber, name } = data;
         let room = activeRooms[roomId];
 
         if (room && room.status === 'playing') {
@@ -965,7 +980,6 @@ io.on('connection', (socket) => {
 
             room.selectedBoards[boardNumber] = socket.id;
             room.playerNames[socket.id] = name || 'Player';
-            if(identifier) room.playerIdentifiers[socket.id] = identifier;
 
             if (room.tempSelections && room.tempSelections[socket.id]) {
                 delete room.tempSelections[socket.id];
@@ -1018,24 +1032,13 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', async () => {
+    socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
         for (let roomId in activeRooms) {
             let room = activeRooms[roomId];
             if (room.players.has(socket.id)) {
-                
-                // ከተጫዋቹ በWaiting ጊዜ የተያዘውን ገንዘብ Refund ማድረግ
-                if (room.status === 'waiting' && room.playerIdentifiers[socket.id]) {
-                    try {
-                        let refundId = room.playerIdentifiers[socket.id];
-                        let betAmount = parseFloat(room.betAmount);
-                        await pool.query('UPDATE users SET balance = balance + $1 WHERE identifier = $2', [betAmount, refundId]);
-                    } catch(e) { console.error('Refund Error:', e); }
-                }
-
                 room.players.delete(socket.id);
                 delete room.playerNames[socket.id];
-                delete room.playerIdentifiers[socket.id];
                 
                 if (room.tempSelections && room.tempSelections[socket.id]) {
                     delete room.tempSelections[socket.id];
