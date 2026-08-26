@@ -543,16 +543,14 @@
         }
 
         function speakNumber(textToSpeak) {
-            try {
-                if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                    let utterance = new SpeechSynthesisUtterance(textToSpeak);
-                    utterance.rate = 1.0;
-                    utterance.pitch = 1.1;
-                    utterance.lang = 'en-US'; 
-                    window.speechSynthesis.speak(utterance);
-                }
-            } catch(e) { console.log('Speech synthesis unsupported'); }
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                let utterance = new SpeechSynthesisUtterance(textToSpeak);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.1;
+                utterance.lang = 'en-US'; 
+                window.speechSynthesis.speak(utterance);
+            }
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
@@ -761,7 +759,6 @@
             
             renderModalWinningBoard(data.boardNumber || selectedCardId, data.winningLine);
             document.getElementById('winnerModal').style.display = 'flex';
-            fetchUserData();
         });
 
         function renderModalWinningBoard(boardNum, winningLine) {
@@ -840,15 +837,23 @@
             }
         }
 
-        function generateBingoCard() {
+        // Deterministic Pseudo Random Number Generator for static reproducible Bingo Cards
+        function seededRandom(seed) {
+            let x = Math.sin(seed++) * 10000;
+            return x - Math.floor(x);
+        }
+
+        function generateBingoCard(seed) {
             let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
             let cols = [];
+            let currentSeed = seed;
+
             for(let c = 0; c < 5; c++) {
                 let col = [];
                 let min = ranges[c][0], max = ranges[c][1];
                 while(col.length < 5) {
-                    let rand = Math.floor(Math.random() * (max - min + 1)) + min;
-                    if(!col.includes(rand)) col.push(rand);
+                    let randVal = Math.floor(seededRandom(currentSeed++) * (max - min + 1)) + min;
+                    if(!col.includes(randVal)) col.push(randVal);
                 }
                 cols.push(col);
             }
@@ -870,7 +875,7 @@
             cardsGrid.innerHTML = '';
             for(let i = 1; i <= 100; i++) {
                 if(!allCardsData[i]) {
-                    allCardsData[i] = generateBingoCard();
+                    allCardsData[i] = generateBingoCard(i * 999);
                 }
                 const btn = document.createElement('button');
                 btn.className = `card-btn`;
@@ -881,12 +886,12 @@
                         if (roomSelectedBoards[i]) {
                             displayPreview(i);
                         } else {
-                            alert('ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም! ነገር ግን የያዙትን ማየት ይችላሉ።');
+                            alert('ጨዋታው በሂደት ላይ ስለሆነ አዲስ ቦርድ መምረጥ አይችሉም!');
                         }
                         return;
                     }
                     if (roomSelectedBoards[i] && roomSelectedBoards[i] !== socket.id) {
-                        alert('ይህ ቦርድ በሌላ ተጫዋች ወይም በቦት ተይዟል!');
+                        alert('ይህ ቦርድ በሌላ ተጫዋች ተይዟል!');
                         return;
                     }
                     socket.emit('selectBoardTemp', { roomId: currentRoomId, boardNumber: i });
@@ -943,7 +948,7 @@
 
         async function goToGame() {
             if (gameStatus === 'playing') {
-                return alert('ጨዋታው በሂደት ላይ ነው! እባክዎ ቀጣዩ ዙር እስኪጀር ይጠብቁ።');
+                return alert('ጨዋታው በሂደት ላይ ነው! እባክዎ ቀጣዩ ዙር እስኪጀመር ይጠብቁ።');
             }
             if (selectedCardId === null) {
                 return alert('እባክዎ መጀመሪያ የቦርድ ቁጥር ይምረጡ!');
@@ -961,7 +966,7 @@
                 userWallet = data.newBalance;
             } catch (e) { return alert('የኔትወርክ ስህተት።'); }
 
-            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name, identifier: currentUser.id });
+            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
             updateHeaderStats();
 
             const calledGrid = document.getElementById('calledGrid');
@@ -1092,7 +1097,6 @@
                     alert(`የወጪ ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('withdrawAmount').value = '';
                     document.getElementById('withdrawAccountDetails').value = '';
-                    fetchUserData();
                 } else {
                     alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
                 }
