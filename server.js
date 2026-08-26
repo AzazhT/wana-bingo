@@ -238,13 +238,14 @@ if (bot) {
                 [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }],
                 [
                     { text: '💳 Deposit', callback_data: 'btn_deposit' },
-                    { text: '💸 Withdraw', callback_data: 'btn_withdraw' }
+                    { text: '💸 Withdraw', callback_data: 'btn_withdraw' },
+                     { text: "Check Balance 💰" }, { text: "Contact Us 📞" }]
                 ]
             ]
         };
 
         let keyboardRows = [
-            [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }],
+           
             [{ text: "📲 Share Contact", request_contact: true }]
         ];
 
