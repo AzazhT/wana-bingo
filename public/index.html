@@ -33,7 +33,6 @@
             overflow-x: hidden;
         }
 
-        /* 🌟 የቁጥሮች ፍሰት (Falling Numbers Pattern) ዲዛይን */
         .falling-numbers-bg {
             position: fixed;
             top: 0;
@@ -307,7 +306,6 @@
             line-height: 1.5;
         }
 
-        /* 🌟 የተስተካከለው የስልክ ቁጥር ማጋሪያ CSS */
         .btn-share-phone {
             background: linear-gradient(135deg, #0088cc, #0284c7);
             color: white;
@@ -456,7 +454,6 @@
             </div>
         </div>
 
-        <!-- 🌟 የተስተካከለው የProfile ክፍል -->
         <div id="profileTab" class="tab-content">
             <div class="card">
                 <h3>👤 የተጫዋች መረጃ</h3>
@@ -580,7 +577,7 @@
                     
                     if (data.user.phone) {
                         phoneDisplay.innerText = data.user.phone;
-                        if(phoneBtn) phoneBtn.style.display = 'none'; // ከተመዘገበ ቁልፉን መሰወር
+                        if(phoneBtn) phoneBtn.style.display = 'none';
                     } else {
                         phoneDisplay.innerText = 'አልተመዘገበም';
                         if(phoneBtn) phoneBtn.style.display = 'block';
@@ -1089,7 +1086,7 @@
                 });
                 const data = await res.json();
                 if(data.success) {
-                    alert(`የዊዝድሮው ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
+                    alert(`የወጪ ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('withdrawAmount').value = '';
                     document.getElementById('withdrawAccountDetails').value = '';
                 } else {
@@ -1098,7 +1095,6 @@
             } catch(e) { alert('ሰርቨር ላይ ስህተት ተፈጥሯል።'); }
         }
 
-        /* 🌟 የተስተካከለው የ Share Contact JavaScript Logic */
         function requestPhoneNumber() {
             if (tg && tg.requestContact) {
                 tg.requestContact(async (shared, contact) => {
@@ -1117,7 +1113,7 @@
                             const data = await res.json();
                             if(data.success) {
                                 alert('✅ ስልክ ቁጥርዎ በተሳካ ሁኔታ ተመዝግቧል!');
-                                fetchUserData(); // ፕሮፋይሉን ወዲያውኑ አፕዴት ለማድረግ
+                                fetchUserData();
                             } else {
                                 alert('ስልክ ቁጥሩን መመዝገብ አልተቻለም።');
                             }
