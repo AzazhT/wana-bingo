@@ -236,13 +236,14 @@ if (bot) {
         const inlineButtons = {
             inline_keyboard: [
                 [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }]
+                  [{ text: "Deposit" }, { text: "Withdraw" }],
+            [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }]
             ]
         };
 
         // እዚህ ጋር የተስተካከለው የከስተመር እና የአድሚን ኪቦርድ አቀማመጥ ተቀምጧል
         let keyboardRows = [
-            [{ text: "Deposit" }, { text: "Withdraw" }],
-            [{ text: "Check Balance 💰" }, { text: "Contact Us 📞" }]
+    
         ];
 
         if (chatId.toString() === ADMIN_CHAT_ID.toString()) {
