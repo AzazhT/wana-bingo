@@ -239,7 +239,6 @@
         .called-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; flex: 1; overflow-y: auto; }
         .grid-num { background: rgba(0, 0, 0, 0.4); color: var(--text-sub); font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.02); }
         
-        /* 🌟 የተጠሩት የቀደሙት ቁጥሮች (ደብዘዝ ያሉ) */
         .grid-num.called { 
             background: rgba(180, 40, 60, 0.4) !important; 
             color: #d1d5db !important; 
@@ -247,7 +246,6 @@
             border: 1px solid rgba(255, 255, 255, 0.1); 
         }
         
-        /* 🌟 አሁን የተጠራችው ቁጥር (በኮከብ ድምቅ ያለች - ያለ አኒሜሽን) */
         .grid-num.called.latest-call { 
             background: linear-gradient(135deg, #f59e0b, #d97706) !important; 
             color: #000000 !important; 
@@ -307,6 +305,25 @@
             border-radius: 4px;
             margin: 8px 0;
             line-height: 1.5;
+        }
+
+        /* 🌟 የተስተካከለው የስልክ ቁጥር ማጋሪያ CSS */
+        .btn-share-phone {
+            background: linear-gradient(135deg, #0088cc, #0284c7);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 800;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 12px;
+            box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);
+            transition: all 0.2s;
+        }
+        .btn-share-phone:hover {
+            opacity: 0.9;
         }
     </style>
 </head>
@@ -439,13 +456,17 @@
             </div>
         </div>
 
+        <!-- 🌟 የተስተካከለው የProfile ክፍል -->
         <div id="profileTab" class="tab-content">
             <div class="card">
                 <h3>👤 የተጫዋች መረጃ</h3>
                 <p style="margin-top: 12px;">ስም: <b id="profName">--</b></p>
                 <p style="margin-top: 8px;">ID: <b id="profId">--</b></p>
-                <p style="margin-top: 8px;">ስልክ: <b id="profPhone">--</b></p>
-                <button class="btn" style="margin-top: 16px;" onclick="requestPhoneNumber()">ስልክ ቁጥር አጋራ (Share Phone)</button>
+                <p style="margin-top: 8px;">📱 ስልክ ቁጥር: <b id="profPhone">አልተመዘገበም</b></p>
+                
+                <button class="btn-share-phone" id="btnSharePhone" onclick="requestPhoneNumber()">
+                    📲 ስልክ ቁጥር አጋራ (Share Phone)
+                </button>
             </div>
         </div>
     </div>
@@ -479,12 +500,14 @@
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        if(tg) {
+            tg.ready();
+            tg.expand();
+        }
 
         const socket = io();
-        const telegramUser = tg.initDataUnsafe?.user;
+        const telegramUser = tg ? tg.initDataUnsafe?.user : null;
         let currentUser = {
             id: telegramUser ? String(telegramUser.id) : "test_user_" + Math.floor(Math.random()*1000),
             first_name: telegramUser ? (telegramUser.first_name + (telegramUser.last_name ? ' ' + telegramUser.last_name : '')) : "Bingo Player",
@@ -549,11 +572,21 @@
                 if(data.success && data.user) {
                     userWallet = parseFloat(data.user.balance);
                     updateHeaderStats();
-                    document.getElementById('profName').innerText = data.user.name;
-                    document.getElementById('profId').innerText = data.user.identifier;
-                    document.getElementById('profPhone').innerText = data.user.phone || 'አልተጋራም';
+                    document.getElementById('profName').innerText = data.user.name || currentUser.first_name;
+                    document.getElementById('profId').innerText = data.user.identifier || currentUser.id;
+                    
+                    const phoneDisplay = document.getElementById('profPhone');
+                    const phoneBtn = document.getElementById('btnSharePhone');
+                    
+                    if (data.user.phone) {
+                        phoneDisplay.innerText = data.user.phone;
+                        if(phoneBtn) phoneBtn.style.display = 'none'; // ከተመዘገበ ቁልፉን መሰወር
+                    } else {
+                        phoneDisplay.innerText = 'አልተመዘገበም';
+                        if(phoneBtn) phoneBtn.style.display = 'block';
+                    }
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error('Error fetching user data:', e); }
         }
 
         function updateDerashUI(data) {
@@ -683,7 +716,6 @@
 
         socket.on('boardSelectError', (data) => { alert(data.message); });
 
-        /* 🌟 የተስተካከለው ቁጥር ጥሪ Logic */
         socket.on('numberDrawn', (data) => {
             let rand = data.number;
             drawnNumbers = data.drawnHistory || [];
@@ -697,7 +729,6 @@
             const callCircle = document.getElementById('currentCallCircle');
             callCircle.innerText = callText;
 
-            // የቀደሙትን ቁጥሮች ወደ ተራ ደብዘዝ ያለ "called" መቀየር
             document.querySelectorAll('.grid-num').forEach(el => {
                 el.classList.remove('latest-call');
                 if(el.dataset.num) {
@@ -710,7 +741,6 @@
                 if (cell) cell.classList.add('called');
             });
 
-            // 🌟 አዲሷ የተጠራችዋ ቁጥር ድምቅ ባለች ቢጫ/ብርቱካናማ ከለር እና በኮከብ ጎልታ እንድትታይ ማድረግ
             let latestCell = document.getElementById(`grid-num-${rand}`);
             if (latestCell) {
                 latestCell.classList.add('called', 'latest-call');
@@ -1068,21 +1098,37 @@
             } catch(e) { alert('ሰርቨር ላይ ስህተት ተፈጥሯል።'); }
         }
 
+        /* 🌟 የተስተካከለው የ Share Contact JavaScript Logic */
         function requestPhoneNumber() {
-            if (tg.requestContact) {
+            if (tg && tg.requestContact) {
                 tg.requestContact(async (shared, contact) => {
                     if (shared && contact) {
-                        await fetch('/api/update-phone', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: `{"identifier":"${currentUser.id}","phone":"${contact.phone_number}"}`
-                        });
-                        alert('ስልክ ቁጥርዎ ተመዝግቧል!');
-                        fetchUserData();
+                        const phoneNumber = contact.responseUnsafe?.contact?.phone_number || contact.phone_number;
+                        
+                        try {
+                            const res = await fetch('/api/update-phone', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    identifier: currentUser.id.toString(),
+                                    phone: phoneNumber
+                                })
+                            });
+                            const data = await res.json();
+                            if(data.success) {
+                                alert('✅ ስልክ ቁጥርዎ በተሳካ ሁኔታ ተመዝግቧል!');
+                                fetchUserData(); // ፕሮፋይሉን ወዲያውኑ አፕዴት ለማድረግ
+                            } else {
+                                alert('ስልክ ቁጥሩን መመዝገብ አልተቻለም።');
+                            }
+                        } catch(e) {
+                            console.error(e);
+                            alert('የሰርቨር ግንኙነት ስህተት አጋጥሟል።');
+                        }
                     }
                 });
             } else {
-                alert('የቴሌግራም አፕሊኬሽን ድጋፍ አያስፈልግም።');
+                alert('እባክዎን ከቴሌግራም መተግበሪያ ተጠቅመው ይሞክሩ።');
             }
         }
     </script>
