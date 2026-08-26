@@ -70,7 +70,6 @@ initializeDatabase();
 
 app.get('/api/admin/users', async (req, res) => {
     try {
-        // ✅ 1ኛ ማስተካከያ፦ "id" በሚለው ምትክ "identifier" ተተክቷል
         const usersRes = await pool.query(`
             SELECT identifier, name, username, phone, balance, created_at 
             FROM users 
@@ -224,6 +223,63 @@ if (bot) {
         { command: 'cancel', description: '❌ ሂደቱን ሰርዝ' }
     ]);
 
+    // 👑 1. አድሚን ብቻ የዩዘር ባላንስ እንዲጨምር (ምሳሌ፦ /addbalance 686733543 100)
+    bot.onText(/\/addbalance (\d+) (\d+(\.\d+)?)/, async (msg, match) => {
+        const chatId = msg.chat.id;
+        if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
+
+        const targetUserIdentifier = match[1];
+        const amountToAdd = parseFloat(match[2]);
+
+        try {
+            const userRes = await pool.query('SELECT name, balance FROM users WHERE identifier = $1', [targetUserIdentifier]);
+            if (userRes.rows.length === 0) {
+                return bot.sendMessage(chatId, `❌ ID \`${targetUserIdentifier}\` ያለው ተጠቃሚ አልተገኘም!`, { parse_mode: 'Markdown' });
+            }
+
+            let newBalance = parseFloat(userRes.rows[0].balance) + amountToAdd;
+            await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, targetUserIdentifier]);
+
+            bot.sendMessage(chatId, `✅ የ **${userRes.rows[0].name}** ባላንስ በ **+${amountToAdd}** ብር ጨምሯል።\n💰 አዲስ ባላንስ፦ **${newBalance}** ETB`, { parse_mode: 'Markdown' });
+
+            try {
+                await bot.sendMessage(targetUserIdentifier, `🎁 **${amountToAdd} ብር** ወደ ባላንስዎ ተጨምሯል! \n💰 የአሁኑ ባላንስዎ፦ **${newBalance}** ETB`, { parse_mode: 'Markdown' });
+            } catch (e) {}
+
+        } catch (err) {
+            console.error(err);
+            bot.sendMessage(chatId, 'ባላንስ በሚቀየርበት ጊዜ ስህተት ተፈጥሯል።');
+        }
+    });
+
+    // 👑 2. አድሚን ብቻ የዩዘር ባላንስ እንዲቀንስ (ምሳሌ፦ /deductbalance 686733543 50)
+    bot.onText(/\/deductbalance (\d+) (\d+(\.\d+)?)/, async (msg, match) => {
+        const chatId = msg.chat.id;
+        if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
+
+        const targetUserIdentifier = match[1];
+        const amountToDeduct = parseFloat(match[2]);
+
+        try {
+            const userRes = await pool.query('SELECT name, balance FROM users WHERE identifier = $1', [targetUserIdentifier]);
+            if (userRes.rows.length === 0) {
+                return bot.sendMessage(chatId, `❌ ID \`${targetUserIdentifier}\` ያለው ተጠቃሚ አልተገኘም!`, { parse_mode: 'Markdown' });
+            }
+
+            let currentBalance = parseFloat(userRes.rows[0].balance);
+            let newBalance = currentBalance - amountToDeduct;
+            if (newBalance < 0) newBalance = 0; // ባላንስ ከ0 በታች እንዳይወርድ
+
+            await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, targetUserIdentifier]);
+
+            bot.sendMessage(chatId, `📉 የ **${userRes.rows[0].name}** ባላንስ በ **-${amountToDeduct}** ብር ተቀንሷል።\n💰 አዲስ ባላንስ፦ **${newBalance}** ETB`, { parse_mode: 'Markdown' });
+
+        } catch (err) {
+            console.error(err);
+            bot.sendMessage(chatId, 'ባላንስ በሚቀየርበት ጊዜ ስህተት ተፈጥሯል።');
+        }
+    });
+
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
         const name = msg.from.first_name;
@@ -283,7 +339,6 @@ if (bot) {
         if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
 
         try {
-            // ✅ 2ኛ ማስተካከያ፦ "ORDER BY id DESC" በ "ORDER BY identifier DESC" ተተክቷል
             const usersRes = await pool.query('SELECT name, username, identifier, phone, balance FROM users ORDER BY identifier DESC LIMIT 20');
             const totalCountRes = await pool.query('SELECT COUNT(*) FROM users');
             
