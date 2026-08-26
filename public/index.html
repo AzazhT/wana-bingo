@@ -147,7 +147,6 @@
         .header-box h2 { font-size: 19px; margin-bottom: 6px; color: var(--accent-amber); font-weight: 900; }
         .header-box p { font-size: 13px; color: var(--text-sub); }
         
-        /* 🌟 Welcome / Entertainment Section */
         .welcome-promo-box {
             background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(14, 165, 233, 0.15));
             border: 1px solid rgba(168, 85, 247, 0.3);
@@ -1023,7 +1022,6 @@
             leaveGame(); 
         }
 
-        // 🌟 የዲፖዚት (Deposit) ክፍያ ጥያቄ መላኪያ ፋንክሽን
         async function submitDeposit() {
             const amount = document.getElementById('depAmount').value;
             const smsText = document.getElementById('depSMS').value;
@@ -1046,28 +1044,25 @@
             } catch(e) { alert('ስህተት ተፈጥሯል።'); }
         }
 
-        // 🌟 የዊዝድሮ (Withdraw) ገንዘብ ማውጫ ጥያቄ መላኪያ ፋንክሽን
         async function submitWithdraw() {
             const amount = document.getElementById('withdrawAmount').value;
             const method = document.getElementById('withdrawMethod').value;
-            const detailsVal = document.getElementById('withdrawAccountDetails').value;
-            const details = `${method} - ${detailsVal}`;
+            const details = document.getElementById('withdrawAccountDetails').value;
 
-            if (!amount || !detailsVal) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
+            if (!amount || !details) return alert('እባክዎን የብር መጠን እና የአካውንት መረጃ በትክክል ይሙሉ!');
             if (parseFloat(amount) > userWallet) return alert('በዋሌትዎ ውስጥ ካለው ቀሪ ሂሳብ በላይ ማውጣት አይችሉም!');
 
             try {
                 const res = await fetch('/api/request-transaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, details })
+                    body: JSON.stringify({ identifier: currentUser.id, type: 'WITHDRAW', amount, method, details })
                 });
                 const data = await res.json();
                 if(data.success) {
                     alert(`የዊዝድሮው ጥያቄዎ በအောင်မြင်ነት ተልኳል! TxID: ${data.tx_id}`);
                     document.getElementById('withdrawAmount').value = '';
                     document.getElementById('withdrawAccountDetails').value = '';
-                    fetchUserData(); // ቀሪ ባላንስን ወዲያውኑ ማስተካከል
                 } else {
                     alert(data.message || 'ጥያቄውን መላክ አልተቻለም።');
                 }
