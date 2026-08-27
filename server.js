@@ -474,7 +474,7 @@ if (bot) {
         let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
                           `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
                           `💬 **ቴሌግራም አድሚን:** @Wana21_bot\n` +
-                          `📱 **ስልክ ቁጥር:** +251911122020`;
+                          `📱 **ስልክ ቁጥር:** +251911132020`;
         
         bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
     });
