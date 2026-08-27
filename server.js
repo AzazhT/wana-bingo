@@ -438,8 +438,8 @@ if (bot) {
         userStates[chatId] = { step: 'AWAITING_DEPOSIT_AMOUNT' };
         let depositMsg = `💳 **ገንዘብ ገቢ ማድረጊያ (Deposit)**\n\n` +
                          `ገንዘብ ገቢ ለማድረግ የሚከተለውን አካውንት ይጠቀሙ፦\n\n` +
-                         `📱 **ቴሌብር (Telebirr):** 0915503379\n` +
-                         `👤 **ስም:** Mulualem\n\n` +
+                         `📱 **ቴሌብር (Telebirr):** 0901494600\n` +
+                         `👤 **ስም:** Anisha \n\n` +
                          `💵 **እባክዎ ማስገባት የሚፈልጉትን የብር መጠን በቁጥር ይጻፉ፦**\n*(ለማቋረጥ /cancel ይበሉ)*`;
         bot.sendMessage(chatId, depositMsg, { parse_mode: 'Markdown' });
     };
