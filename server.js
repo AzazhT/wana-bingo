@@ -474,7 +474,7 @@ if (bot) {
         let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
                           `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
                           `💬 **ቴሌግራም አድሚን:** @AdminUsername\n` +
-                          `📱 **ስልክ ቁጥር:** +251911121515`;
+                          `📱 **ስልክ ቁጥር:** +251901494600`;
         
         bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
     });
