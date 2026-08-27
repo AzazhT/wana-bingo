@@ -656,8 +656,8 @@ if (bot) {
             await bot.answerCallbackQuery(callbackQuery.id);
             let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
                               `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
-                              `💬 **ቴሌግራም አድሚን:** @AdminUsername\n` +
-                              `📱 **ስልክ ቁጥር:** +251911151515`;
+                              `💬 **ቴሌግራም አድሚን:** @Wana21_bot\n` +
+                              `📱 **ስልክ ቁጥር:** +251911132020`;
             return bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
         }
 
