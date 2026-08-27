@@ -657,7 +657,7 @@ if (bot) {
             let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
                               `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
                               `💬 **ቴሌግራም አድሚን:** @AdminUsername\n` +
-                              `📱 **ስልክ ቁጥር:** +251915503379`;
+                              `📱 **ስልክ ቁጥር:** +251911151515`;
             return bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
         }
 
