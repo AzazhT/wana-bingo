@@ -212,8 +212,65 @@ if (bot) {
         { command: 'balance', description: '💰 ቀሪ ሂሳብዎን ለማየት' },
         { command: 'deposit', description: '💳 የዲፖዚት መመሪያ' },
         { command: 'withdraw', description: '💸 ገንዘብ ወጪ ለማድረግ' },
+        { command: 'broadcast', description: '📢 ለሁሉም ተጠቃሚዎች መልዕክት መላኪያ (Admin Only)' },
         { command: 'cancel', description: '❌ ሂደቱን ሰርዝ' }
     ]);
+
+    // 📢 ለሁሉም ተጠቃሚዎች መልዕክት እና ከታች የ Play Bingo ቁልፍ መላኪያ
+    bot.onText(/\/broadcast (.+)/, async (msg, match) => {
+        const chatId = msg.chat.id;
+        
+        if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
+
+        const broadcastMessage = match[1];
+
+        try {
+            const usersRes = await pool.query('SELECT identifier FROM users');
+            const allUsers = usersRes.rows;
+
+            if (allUsers.length === 0) {
+                return bot.sendMessage(chatId, '❌ በዳታቤዝ ውስጥ ምንም ተጠቃሚ አልተገኘም።');
+            }
+
+            let successCount = 0;
+            let failCount = 0;
+
+            bot.sendMessage(chatId, `⏳ መልዕክቱ ወደ **${allUsers.length}** ተጠቃሚዎች መላክ ተጀምሯል...`, { parse_mode: 'Markdown' });
+
+            // 🎲 ከታች የሚጨመረው የ Play Bingo ቁልፍ
+            const playButton = {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🎲 Play Bingo (አሁኑኑ ተጫወቱ) 🚀', web_app: { url: WEB_APP_URL } }]
+                    ]
+                }
+            };
+
+            for (const user of allUsers) {
+                try {
+                    await bot.sendMessage(user.identifier, broadcastMessage, { 
+                        parse_mode: 'Markdown',
+                        ...playButton
+                    });
+                    successCount++;
+                } catch (err) {
+                    failCount++;
+                }
+            }
+
+            bot.sendMessage(chatId, 
+                `✅ **መልዕክቱ ተልኮ አብቅቷል!**\n\n` +
+                `📊 **ማጠቃለያ፦**\n` +
+                `🎯 በተሳካ ሁኔታ የደረሳቸው፡ **${successCount}**\n` +
+                `❌ ያልደረሳቸው (Block ያደረጉ)፡ **${failCount}**`, 
+                { parse_mode: 'Markdown' }
+            );
+
+        } catch (err) {
+            console.error('Broadcast Error:', err);
+            bot.sendMessage(chatId, '❌ መልዕክቱ ሲላክ ስህተት ተፈጥሯል።');
+        }
+    });
 
     bot.onText(/\/addbalance (\d+) (\d+(\.\d+)?)/, async (msg, match) => {
         const chatId = msg.chat.id;
@@ -270,6 +327,7 @@ if (bot) {
         }
     });
 
+    // 🔹 /start handler
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
         const name = msg.from.first_name || 'ተጫዋች';
@@ -342,6 +400,7 @@ if (bot) {
         }
     });
 
+    // 🔹 Share Contact Handler
     bot.on('contact', async (msg) => {
         const chatId = msg.chat.id;
         const identifier = chatId.toString();
@@ -905,7 +964,6 @@ function generateServerBingoCard() {
     return card;
 }
 
-// ⚡️ የተስተካከለው startRoomGame
 function startRoomGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
@@ -939,56 +997,39 @@ function startRoomGame(roomId) {
             return;
         }
 
-        // 1. አዲስ ቁጥር መምረጥ
         let rand;
         do {
             rand = Math.floor(Math.random() * 75) + 1;
         } while (room.drawnNumbers.includes(rand));
 
         room.drawnNumbers.push(rand);
-
-        // 2. ⚡️ ቁጥሩ ለተጫዋቾች ከመላኩ በፊት በቅድሚያ የቦቶችን ካርድ መፈተሽ
-        let winningBot = null;
-        let winningBotLine = null;
-        let winningBotId = null;
+        io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
 
         for (let botId in roomBotCards) {
             let botData = roomBotCards[botId];
             let winningLine = findWinningLine(botData.card, room.drawnNumbers);
             if (winningLine) {
-                winningBot = botData;
-                winningBotLine = winningLine;
-                winningBotId = botId;
-                break;
+                clearInterval(room.gameInterval);
+                if (room.timer) clearInterval(room.timer);
+                room.status = 'ended';
+
+                let botWinAmount = finalPrizePool;
+                let botName = room.playerNames[botId] || getRandomTelegramName();
+
+                io.to(roomId).emit('gameOver', { 
+                    subtitle: '1 player has won the game',
+                    winnerName: botName,
+                    boardNumber: botData.boardNumber,
+                    winAmount: botWinAmount,
+                    winningLine: winningLine
+                });
+
+                setTimeout(() => {
+                    resetRoomForNextGame(roomId);
+                }, 3000);
+                return;
             }
         }
-
-        // 3. ቦት ቢንጎ ሠርቶ ከተገኘ ቁጥሩ ለተጫዋቾች ሳይደርስ ጨዋታውን ወዲያውኑ ማቆም
-        if (winningBot) {
-            clearInterval(room.gameInterval);
-            if (room.timer) clearInterval(room.timer);
-            room.status = 'ended';
-
-            let botWinAmount = finalPrizePool;
-            let botName = room.playerNames[winningBotId] || getRandomTelegramName();
-
-            io.to(roomId).emit('gameOver', { 
-                subtitle: '1 player has won the game',
-                winnerName: botName,
-                boardNumber: winningBot.boardNumber,
-                winAmount: botWinAmount,
-                winningLine: winningBotLine
-            });
-
-            setTimeout(() => {
-                resetRoomForNextGame(roomId);
-            }, 3000);
-            return; // ተግባሩን እዚህ ላይ ማቆም
-        }
-
-        // 4. ማንም ቦት ካላሸነፈ ብቻ ቁጥሩን ለተጫዋቾች ማሰራጨት
-        io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
-
     }, 3000);
 }
 
