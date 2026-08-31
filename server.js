@@ -438,7 +438,7 @@ if (bot) {
         userStates[chatId] = { step: 'AWAITING_DEPOSIT_AMOUNT' };
         let depositMsg = `💳 **ገንዘብ ገቢ ማድረጊያ (Deposit)**\n\n` +
                          `ገንዘብ ገቢ ለማድረግ የሚከተለውን አካውንት ይጠቀሙ፦\n\n` +
-                         `📱 **ቴሌብር (Telebirr):** 0901494600\n` +
+                         `📱 **ቴሌብር (Telebirr):** 0911132020\n` +
                          `👤 **ስም:** Anisha \n\n` +
                          `💵 **እባክዎ ማስገባት የሚፈልጉትን የብር መጠን በቁጥር ይጻፉ፦**\n*(ለማቋረጥ /cancel ይበሉ)*`;
         bot.sendMessage(chatId, depositMsg, { parse_mode: 'Markdown' });
@@ -472,9 +472,9 @@ if (bot) {
         const chatId = msg.chat.id;
         delete userStates[chatId];
         let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
-                 `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
-                 `💬 **ቴሌግራም አድሚን:** @Wana21_bot\n` +
-                 `📱 **ስልክ ቁጥር:** +251901494600`;
+                         `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
+                         `💬 **ቴሌግራም አድሚን:** @Wana21_bot\n` +
+                         `📱 **ስልክ ቁጥር:** +251911132020`;
         
         bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
     });
