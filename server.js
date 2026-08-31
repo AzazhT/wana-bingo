@@ -92,6 +92,7 @@ app.post('/api/get-user', async (req, res) => {
         let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
         let user;
         if (userRes.rows.length === 0) {
+            // 🎁 አዲስ ተጠቃሚ ሲመዘገብ የ 50 ብር ነጻ ቦነስ መስጫ
             const INITIAL_BONUS = 50.00;
             const insertRes = await pool.query(
                 'INSERT INTO users (identifier, name, username, balance) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -467,15 +468,19 @@ if (bot) {
     bot.onText(/\/deposit|Deposit/, (msg) => triggerDeposit(msg.chat.id));
     bot.onText(/\/withdraw|Withdraw/, (msg) => triggerWithdraw(msg.chat.id));
 
+    // 🔹 Contact Us Handler (የፅሁፍ መልዕክት ሲላክ የሚመልሰው)
     bot.onText(/Contact Us 📞/, (msg) => {
         const chatId = msg.chat.id;
         delete userStates[chatId];
         let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
                  `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
-                 `💬 **ቴሌግራም አድሚን:** @bingo_bot21\n` +
+                 `💬 **ቴሌግራም አድሚን:** [አድሚኑን ያናግሩ](https://t.me/bingo_bot21)\n` +
                  `📱 **ስልክ ቁጥር:** +251901494600`;
         
-        bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, contactMsg, { 
+            parse_mode: 'Markdown',
+            disable_web_page_preview: true 
+        });
     });
 
     bot.on('message', async (msg) => {
@@ -651,13 +656,17 @@ if (bot) {
             return;
         }
 
+        // 🔹 Contact Us Button Handler (ከኢንላይን በተን ሲነካ የሚመልሰው)
         if (action === 'btn_contact') {
             await bot.answerCallbackQuery(callbackQuery.id);
             let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
                               `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
-                              `💬 **ቴሌግራም አድሚን:** @bingo_bot21\n` +
+                              `💬 **ቴሌግራም አድሚን:** [አድሚኑን ያናግሩ](https://t.me/bingo_bot21)\n` +
                               `📱 **ስልክ ቁጥር:** +251901494600`;
-            return bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
+            return bot.sendMessage(chatId, contactMsg, { 
+                parse_mode: 'Markdown',
+                disable_web_page_preview: true 
+            });
         }
 
         const parts = action.split('_');
