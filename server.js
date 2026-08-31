@@ -92,7 +92,6 @@ app.post('/api/get-user', async (req, res) => {
         let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
         let user;
         if (userRes.rows.length === 0) {
-            // 🎁 አዲስ ተጠቃሚ ሲመዘገብ የ 50 ብር ነጻ ቦነስ መስጫ
             const INITIAL_BONUS = 50.00;
             const insertRes = await pool.query(
                 'INSERT INTO users (identifier, name, username, balance) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -438,7 +437,7 @@ if (bot) {
         userStates[chatId] = { step: 'AWAITING_DEPOSIT_AMOUNT' };
         let depositMsg = `💳 **ገንዘብ ገቢ ማድረጊያ (Deposit)**\n\n` +
                          `ገንዘብ ገቢ ለማድረግ የሚከተለውን አካውንት ይጠቀሙ፦\n\n` +
-                         `📱 **ቴሌብር (Telebirr):** 0911132020\n` +
+                         `📱 **ቴሌብር (Telebirr):** 0901494600\n` +
                          `👤 **ስም:** Anisha \n\n` +
                          `💵 **እባክዎ ማስገባት የሚፈልጉትን የብር መጠን በቁጥር ይጻፉ፦**\n*(ለማቋረጥ /cancel ይበሉ)*`;
         bot.sendMessage(chatId, depositMsg, { parse_mode: 'Markdown' });
@@ -472,9 +471,9 @@ if (bot) {
         const chatId = msg.chat.id;
         delete userStates[chatId];
         let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
-                         `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
-                         `💬 **ቴሌግራም አድሚን:** @Wana21_bot\n` +
-                         `📱 **ስልክ ቁጥር:** +251911132020`;
+                 `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
+                 `💬 **ቴሌግራም አድሚን:** @bingo_bot21\n` +
+                 `📱 **ስልክ ቁጥር:** +251901494600`;
         
         bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
     });
@@ -656,8 +655,8 @@ if (bot) {
             await bot.answerCallbackQuery(callbackQuery.id);
             let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
                               `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
-                              `💬 **ቴሌግራም አድሚን:** @Wana21_bot\n` +
-                              `📱 **ስልክ ቁጥር:** +251911132020`;
+                              `💬 **ቴሌግራም አድሚን:** @bingo_bot21\n` +
+                              `📱 **ስልክ ቁጥር:** +251901494600`;
             return bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
         }
 
