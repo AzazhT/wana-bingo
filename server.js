@@ -67,10 +67,11 @@ initializeDatabase();
 // 🔹 API ENDPOINTS
 // ==========================================
 
+// 1. የሁሉም ተጠቃሚዎች ዝርዝር (ያለ created_at የተስተካከለ)
 app.get('/api/admin/users', async (req, res) => {
     try {
         const usersRes = await pool.query(`
-            SELECT identifier, name, username, phone, balance, created_at 
+            SELECT identifier, name, username, phone, balance 
             FROM users 
             ORDER BY identifier DESC
         `);
@@ -81,6 +82,30 @@ app.get('/api/admin/users', async (req, res) => {
         });
     } catch (err) {
         console.error('Error fetching admin users:', err);
+        res.status(500).json({ success: false, message: 'Server Error', error: err.message });
+    }
+});
+
+// 2. የአንዱን ተጠቃሚ ብቻ መረጃ በ ID ለማየት (አዲስ የተጨመረ API)
+app.get('/api/admin/user/:identifier', async (req, res) => {
+    const { identifier } = req.params;
+    try {
+        const userRes = await pool.query(`
+            SELECT identifier, name, username, phone, balance 
+            FROM users 
+            WHERE identifier = $1
+        `, [identifier]);
+
+        if (userRes.rows.length === 0) {
+            return res.json({ success: false, message: 'ተጠቃሚው አልተገኘም!' });
+        }
+
+        res.json({ 
+            success: true, 
+            user: userRes.rows[0] 
+        });
+    } catch (err) {
+        console.error('Error fetching single user:', err);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
@@ -237,7 +262,6 @@ if (bot) {
 
             bot.sendMessage(chatId, `⏳ መልዕክቱ ወደ **${allUsers.length}** ተጠቃሚዎች መላክ ተጀምሯል...`, { parse_mode: 'Markdown' });
 
-            // 🎲 ከታች የሚጨመረው የ Play Bingo ቁልፍ
             const playButton = {
                 reply_markup: {
                     inline_keyboard: [
@@ -269,6 +293,34 @@ if (bot) {
         } catch (err) {
             console.error('Broadcast Error:', err);
             bot.sendMessage(chatId, '❌ መልዕክቱ ሲላክ ስህተት ተፈጥሯል።');
+        }
+    });
+
+    // 🔍 በቦት ላይ የአንዱን ተጠቃሚ ብቻ መረጃ በ /user ID ለማየት (አዲስ የተጨመረ command)
+    bot.onText(/\/user (.+)/, async (msg, match) => {
+        const chatId = msg.chat.id;
+        if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
+
+        const targetId = match[1].trim();
+
+        try {
+            const userRes = await pool.query('SELECT name, username, identifier, phone, balance FROM users WHERE identifier = $1', [targetId]);
+            
+            if (userRes.rows.length === 0) {
+                return bot.sendMessage(chatId, `❌ ID \`${targetId}\` ያለው ተጠቃሚ አልተገኘም!`, { parse_mode: 'Markdown' });
+            }
+
+            const u = userRes.rows[0];
+            let userMsg = `👤 **የተጠቃሚው መረጃ፦**\n\n` +
+                          `👤 **ስም:** ${u.name || 'Unknown'}\n` +
+                          `💬 **Username:** @${u.username || 'none'}\n` +
+                          `🆔 **ID:** \`${u.identifier}\`\n` +
+                          `📱 **ስልክ:** ${u.phone || 'ያልተመዘገበ'}\n` +
+                          `💰 **ባላንስ:** ${u.balance} ETB`;
+
+            bot.sendMessage(chatId, userMsg, { parse_mode: 'Markdown' });
+        } catch (e) {
+            bot.sendMessage(chatId, 'መረጃውን ማግኘት አልተቻለም።');
         }
     });
 
