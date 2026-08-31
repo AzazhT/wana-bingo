@@ -270,7 +270,6 @@ if (bot) {
         }
     });
 
-    // 🔹 /start handler (ፎቶ እና የቻናል ማስገደጃ የለውም)
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
         const name = msg.from.first_name || 'ተጫዋች';
@@ -343,7 +342,6 @@ if (bot) {
         }
     });
 
-    // 🔹 Share Contact Handler (ለአድሚኑ ኖቲፊኬሽን አይልክም)
     bot.on('contact', async (msg) => {
         const chatId = msg.chat.id;
         const identifier = chatId.toString();
@@ -907,6 +905,7 @@ function generateServerBingoCard() {
     return card;
 }
 
+// ⚡️ የተስተካከለው startRoomGame
 function startRoomGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
@@ -940,39 +939,56 @@ function startRoomGame(roomId) {
             return;
         }
 
+        // 1. አዲስ ቁጥር መምረጥ
         let rand;
         do {
             rand = Math.floor(Math.random() * 75) + 1;
         } while (room.drawnNumbers.includes(rand));
 
         room.drawnNumbers.push(rand);
-        io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
+
+        // 2. ⚡️ ቁጥሩ ለተጫዋቾች ከመላኩ በፊት በቅድሚያ የቦቶችን ካርድ መፈተሽ
+        let winningBot = null;
+        let winningBotLine = null;
+        let winningBotId = null;
 
         for (let botId in roomBotCards) {
             let botData = roomBotCards[botId];
             let winningLine = findWinningLine(botData.card, room.drawnNumbers);
             if (winningLine) {
-                clearInterval(room.gameInterval);
-                if (room.timer) clearInterval(room.timer);
-                room.status = 'ended';
-
-                let botWinAmount = finalPrizePool;
-                let botName = room.playerNames[botId] || getRandomTelegramName();
-
-                io.to(roomId).emit('gameOver', { 
-                    subtitle: '1 player has won the game',
-                    winnerName: botName,
-                    boardNumber: botData.boardNumber,
-                    winAmount: botWinAmount,
-                    winningLine: winningLine
-                });
-
-                setTimeout(() => {
-                    resetRoomForNextGame(roomId);
-                }, 3000);
-                return;
+                winningBot = botData;
+                winningBotLine = winningLine;
+                winningBotId = botId;
+                break;
             }
         }
+
+        // 3. ቦት ቢንጎ ሠርቶ ከተገኘ ቁጥሩ ለተጫዋቾች ሳይደርስ ጨዋታውን ወዲያውኑ ማቆም
+        if (winningBot) {
+            clearInterval(room.gameInterval);
+            if (room.timer) clearInterval(room.timer);
+            room.status = 'ended';
+
+            let botWinAmount = finalPrizePool;
+            let botName = room.playerNames[winningBotId] || getRandomTelegramName();
+
+            io.to(roomId).emit('gameOver', { 
+                subtitle: '1 player has won the game',
+                winnerName: botName,
+                boardNumber: winningBot.boardNumber,
+                winAmount: botWinAmount,
+                winningLine: winningBotLine
+            });
+
+            setTimeout(() => {
+                resetRoomForNextGame(roomId);
+            }, 3000);
+            return; // ተግባሩን እዚህ ላይ ማቆም
+        }
+
+        // 4. ማንም ቦት ካላሸነፈ ብቻ ቁጥሩን ለተጫዋቾች ማሰራጨት
+        io.to(roomId).emit('numberDrawn', { number: rand, drawnHistory: room.drawnNumbers });
+
     }, 3000);
 }
 
