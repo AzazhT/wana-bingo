@@ -16,7 +16,7 @@ const io = new Server(server, {
 app.use(express.json());
 app.use(express.static('public'));
 
-const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
+const TOKEN = '8957133551:AAF6Hs-LK2VbMO4wUM_ugLdMVbNFN5Bap90';
 const ADMIN_CHAT_ID = '686733543';
 const WEB_APP_URL = 'https://wana-bingo.onrender.com';
 
