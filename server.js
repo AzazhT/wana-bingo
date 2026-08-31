@@ -472,9 +472,9 @@ if (bot) {
         const chatId = msg.chat.id;
         delete userStates[chatId];
         let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
-                          `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
-                          `💬 **ቴሌግራም አድሚን:** @Wana21_bot\n` +
-                          `📱 **ስልክ ቁጥር:** +251911132020`;
+                 `ለማንኛውም ጥያቄ፣ አስተያየት ወይም የገንዘብ ገቢ/ወጪ እገዛ በአካል ያናግሩን፦\n\n` +
+                 `💬 **ቴሌግራም አድሚን:** @Wana21_bot\n` +
+                 `📱 **ስልክ ቁጥር:** +251901494600`;
         
         bot.sendMessage(chatId, contactMsg, { parse_mode: 'Markdown' });
     });
