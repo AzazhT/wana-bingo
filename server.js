@@ -67,7 +67,7 @@ initializeDatabase();
 // 🔹 API ENDPOINTS
 // ==========================================
 
-// 1. የሁሉም ተጠቃሚዎች ዝርዝር (ያለ created_at የተስተካከለ)
+// 1. የሁሉም ተጠቃሚዎች ዝርዝር
 app.get('/api/admin/users', async (req, res) => {
     try {
         const usersRes = await pool.query(`
@@ -86,7 +86,7 @@ app.get('/api/admin/users', async (req, res) => {
     }
 });
 
-// 2. የአንዱን ተጠቃሚ ብቻ መረጃ በ ID ለማየት (አዲስ የተጨመረ API)
+// 2. የአንዱን ተጠቃሚ ብቻ መረጃ በ ID ለማየት
 app.get('/api/admin/user/:identifier', async (req, res) => {
     const { identifier } = req.params;
     try {
@@ -116,7 +116,7 @@ app.post('/api/get-user', async (req, res) => {
         let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
         let user;
         if (userRes.rows.length === 0) {
-            // 🎁 አዲስ ተጠቃሚ ሲመዘገብ የ 50 ብር ነጻ ቦነስ መስጫ
+            // 🎁 አዲስ ተጠቃሚ ሲመዘገብ የ 50 ብር ነፃ ቦነስ መስጫ
             const INITIAL_BONUS = 50.00;
             const insertRes = await pool.query(
                 'INSERT INTO users (identifier, name, username, balance) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -241,7 +241,7 @@ if (bot) {
         { command: 'cancel', description: '❌ ሂደቱን ሰርዝ' }
     ]);
 
-    // 📢 ለሁሉም ተጠቃሚዎች መልዕክት እና ከታች የ Play Bingo ቁልፍ መላኪያ
+    // 📢 ለሁሉም ተጠቃሚዎች መልዕክት መላኪያ
     bot.onText(/\/broadcast (.+)/, async (msg, match) => {
         const chatId = msg.chat.id;
         
@@ -296,7 +296,7 @@ if (bot) {
         }
     });
 
-    // 🔍 በቦት ላይ የአንዱን ተጠቃሚ ብቻ መረጃ በ /user ID ለማየት (አዲስ የተጨመረ command)
+    // 🔍 የአንዱን ተጠቃሚ መረጃ በ /user ID ለማየት
     bot.onText(/\/user (.+)/, async (msg, match) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
@@ -379,7 +379,7 @@ if (bot) {
         }
     });
 
-    // 🔹 /start handler
+    // 🔹 /start handler (ያለ ምንም የቻናል ማስገደጃ የተቀናጀ)
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
         const name = msg.from.first_name || 'ተጫዋች';
