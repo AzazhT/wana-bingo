@@ -19,7 +19,6 @@ app.use(express.static('public'));
 const TOKEN = '8957133551:AAGBPCGEzFLtJRXHRU0PfKJ2QXDf1AyvXec';
 const ADMIN_CHAT_ID = '686733543';
 const WEB_APP_URL = 'https://wana-bingo.onrender.com';
-const PHOTO_URL = `${WEB_APP_URL}/bingo_bg.jpg`;
 
 const userStates = {};
 
@@ -119,21 +118,6 @@ app.post('/api/update-phone', async (req, res) => {
     const { identifier, phone } = req.body;
     try {
         await pool.query('UPDATE users SET phone = $1 WHERE identifier = $2', [phone, identifier]);
-        
-        if (bot && ADMIN_CHAT_ID) {
-            try {
-                const userRes = await pool.query('SELECT name, username FROM users WHERE identifier = $1', [identifier]);
-                let userInfo = userRes.rows[0] || {};
-                let msgText = `📱 **አዲስ ስልክ ቁጥር ተመዝግቧል!**\n` +
-                              `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
-                              `🆔 Telegram ID: \`${identifier}\`\n` +
-                              `📞 ስልክ ቁጥር: \`${phone}\``;
-                await bot.sendMessage(ADMIN_CHAT_ID, msgText, { parse_mode: 'Markdown' });
-            } catch (e) {
-                console.error('Failed to notify admin on phone update:', e);
-            }
-        }
-
         res.json({ success: true });
     } catch (err) {
         console.error(err);
@@ -286,18 +270,19 @@ if (bot) {
         }
     });
 
+    // 🔹 /start handler (ፎቶ እና የቻናል ማስገደጃ የለውም)
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
-        const name = msg.from.first_name;
+        const name = msg.from.first_name || 'ተጫዋች';
         delete userStates[chatId];
         
         let welcomeCaption = `✨ **እንኳን ወደ እድል ቢንጎ በደህና መጡ!** ✨\n\n` +
                              `ሰላም **${name}**! 👋\n\n` +
                              `🎁 **የ 50 ብር ነፃ ቦነስ ስጦታዎን ተጠቅመው መጫወት ይጀምሩ!**\n` +
-                             `🎯 **እየተዝናኑ እድልዎን ይፈትሹ፡ እሴትዎን ያሳድጉ!**\n` +
+                             `🎯 **እየተዝናኑ እድልዎን ይፈትሹ፡ እሴትዎን ያሳድጉ!**\n\n` +
                              `👇 **ከታች ባሉት አማራጮች ጨዋታውን ይጀምሩ ወይም ሂሳብዎን ይሙሉ።**`;
 
-       const inlineButtons = {
+        const inlineButtons = {
             inline_keyboard: [
                 [{ text: '🎲 ጨዋታውን ጀምር (Play Bingo) 🚀', web_app: { url: WEB_APP_URL } }],
                 [
@@ -325,19 +310,11 @@ if (bot) {
             }
         };
 
-        bot.sendPhoto(chatId, PHOTO_URL, {
-            caption: welcomeCaption,
+        bot.sendMessage(chatId, welcomeCaption, {
             parse_mode: 'Markdown',
             reply_markup: inlineButtons
         }).then(() => {
-            bot.sendMessage(chatId, "መልካም እድል፡", mainKeyboard);
-        }).catch(() => {
-            bot.sendMessage(chatId, welcomeCaption, {
-                parse_mode: 'Markdown',
-                reply_markup: inlineButtons
-            }).then(() => {
-                bot.sendMessage(chatId, "እባክዎ ከታች ያሉትን አማራጮች ይጠቀሙ፡", mainKeyboard);
-            });
+            bot.sendMessage(chatId, "እባክዎ ከታች ያሉትን አማራጮች ይጠቀሙ፦", mainKeyboard);
         });
     });
 
@@ -366,6 +343,7 @@ if (bot) {
         }
     });
 
+    // 🔹 Share Contact Handler (ለአድሚኑ ኖቲፊኬሽን አይልክም)
     bot.on('contact', async (msg) => {
         const chatId = msg.chat.id;
         const identifier = chatId.toString();
@@ -384,13 +362,6 @@ if (bot) {
 
             bot.sendMessage(chatId, `✅ **ስልክ ቁጥርዎ (${phoneNumber}) በተሳካ ሁኔታ ተመዝግቧል!**`, { parse_mode: 'Markdown' });
 
-            if (ADMIN_CHAT_ID) {
-                let adminMsg = `📱 **አዲስ ስልክ ቁጥር ከቻት ተጋርቷል!**\n` +
-                               `👤 ስም: ${name} (@${username || 'none'})\n` +
-                               `🆔 Telegram ID: \`${identifier}\`\n` +
-                               `📞 ስልክ ቁጥር: \`${phoneNumber}\``;
-                await bot.sendMessage(ADMIN_CHAT_ID, adminMsg, { parse_mode: 'Markdown' });
-            }
         } catch (err) {
             console.error('Error saving contact from bot:', err);
             bot.sendMessage(chatId, 'ስልክ ቁጥርዎን በመመዝገብ ላይ ስህተት ተፈጥሯል።');
@@ -468,7 +439,6 @@ if (bot) {
     bot.onText(/\/deposit|Deposit/, (msg) => triggerDeposit(msg.chat.id));
     bot.onText(/\/withdraw|Withdraw/, (msg) => triggerWithdraw(msg.chat.id));
 
-    // 🔹 Contact Us Handler (የፅሁፍ መልዕክት ሲላክ የሚመልሰው)
     bot.onText(/Contact Us 📞/, (msg) => {
         const chatId = msg.chat.id;
         delete userStates[chatId];
@@ -656,7 +626,6 @@ if (bot) {
             return;
         }
 
-        // 🔹 Contact Us Button Handler (ከኢንላይን በተን ሲነካ የሚመልሰው)
         if (action === 'btn_contact') {
             await bot.answerCallbackQuery(callbackQuery.id);
             let contactMsg = `📞 **እኛን ለማግኘት (Support)**\n\n` +
