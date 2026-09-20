@@ -262,7 +262,8 @@ if (bot) {
 
             bot.sendMessage(chatId, `⏳ መልዕክቱ ወደ **${allUsers.length}** ተጠቃሚዎች መላክ ተጀምሯል...`, { parse_mode: 'Markdown' });
 
-            const playButton = {
+            const playOptions = {
+                parse_mode: 'Markdown',
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: '🎲 Play Bingo (አሁኑኑ ተጫወቱ) 🚀', web_app: { url: WEB_APP_URL } }]
@@ -272,10 +273,7 @@ if (bot) {
 
             for (const user of allUsers) {
                 try {
-                    await bot.sendMessage(user.identifier, broadcastMessage, { 
-                        parse_mode: 'Markdown',
-                        ...playButton
-                    });
+                    await bot.sendMessage(user.identifier, broadcastMessage, playOptions);
                     successCount++;
                 } catch (err) {
                     failCount++;
@@ -857,7 +855,7 @@ function calculatePrizePool(room) {
 function getOrCreateLobby(betAmount) {
     let roomId = null;
     for (let id in activeRooms) {
-        if (activeRooms[id].betAmount === betAmount) {
+        if (activeRooms[id].betAmount === betAmount && activeRooms[id].status !== 'ended') {
             roomId = id;
             break;
         }
@@ -890,6 +888,9 @@ function getOrCreateLobby(betAmount) {
 function resetRoomForNextGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
+
+    if (room.gameInterval) clearInterval(room.gameInterval);
+    if (room.timer) clearInterval(room.timer);
 
     room.drawnNumbers = [];
     room.reservedNumbers = {};
