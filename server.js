@@ -67,7 +67,6 @@ initializeDatabase();
 // 🔹 API ENDPOINTS
 // ==========================================
 
-// 1. የሁሉም ተጠቃሚዎች ዝርዝር
 app.get('/api/admin/users', async (req, res) => {
     try {
         const usersRes = await pool.query(`
@@ -86,7 +85,6 @@ app.get('/api/admin/users', async (req, res) => {
     }
 });
 
-// 2. የአንዱን ተጠቃሚ ብቻ መረጃ በ ID ለማየት
 app.get('/api/admin/user/:identifier', async (req, res) => {
     const { identifier } = req.params;
     try {
@@ -116,7 +114,6 @@ app.post('/api/get-user', async (req, res) => {
         let userRes = await pool.query('SELECT * FROM users WHERE identifier = $1', [identifier]);
         let user;
         if (userRes.rows.length === 0) {
-            // 🎁 አዲስ ተጠቃሚ ሲመዘገብ የ 50 ብር ነፃ ቦነስ መስጫ
             const INITIAL_BONUS = 50.00;
             const insertRes = await pool.query(
                 'INSERT INTO users (identifier, name, username, balance) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -199,6 +196,7 @@ app.post('/api/request-transaction', async (req, res) => {
                 let msgText = `🔔 **አዲስ የ ${type} ጥያቄ ገብቷል!**\n` +
                               `🆔 TxID: ${tx_id}\n` +
                               `👤 ስም: ${userInfo.name || 'Unknown'} (@${userInfo.username || 'none'})\n` +
+                              `🆔 **Telegram ID:** \`${identifier}\`\n` +
                               `📱 ስልክ: ${userInfo.phone || 'N/A'}\n` +
                               `💰 መጠን: ${amount} ብር\n` +
                               `📝 መረጃ/ደረሰኝ: ${details || 'N/A'}`;
@@ -241,10 +239,8 @@ if (bot) {
         { command: 'cancel', description: '❌ ሂደቱን ሰርዝ' }
     ]);
 
-    // 📢 ለሁሉም ተጠቃሚዎች መልዕክት መላኪያ
     bot.onText(/\/broadcast (.+)/, async (msg, match) => {
         const chatId = msg.chat.id;
-        
         if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
 
         const broadcastMessage = match[1];
@@ -262,8 +258,7 @@ if (bot) {
 
             bot.sendMessage(chatId, `⏳ መልዕክቱ ወደ **${allUsers.length}** ተጠቃሚዎች መላክ ተጀምሯል...`, { parse_mode: 'Markdown' });
 
-            const playOptions = {
-                parse_mode: 'Markdown',
+            const playButton = {
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: '🎲 Play Bingo (አሁኑኑ ተጫወቱ) 🚀', web_app: { url: WEB_APP_URL } }]
@@ -273,7 +268,10 @@ if (bot) {
 
             for (const user of allUsers) {
                 try {
-                    await bot.sendMessage(user.identifier, broadcastMessage, playOptions);
+                    await bot.sendMessage(user.identifier, broadcastMessage, { 
+                        parse_mode: 'Markdown',
+                        ...playButton
+                    });
                     successCount++;
                 } catch (err) {
                     failCount++;
@@ -294,7 +292,6 @@ if (bot) {
         }
     });
 
-    // 🔍 የአንዱን ተጠቃሚ መረጃ በ /user ID ለማየት
     bot.onText(/\/user (.+)/, async (msg, match) => {
         const chatId = msg.chat.id;
         if (chatId.toString() !== ADMIN_CHAT_ID.toString()) return;
@@ -377,7 +374,6 @@ if (bot) {
         }
     });
 
-    // 🔹 /start handler (ያለ ምንም የቻናል ማስገደጃ የተቀናጀ)
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
         const name = msg.from.first_name || 'ተጫዋች';
@@ -450,7 +446,6 @@ if (bot) {
         }
     });
 
-    // 🔹 Share Contact Handler
     bot.on('contact', async (msg) => {
         const chatId = msg.chat.id;
         const identifier = chatId.toString();
@@ -855,7 +850,7 @@ function calculatePrizePool(room) {
 function getOrCreateLobby(betAmount) {
     let roomId = null;
     for (let id in activeRooms) {
-        if (activeRooms[id].betAmount === betAmount && activeRooms[id].status !== 'ended') {
+        if (activeRooms[id].betAmount === betAmount) {
             roomId = id;
             break;
         }
@@ -888,9 +883,6 @@ function getOrCreateLobby(betAmount) {
 function resetRoomForNextGame(roomId) {
     let room = activeRooms[roomId];
     if (!room) return;
-
-    if (room.gameInterval) clearInterval(room.gameInterval);
-    if (room.timer) clearInterval(room.timer);
 
     room.drawnNumbers = [];
     room.reservedNumbers = {};
