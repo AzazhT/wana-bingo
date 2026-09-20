@@ -879,7 +879,6 @@ function getOrCreateLobby(betAmount) {
             drawnNumbers: [],
             countdown: 30,
             startTime: Date.now() + 30000,
-            targetBotLimit: null, // 👈 ለየዙሩ ቦት ገደብ ማጠራቀሚያ
             timer: null,
             gameInterval: null
         };
@@ -899,7 +898,6 @@ function resetRoomForNextGame(roomId) {
     room.status = 'waiting';
     room.countdown = 30;
     room.startTime = Date.now() + 30000;
-    room.targetBotLimit = null; // 👈 በአዲስ ዙር አዲስ Random ቦት ቁጥር እንዲመደብ ያደርጋል
 
     io.to(roomId).emit('roomResetForNextRound', {
         status: room.status,
@@ -922,14 +920,8 @@ function startGlobalLobbyCountdown(roomId) {
 
         room.countdown--;
 
-        // 🎯 በየዙሩ በዘፈቀደ ከ 25 እስከ 53 ቦቶች እንዲመረጡ ማድረጊያ
-        if (!room.targetBotLimit) {
-            room.targetBotLimit = Math.floor(Math.random() * (53 - 25 + 1)) + 25; 
-        }
-
         let totalPossibleBoards = 100;
-        // ቆጠራው 30 ሰከንድ ሲሄድ ቦቶቹ በየሰከንዱ ቀስ በቀስ እስከ ተመረጠው ገደብ (targetBotLimit) ይገባሉ
-        let targetBotSelections = Math.floor(((30 - room.countdown) / 30) * room.targetBotLimit); 
+        let targetBotSelections = Math.floor((30 - room.countdown) * 1.5); 
         let currentSelectedCount = Object.keys(room.selectedBoards).length;
 
         if (currentSelectedCount < targetBotSelections && currentSelectedCount < totalPossibleBoards) {
