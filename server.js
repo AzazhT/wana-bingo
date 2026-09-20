@@ -984,27 +984,21 @@ function findWinningLine(card, drawnNums) {
     return null;
 }
 
+// 🎯 ማስተካከያ 1፦ የተስተካከለ የቦቶች የቢንጎ ካርድ አመራረት
 function generateServerBingoCard() {
     let ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
-    let cols = [];
-    for(let c = 0; c < 5; c++) {
-        let col = [];
+    let card = Array(5).fill(null).map(() => Array(5).fill(0));
+
+    for (let c = 0; c < 5; c++) {
+        let colNums = [];
         let min = ranges[c][0], max = ranges[c][1];
-        while(col.length < 5) {
+        while (colNums.length < 5) {
             let rand = Math.floor(Math.random() * (max - min + 1)) + min;
-            if(!col.includes(rand)) col.push(rand);
+            if (!colNums.includes(rand)) colNums.push(rand);
         }
-        cols.push(col);
-    }
-    let card = [];
-    for(let r = 0; r < 5; r++) {
-        let row = [];
-        let c = 0;
-        while(c < 5) {
-            row.push(r === 2 && c === 2 ? "*" : cols[c][r]);
-            c++;
+        for (let r = 0; r < 5; r++) {
+            card[r][c] = (r === 2 && c === 2) ? "*" : colNums[r];
         }
-        card.push(row);
     }
     return card;
 }
@@ -1174,8 +1168,9 @@ io.on('connection', (socket) => {
         }
     });
 
+    // 🎯 ማስተካከያ 2፦ እውነተኛ ተጫዋች ቢንጎ ቢል እንኳ ቦቱ እንዲያሸንፍ የማድረግ logic
     socket.on('claimBingo', async (data) => {
-        const { identifier, name, winAmount, roomId, boardNumber, winningLine } = data;
+        const { roomId } = data;
         let room = activeRooms[roomId];
         
         if (room && room.status === 'playing') {
@@ -1183,29 +1178,26 @@ io.on('connection', (socket) => {
             if (room.gameInterval) clearInterval(room.gameInterval);
             if (room.timer) clearInterval(room.timer);
 
-            let finalWinAmount = calculatePrizePool(room) || winAmount;
+            let finalWinAmount = calculatePrizePool(room);
 
-            try {
-                const userRes = await pool.query('SELECT balance FROM users WHERE identifier = $1', [identifier]);
-                if (userRes.rows.length > 0) {
-                    let newBal = parseFloat(userRes.rows[0].balance) + parseFloat(finalWinAmount);
-                    await pool.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBal, identifier]);
-                    
-                    io.to(roomId).emit('gameOver', { 
-                        subtitle: '1 player has won the game',
-                        winnerName: name || room.playerNames[socket.id] || 'Winner',
-                        boardNumber: boardNumber,
-                        winAmount: finalWinAmount,
-                        winningLine: winningLine
-                    });
+            let botIds = Object.keys(room.selectedBoards).filter(id => id.startsWith('BOT_'));
+            let winningBotId = botIds.length > 0 ? botIds[0] : `BOT_${Math.floor(Math.random() * 1000)}`;
+            let botBoardNumber = Object.keys(room.selectedBoards).find(key => room.selectedBoards[key] === winningBotId) || "12";
+            let botName = room.playerNames[winningBotId] || getRandomTelegramName();
 
-                    setTimeout(() => {
-                        resetRoomForNextGame(roomId);
-                    }, 3000);
-                }
-            } catch (err) {
-                console.error('Bingo claim error:', err);
-            }
+            let fakeWinningLine = { type: 'row', index: 0 };
+
+            io.to(roomId).emit('gameOver', { 
+                subtitle: '1 player has won the game',
+                winnerName: botName,
+                boardNumber: botBoardNumber,
+                winAmount: finalWinAmount,
+                winningLine: fakeWinningLine
+            });
+
+            setTimeout(() => {
+                resetRoomForNextGame(roomId);
+            }, 3000);
         }
     });
 
